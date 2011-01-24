@@ -1,0 +1,62 @@
+.\"
+.\"
+.\" Blame: Roland Dowdeswell <elric@imrryr.org>
+.Dd May 28, 2009
+.Os
+.Dt KRB5_ADMIND 8
+.Sh NAME
+.Nm krb5_admind
+.Nd kerberos administration daemon
+.Sh SYNOPSIS
+.Nm
+.Op Fl Mv
+.Op Fl a Ar acl_file
+.Op Fl d Ar database
+.Op Fl m Ar master
+.Sh DESCRIPTION
+.Nm
+is the daemon end of the kerberos administrative service.
+It expects to be spawned as an inetd-style service via
+.Xr knc 1 .
+.Pp
+.Nm
+when invoked will allow the client to create, fetch, change or remove keys.
+It uses a simple ACL logic, namely that
+.Ar host/<hostname>
+is entitled to perform requests for
+.Ar <service>/<hostname> .
+Some additional limitations on the target principal may be defined.
+.Pp
+The options are as follows:
+.Bl -tag -width indentxxxxxx
+.It Fl M
+specifies that the master is the current host.
+Should be used only for setting up test servers.
+.It Fl a Ar acl_file
+specifies the location of the ACL file.
+Defaults to
+.Pa /etc/krb5/krb5_admin.acl .
+.It Fl d Ar database
+specifies the location of the MIT Kerberos DB.
+Defaults to the location built into the MIT Kerberos libriares.
+.It Fl h Ar hostspec
+Connect to
+.Ar hostspec
+instead of searching for KDCs using the usual method.
+A
+.Ar hostspec
+has a format of
+.Oo Ar service@ Oc Ns Ar hostname Ns Oo : Ns Ar port Oc .
+.It Fl m Ar master
+specifies the hostname of the master KDC.
+If a KDC which is not the master is asked to perform a write operation
+it will deliver a redirect to the client which will break the connexion
+and reconnect to the master.
+Defaults to
+.Pa /etc/krb5/master .
+.It Fl v
+increment verbose level.
+.El
+.Sh SEE ALSO
+.Xr knc 1 ,
+.Xr krb5_keytab 8 .

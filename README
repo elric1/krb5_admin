@@ -1,0 +1,55 @@
+krb5_admin: a perl framework that provides an extensible Kerberos
+administration facility using KNC/Kharon.
+
+INSTALLATION
+
+To install this module, run the following commands:
+
+        perl Makefile.PL
+        make
+        make test
+        make install
+
+SUPPORT AND DOCUMENTATION
+
+After installing, you can find documentation for this module with the
+perldoc command.
+
+    perldoc Kharon
+
+
+LICENSE AND COPYRIGHT
+
+Copyright 2009  Morgan Stanley and Co. Incorporated
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject
+to the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR
+ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# l
+total 46
+drwxr-x---  7 elric  chaos    512 Jan 22 17:26 .git
+-rw-r-----  1 elric  chaos    106 Jan 22 17:26 Changes
+-rw-r-----  1 elric  chaos    100 Jan 22 17:26 MANIFEST
+-rw-r--r--  1 elric  chaos  27887 Jan 22 17:26 Makefile
+-rw-r-----  1 elric  chaos    564 Jan 22 17:26 Makefile.PL
+-rw-r-----  1 elric  chaos   2121 Jan 22 17:26 README
+drwxr-x---  8 elric  chaos    512 Jan 22 17:26 blib
+-rw-r-----  1 elric  chaos    116 Jan 22 17:26 ignore.txt
+drwxr-x---  3 elric  chaos    512 Jan 22 17:26 lib
+-rw-r-----  1 elric  chaos      0 Jan 22 19:00 pm_to_blib
+

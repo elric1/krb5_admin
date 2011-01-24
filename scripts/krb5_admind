@@ -1,0 +1,110 @@
+#!/usr/pkg/bin/perl
+
+use IO::File;
+
+use Getopt::Std;
+use Socket;
+use Sys::Hostname;
+use Sys::Syslog;
+
+use Kharon::Protocol::ArrayHash;
+use Kharon::Engine::Server;
+
+use Krb5_Admin::KerberosDB;
+use Krb5_Admin::Log;
+
+use strict;
+use warnings;
+
+my $master;
+
+sub who_is_master {
+	my $fh = IO::File->new('/etc/krb5/master', 'r');
+	if (!defined($fh)) {
+		print STDERR "Can't open /etc/krb5/master: $!\n";
+		$fh = IO::File->new('master', 'r') or
+		    die "can't open ./master: $!";
+	}
+
+	my $master = <$fh>;
+	chomp($master);
+	$master;
+}
+
+sub am_i_master { hostname() eq $master }
+
+sub usage {
+
+	print STDERR "Usage: krb5_admind [-M] [-a acl_file] [-d dbname] " .
+	    "[-m master]\n";
+	exit(1);
+}
+
+openlog('krb5_admind', 'pid', 'auth');
+
+#
+# XXX XAX XXX XAX:::  HACK HACK HACK HACK HACK
+$ENV{KRB5CCNAME} = 'FILE:/var/spool/tickets/proiddb';
+# XXX XAX XXX XAX:::  HACK HACK HACK HACK HACK
+#
+
+our %opts;
+getopts('MPa:d:m:', \%opts) or usage();
+
+$master = hostname()	  if  defined($opts{M});
+$master = $opts{m}	  if !defined($master);
+$master = who_is_master() if !defined($master);
+
+sub mk_kmdb {
+	my %args = @_;
+
+	my %kmdb_args;
+	$kmdb_args{client}   = $args{CREDS};
+	$kmdb_args{addr}     = $args{REMOTE_IP};
+	$kmdb_args{acl_file} = $opts{a}	if defined($opts{a});
+	$kmdb_args{dbname}   = $opts{d} if defined($opts{d});
+
+	return Krb5_Admin::KerberosDB->new(%kmdb_args);
+}
+
+my $logger = Krb5_Admin::Log->new();
+my $ahr = Kharon::Protocol::ArrayHash->new(banner => { version => '2.0' } );
+my $pes = Kharon::Engine::Server->new(protocols => [$ahr], logger => $logger);
+$pes->Connect();
+
+my @rw_cmds = qw/	master
+			create
+			create_user
+			create_proid
+			change
+			enable
+			disable
+			proid_passwd
+			remove 
+			upgrade_to_strong_human
+			nkkps
+		/;
+my @ro_cmds = qw/	list
+			listpols
+			fetch
+			mquery
+			query
+		/;
+
+my %args;
+$args{cmds}	= [@rw_cmds, @ro_cmds];
+if (!am_i_master()) {
+	$args{next_server} = { PeerAddr => $master };
+	$args{refercmds} = [@rw_cmds];
+}
+
+if ($opts{P}) {
+	$args{object}	= \&mk_kmdb;
+	$pes->RunKncAcceptor(%args);
+} else {
+	$args{object}	= &mk_kmdb(CREDS => $ENV{KNC_CREDS},
+	    REMOTE_IP => $ENV{KNC_REMOTE_IP});
+	syslog('info', '%s connected from %s', $ENV{'KNC_CREDS'},
+	    $ENV{KNC_REMOTE_IP});
+	$pes->RunObj(%args);
+}

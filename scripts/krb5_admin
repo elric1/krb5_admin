@@ -1,0 +1,352 @@
+#!/usr/pkg/bin/perl
+
+use UNIVERSAL qw/isa/;
+use IO::File;
+use POSIX qw/strftime/;
+use Getopt::Std;
+use Term::ReadLine;
+
+use Krb5_Admin::Client;
+use Kharon::utils qw/encode_var_list/;
+
+use strict;
+use warnings;
+
+#
+# Global variables:
+
+my $debug = 0;
+my $verbose = 0;
+my $terse = 0;
+
+sub help {
+	my ($out) = @_;
+
+	print $out <<EOM;
+
+Commands that operate on principals:
+
+	list [wildcard]		lists principals that match the wildcard
+	query princ		displays the principal
+	remove princ		removes a principal
+	enable princ		enables a principal
+	disable	princ		disables a principal
+
+Commands that operate on users:
+
+	create_user user	creates a new user account
+	desdeco user		upgrades the user to the strong_human policy
+
+Commands that operate on proids:
+
+	nkkps proid		puts the proid in the NKKPS
+	create_proid proid	creates a new proid account
+	proid_passwd proid file	resets a proids passwd writing the new passwd
+				into file (file must be locked down)
+
+Commands that operate on service principals:
+
+none, yet.
+
+Commands that operate on policies:
+
+	listpols [wildcard]	lists the policies that match the wildcard
+
+General commands:
+
+	master			reconnects to the master KDC
+
+* unimplemented
+EOM
+
+	return 0;
+}
+
+our %enctypes = (
+	0x12    => 'aes256-cts',
+	0x11    => 'aes128-cts',
+	0x17    => 'rc4-hmac',
+	0x10    => 'des3-cbc-sha1',
+	0x01    => 'des-cbc-crc',
+);
+
+my $QUERY_FMT = "%- 25.25s ";
+sub qout {
+	my ($out, @args) = @_;
+
+	printf $out ("$QUERY_FMT %s\n", @args);
+}
+
+sub fmtdate { strftime("%a %b %e %H:%M:%S %Z %Y", localtime($_[0])) }
+sub fmtintv {
+	my ($in) = @_;
+
+	return 0 if $in < 1;
+
+	my $secs  = $in % 60;
+	   $in   -= $secs;
+	   $in   /= 60;
+	my $mins  = $in % 60;
+	   $in   -= $mins;
+	   $in   /= 60;
+	my $hours = $in % 24;
+	   $in   -= $hours;
+	   $in   /= 24;
+
+	my @ret;
+	push(@ret, "$in days")		if $in > 0;
+	push(@ret, "$hours hours")	if $hours > 0;
+	push(@ret, "$mins minutes")	if $hours > 0;
+	push(@ret, "$secs seconds")	if $secs > 0;
+
+	join(' ', @ret);
+}
+
+sub fmtexpi {
+	my ($in) = @_;
+
+	return "NEVER"		if $in == 0;
+	$in -= time();
+
+	return "EXPIRED"	if $in < 1;
+	return fmtintv($in);
+}
+
+sub format_mquery {
+	my ($out, @rets) = @_;
+
+	for my $i (@rets) {
+		format_query($out, $i);
+	}
+
+	return 0;
+}
+
+sub format_query {
+	my ($out, $ret) = @_;
+
+	# First fix up some fields:
+
+	if (grep { $_ eq '+needchange' } @{$ret->{attributes}}) {
+		# not zero but quite small:
+		$ret->{pw_expiration} = 1;
+	}
+
+	$ret->{policy} = "none" if !defined($ret->{policy});
+	$ret->{keys}   = []	if !exists($ret->{keys});
+
+	# Now print it all out:
+
+	qout($out, "Principal:", $ret->{principal});
+	qout($out, "Policy:", $ret->{policy});
+	qout($out, "Last modified by:", $ret->{mod_name});
+	qout($out, "Last modified on:", fmtdate($ret->{mod_date}));
+	qout($out, "Last password change:", fmtdate($ret->{last_pwd_change}));
+	qout($out, "Password expiration:", fmtexpi($ret->{pw_expiration}));
+	qout($out, "Maximum ticket life:", fmtintv($ret->{max_life}));
+	qout($out, "Maximum renewable life:",
+	    fmtintv($ret->{max_renewable_life}));
+	qout($out, "Current kvno:", $ret->{kvno});
+	printf $out ("$QUERY_FMT ", "Attributes:");
+	printvar($out, undef, $ret->{attributes});
+
+	print $out "Number of keys: " . scalar(@{$ret->{keys}}) . "\n";
+	for my $k (sort { $a->{kvno} <=> $b->{kvno} } @{$ret->{keys}}) {
+		my $enctype = $k->{enctype};
+
+		$enctype = $enctypes{$enctype} if exists($enctypes{$enctype});
+		printf $out "Key: kvno % 5d, %s\n", $k->{kvno}, $enctype;
+	}
+
+	return 0;
+}
+
+sub format_list {
+	my ($out, @l) = @_;
+
+	print $out join("\n", @l, '');
+	return 0;
+}
+
+sub proid_passwd {
+	my ($kmdb, $proid, $file) = @_;
+
+	if (!defined($proid) || !defined($file)) {
+		die "Syntax error: not enough args\nusage: proid_passwd " .
+		    "<proid> <file>";
+	}
+
+	my $fh = IO::File->new($file, O_CREAT|O_EXCL|O_WRONLY, 0600);
+	die "Can't open $file: $!" if !defined($fh);
+
+	#
+	# XXXrcd: check to see if the file is PTS protected.
+	#         This is a weak check but designed only to
+	#         encourage correct user behaviour...
+	#         We allow local files, but don't check if
+	#         it is in NFS...
+
+	my $fsout = qx{fs la "$file" 2>/dev/null};
+	if ($fsout =~ /system:anyuser/) {
+		unlink($file);
+		die "Permission denied: will not write a proid's to an AFS ".
+		    "location which permits system:anyuser access";
+	}
+
+	my $pass;
+	eval { $pass = $kmdb->proid_passwd($proid); };
+	if ($@) {
+		unlink($file) and die formaterr($@) . " and unlink failed: $!";
+		die $@;
+	}
+	print $fh "$pass\n";
+}
+
+our %aliases = (
+	desdeco	=> 'upgrade_to_strong_human',
+);
+
+our %cmds = (
+	'proid_passwd'	=> \&proid_passwd,
+);
+
+our %formats = (
+	'query'		=> \&format_query,
+	'mquery'	=> \&format_mquery,
+	'list'		=> \&format_list,
+	'listpols'	=> \&format_list,
+);
+
+sub run_cmd {
+	my ($out, $kmdb, $cmd, @args) = @_;
+	my @ret;
+	my $func;
+
+	return help($out) if ($cmd eq 'help' || $cmd eq '?');
+
+	$cmd  = $aliases{$cmd}		if exists($aliases{$cmd});
+	$func = $cmds{$cmd}		if exists($cmds{$cmd});
+	$func = $kmdb->can($cmd)	if !defined($func);
+
+	if (!defined($func)) {
+		print STDERR "Unrecognised command, $cmd\n";
+		return 1;
+	}
+	eval { @ret = &$func($kmdb, @args); };
+
+	if ($@) {
+		printerr($out, $@);
+		return 1;
+	}
+
+	$func = $formats{$cmd};
+
+	return &$func($out, @ret) if defined($func);
+
+	print "Command succeeded.\n";
+	return 0;
+}
+
+sub formaterr {
+	my ($err) = @_;
+
+	if (ref($err) eq 'ARRAY') {
+		return sprintf("ERROR (%d): %s\n", $err->[0], $err->[1]);
+	}
+
+	if (ref($err) eq '') {
+		$err =~ s#at .* line \d+\.$##;
+		return sprintf("ERROR: %s\n", $err);
+	}
+
+	if (isa($err, 'Error')) {
+		return $err->stringify();
+	}
+
+	return "ERROR: " . encode_var_list($err);
+}
+
+sub printerr {
+	my ($out, @vars) = @_;
+
+	for my $var (@vars) {
+		print $out formaterr($var);
+	}
+}
+
+sub printvar {
+	my ($out, $type, @vars) = @_;
+
+	for my $var (@vars) {
+		print $out "$type: " if defined($type);
+		print $out encode_var_list($var);
+	}
+}
+
+sub usage {
+	print STDERR <<EOM;
+usage: krb5_admin [-v] [-h kdc_host] user [user ...]
+EOM
+	exit(1);
+}
+
+my %opts;
+my @kdc;
+
+getopts('dh:sv?', \%opts) or usage();
+
+usage()			if exists($opts{'?'});
+$debug = 1		if exists($opts{'d'});
+$verbose = 1		if exists($opts{'v'});
+$terse = 1		if exists($opts{'s'});
+@kdc = ($opts{'h'})	if exists($opts{'h'});
+
+my $kmdb;
+eval {$kmdb = Krb5_Admin::Client->new(undef, {}, @kdc); };
+if ($@) {
+	printerr(\*STDERR, $@);
+	exit(1);
+}
+
+if ($#ARGV >= 0) {
+	my $ret;
+
+#	for my $cmd (@ARGV) {
+#		my @l = split(' ', $cmd);
+#		$ret = run_cmd(\*STDOUT, $kmdb, @l);
+#		last if $ret;
+#	}
+#	exit($ret);
+
+	exit(run_cmd(\*STDOUT, $kmdb, @ARGV));
+}
+
+my $term = Term::ReadLine->new('krb5_admin client');
+my $out = $term->OUT || \*STDOUT;
+$term->ornaments(0);
+
+while (1) {
+	my $cmd = $term->readline('krb5_admin> ');
+	last if !defined($cmd);
+
+	if ($debug) {
+		print STDERR "DEBUG: Doing: $cmd";
+		print STDERR ", via kdc \"$kdc[0]\"" if defined($kdc[0]);
+		print STDERR "\n";
+	}
+
+	next				if ($cmd eq '');
+
+	my @l = split(' ', $cmd);
+
+	if ($debug) {
+		for my $i (@l) {
+			print STDERR "DEBUG: parsed arg: $i\n";
+		}
+	}
+
+	last				if $l[0] eq 'quit';
+	last				if $l[0] eq 'exit';
+
+	run_cmd($out, $kmdb, @l);
+}

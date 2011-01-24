@@ -1,0 +1,308 @@
+#!/usr/pkg/bin/perl
+#
+
+use Getopt::Std;
+use Time::HiRes qw(gettimeofday tv_interval);
+
+use Krb5_Admin::Client;
+use Krb5_Admin::KerberosDB;
+use Krb5_Admin::C;
+
+use tests::utils qw{compare_array compare_hash compare};
+
+use SSP::utils qw/encode_var_list/;
+
+use strict;
+use warnings;
+
+sub printvar {
+	my ($type, @vars) = @_;
+
+	for my $var (@vars) {
+		print "$type: " . encode_var_list($var);
+	}
+}
+
+sub testObj {
+	my ($obj, $method, @args) = @_;
+
+	my $code = $obj->can($method) or die "no method $method.";
+	my @ret = &$code($obj, @args);
+
+	printvar($method, @ret);
+	@ret;
+}
+
+sub testObjC {
+	my ($obj, $result, $method, @args) = @_;
+
+	my @ret = testObj($obj, $method, @args);
+	compare(\@ret, $result);
+}
+
+sub testObjH {
+	my ($obj, $result, $method, @args) = @_;
+
+	my @ret = testObj($obj, $method, @args);
+}
+
+sub test_create_user {
+	my ($kmdb, $maxusers) = @_;
+
+	print "Testing create_user:\n";
+
+	my @humans = map { "user$_\@is1.morgan" } (0..$maxusers);
+
+	my $start = [gettimeofday()];
+	for my $i (@humans) {
+		print "  $i: " .  $kmdb->create_user($i) . "\n";
+	}
+	my $total = tv_interval($start, [gettimeofday()]);
+	print "$maxusers added in $total s, ". $total/$maxusers ."s per user\n";
+
+	print "Testing the created users:\n";
+	for my $i (@humans) {
+		my $ret = $kmdb->query($i);
+
+		die "can't find $i" if $ret->{principal} ne "$i";
+		compare($ret->{policy}, 'strong_human');
+		compare($ret->{keys}, [
+		    {enctype=>18,kvno=>1},
+		    {enctype=>17,kvno=>1},
+		    {enctype=>23,kvno=>1},
+		    {enctype=>16,kvno=>1},
+		]);
+		compare($ret->{attributes}, ['-allow_svr','+needchange',
+		    '+requires_preauth']);
+		print "  $i found to be appropriate.\n";
+	}
+
+	print "Checking to see if list() method returns all humans.\n";
+	compare([sort @humans], [sort ($kmdb->list('user[0-9]*@is1.morgan'))]);
+}
+
+sub test_desdeco {
+	my ($kmdb, $user) = @_;
+
+	$kmdb->upgrade_to_strong_human($user);
+	my $ret = $kmdb->query($user);
+
+	compare($ret->{policy}, 'strong_human');
+	if (! grep {$_ eq '+requires_preauth'} @{$ret->{attributes}}) {
+		die "Failed to upgrade_to_strong_human $user.";
+	}
+}
+
+sub test_create_proid {
+	my ($kmdb, $maxusers) = @_;
+
+	print "Testing create_proid:\n";
+
+	my @proids = map { "proid$_\@is1.morgan" } (0..$maxusers);
+
+	my $start = [gettimeofday()];
+	for my $i (@proids) {
+		$kmdb->create_proid($i);
+		print "  $i created.\n";
+	}
+	my $total = tv_interval($start, [gettimeofday()]);
+	print "$maxusers added in $total s, ". $total/$maxusers ."s per user\n";
+
+	print "Testing the created proids:\n";
+	for my $i (@proids) {
+		my $ret = $kmdb->query($i);
+
+		die "can't find $i" if $ret->{principal} ne "$i";
+		compare($ret->{policy}, 'random_key');
+		compare($ret->{keys}, [
+		    {enctype=>18,kvno=>2},
+		    {enctype=>17,kvno=>2},
+		    {enctype=>23,kvno=>2},
+		    {enctype=>16,kvno=>2},
+		]);
+		compare($ret->{attributes}, ['-allow_svr','+requires_preauth']);
+		print "  $i found to be appropriate.\n";
+	}
+
+	print "Checking to see if list() method returns all proids.\n";
+	compare([sort @proids], [sort ($kmdb->list('proid[0-9]*@is1.morgan'))]);
+}
+
+sub test_proid_passwd {
+	my ($kmdb, $proid) = @_;
+
+	#
+	# we assume that the proid begins in NKKPS because we just made it.  
+
+	print "Testing proid passwd tools:\n";
+	my $passwd = $kmdb->proid_passwd($proid);
+	print "  got passwd: $passwd\n";
+
+	my $res = $kmdb->query($proid);
+	die "not strong_proid!"	if $res->{policy} ne 'strong_proid'; 
+	print "  policy is changed to strong_proid.\n";
+
+	$kmdb->nkkps($proid);
+	print "  put it back into NKKPS.\n";
+
+	$res = $kmdb->query($proid);
+	die "not random_key!"	if $res->{policy} ne 'random_key'; 
+	print "  policy is back to random_key.\n";
+}
+
+sub test_enable {
+	my ($kmdb, $princ) = @_;
+
+	print "Testing \$kmdb->enable($princ).\n";
+	$kmdb->enable($princ);
+	my $ret = $kmdb->query($princ);
+	if (grep {$_ eq '-allow_tix'} @{$ret->{attributes}}) {
+		die "Failed to disable $princ.";
+	}
+}
+
+sub test_disable {
+	my ($kmdb, $princ) = @_;
+
+	print "Testing \$kmdb->disable($princ).\n";
+	$kmdb->disable($princ);
+	my $ret = $kmdb->query($princ);
+	if (! grep {$_ eq '-allow_tix'} @{$ret->{attributes}}) {
+		die "Failed to disable $princ.";
+	}
+}
+
+sub test_krb5_keytab_cmds {
+	my ($kmdb, $princ) = @_;
+	my @keys;
+
+	print "Keytab tests for $princ:\n";
+
+	testObjC($kmdb, [{created=>$princ}], 'create', $princ);
+	print "  Created.\n";
+
+	@keys = $kmdb->fetch($princ);
+	die "Should start with 4 keys"	if scalar(@keys) != 4;
+	print "  Fetched, it has 4 keys.\n";
+
+	testObjC($kmdb, [{setkey=>$princ}], 'change', $princ, 3,
+	    [ {enctype=>1,key=>'THEKEY!!'} ]);
+
+	print "  Changed it to a known value.\n";
+
+	@keys = $kmdb->fetch($princ);
+	@keys = grep { $_->{kvno} == 3 } @keys;
+
+	die "Too many keys"	if scalar(@keys) != 1;
+	die "Enctype != 1"	if $keys[0]->{enctype} != 1;
+	die "Key != THEKEY!!"	if $keys[0]->{key} ne 'THEKEY!!';
+
+	print "  Fetched it and verified that the new key is correct.\n";
+}
+
+sub kadmincmd {
+	my ($dbname, $cmd) = @_;
+
+	system('/ms/dist/kerberos/PROJ/mitkrb5/1.4-lib-prod/sbin/kadmin.local',
+	    '-d', $dbname, '-q', $cmd) and die;
+}
+
+sub setup_local_kdb {
+	my ($dbname, $passwd) = @_;
+
+	#
+	# Remove the configured Kerberos DB so that we can start with
+	# a clean slate:
+
+	for my $i ('', qw/.kadm5 .kadm5.lock .ok/) {
+		unlink("$dbname$i");
+	}
+
+	$passwd = '' if defined($passwd);
+	system('/ms/dist/kerberos/PROJ/mitkrb5/1.4-lib-prod/sbin/kdb5_util',
+	    '-d', $dbname, '-P', $passwd, -sf, "/tmp/foo.stash", 'create') and die;
+
+	for my $i (qw/strong_human
+		      weak_human strong_proid weak_proid random_key default/) {
+		kadmincmd($dbname, "addpol $i");
+	}
+}
+
+sub usage {
+
+	print STDERR "Usage: test_kmdb -h hostname\n";
+	print STDERR "Or:    test_kmdb -d database [-a acl_file]\n";
+	exit(1);
+}
+
+my $princ = 'amitsc/amitsclx.ms.com@is1.morgan';
+my $kmdb;
+
+our %opts;
+our $acl_file;
+our $dbname;
+our $passwd;
+our $host;
+
+getopts('CP:a:d:h:', \%opts) or usage();
+
+$passwd     = $opts{P}	if defined($opts{P});
+$acl_file   = $opts{a}	if defined($opts{a});
+$dbname     = $opts{d}	if defined($opts{d});
+$host       = $opts{h}	if defined($opts{h});
+
+if (!defined($host) && !defined($dbname)) {
+	print STDERR "Must define either -h or -d.\n";
+	usage();
+}
+
+if (defined($host) && defined($dbname)) {
+	print STDERR "Must not define both -h and -d.\n";
+	usage();
+}
+
+if (defined($dbname)) {
+	die "-d doesn't quite work, fix it or use -h meanwhile\n";
+	print "Opening local database file: $dbname.\n";
+	setup_local_kdb($dbname, $passwd) if defined($opts{C});
+	$kmdb = Krb5_Admin::KerberosDB->new(
+	    client	=> 'host/amitsclx.ms.com@is1.morgan',
+	    acl_file	=> $acl_file,
+	    dbname	=> $dbname,
+	    passwd	=> $passwd,
+	);
+} else {
+	print "Connecting to remote krb5_admind: $host.\n";
+	$kmdb = Krb5_Admin::Client->new(undef, {}, $host);
+}
+
+eval {
+	testObjC($kmdb, [], 'list', $princ);
+	#test_krb5_keytab_cmds($kmdb, $princ);
+
+	my $maxuser = 100;
+	my $maxproid = 20;
+
+	test_create_user($kmdb, $maxuser);
+	test_create_proid($kmdb, $maxproid);
+	test_disable($kmdb, 'user1@is1.morgan');
+	test_enable($kmdb, 'user1@is1.morgan');
+	test_disable($kmdb, 'proid1@is1.morgan');
+	test_enable($kmdb, 'proid1@is1.morgan');
+
+	test_proid_passwd($kmdb, 'proid1@is1.morgan');
+	test_desdeco($kmdb, 'user1@is1.morgan');
+
+	#
+	# Now clean up all the evidence:
+
+#	$kmdb->remove($princ);
+	for my $i (0..$maxuser) { $kmdb->remove("user$i"); }
+	for my $i (0..$maxproid) { $kmdb->remove("proid$i"); }
+
+	print "SUCCESS!\n";
+};
+
+if ($@) {
+	printvar('FAILED', $@);
+}

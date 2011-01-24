@@ -1,0 +1,83 @@
+#!/usr/pkg/bin/perl
+
+use Getopt::Std;
+use Time::HiRes qw/gettimeofday tv_interval/;
+
+use KeyManage::Client;
+
+use strict;
+use warnings;
+
+sub serialise_test {
+	my @kdcs = @_;
+
+	my $kmdb;
+	$kmdb = Krb5_Admin::Client->new(undef, {}, @kdcs);
+
+	my $ret = $kmdb->query('dowdes');
+}
+
+sub parallelise_test {
+	my ($iters, @kdcs) = @_;
+
+	my $pid = fork();
+
+	if ($pid == 0) {
+		for my $i (0..$iters) {
+			serialise_test(@kdcs);
+		}
+		exit(0);
+	}
+
+	if ($pid == -1) {
+		die "Can't fork: $!\n";
+	}
+
+	return $pid;
+}
+
+sub parallelise_tests {
+	my ($kids, $iters, @kdcs) = @_;
+
+	my $i;
+	for ($i=0; $i < $kids; $i++) {
+		my $pid = parallelise_test($iters, @kdcs);
+		print STDERR "Spawned kid: $pid\n";
+	}
+
+	while ($i > 0) {
+		my $kid = waitpid(-1, 0);
+
+		if ($kid > 0) {
+			$i--;
+			print STDERR "Reaped($i) pid: $kid, $?\n";
+		}
+	}
+}
+
+sub usage {
+
+	print STDERR "performance -h server\n";
+	exit(1);
+}
+
+my %opts;
+my $verbose = 0;
+my @kdcs;
+my $kids = 5;
+my $iters = 50;
+
+getopts('k:h:n:?', \%opts) or usage();
+
+usage()			if exists($opts{'?'});
+$kids  =  $opts{'k'}	if exists($opts{'k'});
+@kdcs  = ($opts{'h'})	if exists($opts{'h'});
+$iters =  $opts{'n'}	if exists($opts{'n'});
+
+my $t0 = [gettimeofday()];
+parallelise_tests($kids, $iters, @kdcs);
+
+my $elapsed = tv_interval($t0, [gettimeofday()]);
+
+print STDERR $elapsed . " seconds elapsed.\n";
+print STDERR ($elapsed / ($kids * $iters)) . "s per iteration.\n";
