@@ -53,12 +53,10 @@ sub new {
 }
 
 eval mk_array_methods(undef, qw{
-	create_proid
 	fetch
 	list
 	listpols
 	mquery
-	nkkps
 });
 
 eval mk_scalar_methods(undef, qw{
@@ -69,10 +67,8 @@ eval mk_scalar_methods(undef, qw{
 	disable
 	enable
 	master
-	proid_passwd
 	query
 	remove
-	upgrade_to_strong_human
 });
 
 1;

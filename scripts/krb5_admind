@@ -42,12 +42,6 @@ sub usage {
 
 openlog('krb5_admind', 'pid', 'auth');
 
-#
-# XXX XAX XXX XAX:::  HACK HACK HACK HACK HACK
-$ENV{KRB5CCNAME} = 'FILE:/var/spool/tickets/proiddb';
-# XXX XAX XXX XAX:::  HACK HACK HACK HACK HACK
-#
-
 our %opts;
 getopts('MPa:d:m:', \%opts) or usage();
 
@@ -75,14 +69,10 @@ $pes->Connect();
 my @rw_cmds = qw/	master
 			create
 			create_user
-			create_proid
 			change
 			enable
 			disable
-			proid_passwd
 			remove 
-			upgrade_to_strong_human
-			nkkps
 		/;
 my @ro_cmds = qw/	list
 			listpols
