@@ -62,7 +62,7 @@
 #define HV_STORE_IV_F(hv, key, val) HV_STORE_INTERNAL_F(hv, key, newSViv(val))
 #define HV_STORE_IV(hv, base, key)  HV_STORE_IV_F((hv), #key, base . key)
 
-#include "krb5_keytab.c"
+#include "C.c"
 
 %}
 
@@ -407,4 +407,4 @@ done:
 }
 
 
-%include krb5_keytab.h
+%include C.h

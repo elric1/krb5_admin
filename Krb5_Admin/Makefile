@@ -34,20 +34,20 @@ LDFLAGS+= -L${KRB5_DIR}/lib -Wl,-R,${KRB5_DIR}/lib
 LDFLAGS+= `${PERL} -e 'use Config; print $$Config{ldflags};'`
 LDADD+= -lkrb5 -lk5crypto -lcom_err -lkadm5srv
 
-all: krb5_keytab.so
+all: C.so
 
 build:
 
 install:
 	@mkdir -p ${SOLIB} ${P5LIB}
-	@rsync -aL krb5_keytab.so ${SOLIB}
-	@rsync -aL krb5_keytab.pm ${P5LIB}
+	@rsync -aL C.so ${SOLIB}
+	@rsync -aL C.pm ${P5LIB}
 
 clean:
-	rm -f krb5_keytab.so krb5_keytab_wrap.[ch] *.o krb5_keytab.pm
+	rm -f C.so C_wrap.[ch] *.o C.pm
 
-krb5_keytab.so: krb5_keytab_wrap.o
-	${CC} -shared ${LDFLAGS} -o krb5_keytab.so krb5_keytab_wrap.o ${LDADD}
+C.so: C_wrap.o
+	${CC} -shared ${LDFLAGS} -o C.so C_wrap.o ${LDADD}
 
-krb5_keytab_wrap.c: krb5_keytab.i krb5_keytab.c krb5_keytab.h
-	${SWIG} -perl5 -const krb5_keytab.i
+C_wrap.c: C.i C.c C.h
+	${SWIG} -perl5 -const C.i

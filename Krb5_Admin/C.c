@@ -44,7 +44,7 @@ struct _key {
 
 typedef struct _key *key;
 
-#include "krb5_keytab.h"
+#include "C.h"
 
 kadm5_handle
 krb5_get_kadm5_hndl(char *dbname)
