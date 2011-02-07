@@ -141,7 +141,57 @@ sub check_acl {
 	# here which would be difficult to encode using Kharon's entitlement
 	# framework.
 
-	die [502, "Permission denied"];
+
+	#
+	# The remaining logic is for krb5_keytab and is only to be used
+	# for ``create'', ``fetch'', or ``change'':
+
+	#
+	# XXXrcd: right now check_acl:
+	#
+	#       1.  assumes that $predicate[0] is the object,
+	#
+	#       2.  doesn't differentiate between verbs,
+	#
+	#       3.  allows host/foo@REALM access to <service>/foo@REALM,
+	#
+	#       4.  disallows REALM != 'is1.morgan'
+
+	if ($verb ne 'fetch' && $verb ne 'create' && $verb ne 'change') {
+		die [502, "Permission denied"];
+	}
+
+	if (@sprinc != 3 || @pprinc != 3) {
+		die [502, "Permission denied"];
+	}
+
+	if ($pprinc[1] eq 'host' && defined($self->{hostname})) {
+		my @v;
+		@v = grep { $_ eq $pprinc[2] } host_list($self->{hostname});
+
+		return if @v == 1 && $sprinc[2] eq 'admin';
+
+		$denied = "not an admin user" if $sprinc[2] ne 'admin';
+		if ($#v != 0) {
+			$denied  = "host does not match IP address";
+			$denied .= " [" . $self->{hostname} . " not in " .
+
+			$denied .= join(',', host_list($self->{hostname}));
+			$denied .= "]";
+		}
+	} else {
+		$denied = 'realm'       if $sprinc[0] ne $pprinc[0];
+		$denied = 'host'        if $sprinc[1] ne 'host';
+		$denied = 'instance'    if $sprinc[2] ne $pprinc[2];
+		$denied = 'no admin'    if $pprinc[2] eq 'admin';
+		$denied = 'no root'     if $pprinc[2] eq 'root';
+	}
+
+	if (defined($denied)) {
+		syslog('err', "%s", $subject . " failed check_acl for " .
+		    $predicate[0] . "[$denied]");
+		die [502, "Permission denied [$denied] for $subject"];
+	}
 }
 
 sub new {
