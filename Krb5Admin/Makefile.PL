@@ -18,3 +18,7 @@ $args{LIBS}	= ["-L$KRB5_DIR/lib -Wl,-R${KRB5_DIR}/lib"	.
 		  " -lkrb5 -lk5crypto -lcom_err -lkadm5srv"];
 
 WriteMakefile(%args);
+
+sub MY::xs_c {
+	"C_wrap.c: C.c C.i C.h \n	swig -perl5 -const C.i\n\n"
+}
