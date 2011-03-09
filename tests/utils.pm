@@ -5,9 +5,9 @@ package tests::utils;
 use base qw(Exporter);
 @EXPORT_OK = qw{ compare_array compare_hash compare };
 
-use SSP::Protocol::ArrayHash;
-use SSP::Response;
-use SSP::KeyValueResponse;
+use Kharon::Protocol::ArrayHash;
+use Kharon::Response;
+use Kharon::KeyValueResponse;
 
 
 use strict;

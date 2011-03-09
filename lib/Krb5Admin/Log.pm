@@ -1,7 +1,7 @@
 # 
 #
 
-package Krb5_Admin::Log;
+package Krb5Admin::Log;
 
 use base qw(Kharon::Log::Syslog);
 

@@ -6,7 +6,7 @@ use POSIX qw/strftime/;
 use Getopt::Std;
 use Term::ReadLine;
 
-use Krb5_Admin::Client;
+use Krb5Admin::Client;
 use Kharon::utils qw/encode_var_list/;
 
 use strict;
@@ -302,7 +302,7 @@ $terse = 1		if exists($opts{'s'});
 @kdc = ($opts{'h'})	if exists($opts{'h'});
 
 my $kmdb;
-eval {$kmdb = Krb5_Admin::Client->new(undef, {}, @kdc); };
+eval {$kmdb = Krb5Admin::Client->new(undef, {}, @kdc); };
 if ($@) {
 	printerr(\*STDERR, $@);
 	exit(1);

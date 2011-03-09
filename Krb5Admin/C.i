@@ -1,4 +1,4 @@
-%module "Krb5_Admin::C"
+%module "Krb5Admin::C"
 %{
 
 /*

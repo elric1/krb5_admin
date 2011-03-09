@@ -2,14 +2,14 @@
 #
 # Blame: "Roland C. Dowdeswell" <elric@imrryr.org>
 
-package Krb5_Admin::Client;
+package Krb5Admin::Client;
 
 use Kharon::Protocol::ArrayHash;
 use Kharon::Engine::Client;
 use Kharon::Engine::Client::Knc;
 use Kharon::utils qw/mk_methods mk_array_methods mk_scalar_methods/;
 
-use Krb5_Admin::C;
+use Krb5Admin::C;
 
 use strict;
 use warnings;
@@ -24,9 +24,9 @@ sub new {
 	$port = $opts->{port} if exists($opts->{port});
 	$port = 'krb5_admin' if !defined($port);
 
-	my $ctx = Krb5_Admin::C::krb5_init_context();
+	my $ctx = Krb5Admin::C::krb5_init_context();
 	if (scalar(@servers) < 1) {
-		my $kdcs = Krb5_Admin::C::krb5_get_kdcs($ctx, '');
+		my $kdcs = Krb5Admin::C::krb5_get_kdcs($ctx, '');
 		@servers = @$kdcs;
 	}
 

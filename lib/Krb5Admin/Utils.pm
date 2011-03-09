@@ -3,7 +3,7 @@
 # This is where the ugly code goes.  If I hide it---maybe no one will
 # actually SEE it!
 
-package Krb5_Admin::Utils;
+package Krb5Admin::Utils;
 use Exporter;
 @ISA = qw(Exporter);
 @EXPORT_OK = qw/reverse_the host_list/;

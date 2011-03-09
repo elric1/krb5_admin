@@ -3,7 +3,7 @@
 use Getopt::Std;
 use Time::HiRes qw/gettimeofday tv_interval/;
 
-use KeyManage::Client;
+use Krb5Admin::Client;
 
 use strict;
 use warnings;
@@ -12,7 +12,7 @@ sub serialise_test {
 	my @kdcs = @_;
 
 	my $kmdb;
-	$kmdb = Krb5_Admin::Client->new(undef, {}, @kdcs);
+	$kmdb = Krb5Admin::Client->new(undef, {}, @kdcs);
 
 	my $ret = $kmdb->query('dowdes');
 }

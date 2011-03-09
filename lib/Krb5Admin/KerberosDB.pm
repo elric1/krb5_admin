@@ -1,12 +1,12 @@
 # 
 # Blame: "Roland C. Dowdeswell" <elric@imrryr.org>
 
-package Krb5_Admin::KerberosDB;
+package Krb5Admin::KerberosDB;
 
 use Sys::Syslog;
 
-use Krb5_Admin::Utils qw/reverse_the host_list/;
-use Krb5_Admin::C;
+use Krb5Admin::Utils qw/reverse_the host_list/;
+use Krb5Admin::C;
 use Kharon::Entitlement::ACLFile;
 use Kharon::Entitlement::Equals;
 
@@ -215,8 +215,8 @@ sub new {
 	$self{client}   = $args{client};
 	$self{addr}     = $args{addr};
 	$self{hostname} = reverse_the($args{addr});
-	$self{ctx}      = Krb5_Admin::C::krb5_init_context();
-	$self{hndl}     = Krb5_Admin::C::krb5_get_kadm5_hndl($dbname);
+	$self{ctx}      = Krb5Admin::C::krb5_init_context();
+	$self{hndl}     = Krb5Admin::C::krb5_get_kadm5_hndl($dbname);
 	$self{acl}	= $acl;
 
 	bless(\%self, $isa);
@@ -231,7 +231,7 @@ sub create {
 
 	require_scalar("create <princ>", 1, $name);
 	$self->check_acl('create', $name);
-	Krb5_Admin::C::krb5_createkey($ctx, $hndl, $name);
+	Krb5Admin::C::krb5_createkey($ctx, $hndl, $name);
 	syslog('info', "%s", $self->{client} . " created $name");
 	{ created => $name };
 }
@@ -245,7 +245,7 @@ sub create_user {
 	die "malformed name"	if $name =~ m,[^-A-Za-z0-9_/@.],;
 
 	$self->check_acl('create_user', $name);
-	my $ret = Krb5_Admin::C::krb5_createprinc($ctx, $hndl, {
+	my $ret = Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
 			principal	=> $name,
 			policy		=> 'strong_human',
 			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR |
@@ -261,7 +261,7 @@ sub listpols {
 	my $hndl = $self->{hndl};
 
 	$self->check_acl('list', $exp);
-	my $ret = Krb5_Admin::C::krb5_list_pols($ctx, $hndl, $exp);
+	my $ret = Krb5Admin::C::krb5_list_pols($ctx, $hndl, $exp);
 	@$ret;
 }
 
@@ -271,7 +271,7 @@ sub list {
 	my $hndl = $self->{hndl};
 
 	$self->check_acl('list', $exp);
-	my $ret = Krb5_Admin::C::krb5_list_princs($ctx, $hndl, $exp);
+	my $ret = Krb5Admin::C::krb5_list_princs($ctx, $hndl, $exp);
 	@$ret;
 }
 
@@ -285,7 +285,7 @@ sub fetch {
 	require_scalar("fetch <princ>", 1, $name);
 	$self->check_acl('fetch', $name);
 	syslog('info', "%s", $self->{client} . " fetched $name");
-	Krb5_Admin::C::krb5_getkey($ctx, $hndl, $name);
+	Krb5Admin::C::krb5_getkey($ctx, $hndl, $name);
 }
 
 sub change {
@@ -295,7 +295,7 @@ sub change {
 
 	require_scalar("change <princ>", 1, $name);
 	$self->check_acl('change', $name);
-	Krb5_Admin::C::krb5_setkey($ctx, $hndl, $name, $kvno, $keys);
+	Krb5Admin::C::krb5_setkey($ctx, $hndl, $name, $kvno, $keys);
 	{ setkey => $name };
 }
 
@@ -308,7 +308,7 @@ sub change_passwd {
 	require_scalar("change_passwd <princ>", 2, $passwd);
 	$self->check_acl('change_passwd', $name);
 
-	Krb5_Admin::C::krb5_setpass($ctx, $hndl, $name, $passwd);
+	Krb5Admin::C::krb5_setpass($ctx, $hndl, $name, $passwd);
 }
 
 sub modify {
@@ -330,7 +330,7 @@ sub internal_modify {
 	# XXXrcd: MUST LOCK BEFORE DOING THESE OPERATIONS
 	# XXXrcd: SANITY CHECK VALUES!
 
-	my $tmp = Krb5_Admin::C::krb5_query_princ($ctx, $hndl, $name);
+	my $tmp = Krb5Admin::C::krb5_query_princ($ctx, $hndl, $name);
 	my $attrs = $tmp->{attributes};
 
 	for my $i (@{$mods->{attributes}}) {
@@ -351,7 +351,7 @@ sub internal_modify {
 	$mods->{attributes} = $attrs;
 	$mods->{principal}  = $name;
 
-	Krb5_Admin::C::krb5_modprinc($ctx, $hndl, $mods);
+	Krb5Admin::C::krb5_modprinc($ctx, $hndl, $mods);
 	return undef;
 }
 
@@ -380,7 +380,7 @@ sub query {
 
 	require_scalar("query <princ>", 1, $name);
 	$self->check_acl('query', $name);
-	my $ret = Krb5_Admin::C::krb5_query_princ($ctx, $hndl, $name);
+	my $ret = Krb5Admin::C::krb5_query_princ($ctx, $hndl, $name);
 
 	#
 	# now, let's map our flags...
@@ -393,7 +393,7 @@ sub query {
 	}
 	$ret->{attributes} = \@flags;
 
-	my @tmp = Krb5_Admin::C::krb5_getkey($ctx, $hndl, $name);
+	my @tmp = Krb5Admin::C::krb5_getkey($ctx, $hndl, $name);
 
 	$ret->{keys} = [ map {
 		{ kvno => $_->{kvno}, enctype => $_->{enctype} }
@@ -431,7 +431,7 @@ sub disable {
 		$adm_princ .= $2 if defined($2);
 
 		eval {
-			Krb5_Admin::C::krb5_deleteprinc($ctx,
+			Krb5Admin::C::krb5_deleteprinc($ctx,
 			    $hndl, $adm_princ);
 		};
 	}
@@ -446,7 +446,7 @@ sub remove {
 
 	require_scalar("remove <princ>", 1, $name);
 	$self->check_acl('remove', $name);
-	Krb5_Admin::C::krb5_deleteprinc($ctx, $hndl, $name);
+	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $name);
 	return undef;
 }
 
