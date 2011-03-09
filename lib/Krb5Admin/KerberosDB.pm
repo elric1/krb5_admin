@@ -300,15 +300,33 @@ sub change {
 }
 
 sub change_passwd {
-	my ($self, $name, $passwd) = @_;
+	my ($self, $name, $passwd, $opt) = @_;
 	my $ctx = $self->{ctx};
 	my $hndl = $self->{hndl};
 
 	require_scalar("change_passwd <princ>", 1, $name);
-	require_scalar("change_passwd <princ>", 2, $passwd);
+	if (defined($passwd)) {
+		require_scalar("change_passwd <princ>", 2, $passwd);
+	}
+	if (defined($opt)) {
+		require_scalar("change_passwd <princ>", 3, $opt);
+	}
+
 	$self->check_acl('change_passwd', $name);
 
-	Krb5Admin::C::krb5_setpass($ctx, $hndl, $name, $passwd);
+	if (defined($passwd)) {
+		Krb5Admin::C::krb5_setpass($ctx, $hndl, $name, $passwd);
+	} else {
+		$passwd = Krb5Admin::C::krb5_randpass($ctx, $hndl, $name);
+	}
+
+	return $passwd if !defined($opt);
+
+	if ($opt eq '+needchange') {
+		$self->internal_modify($name, {attributes => [ $opt ]});
+	}
+
+	return $passwd;
 }
 
 sub modify {
