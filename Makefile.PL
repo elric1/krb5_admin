@@ -10,6 +10,8 @@ $args{AUTHOR}		= q{Roland C. Dowdeswell <elric@imrryr.org>};
 $args{VERSION_FROM}	= 'lib/Krb5Admin/KerberosDB.pm';
 $args{ABSTRACT_FROM}	= 'lib/Krb5Admin/KerberosDB.pm';
 
+$args{OPTIMIZE}		= '-g';
+
 if ($ExtUtils::MakeMaker::VERSION >= 6.3002) {
 	$args{LICENSE} = 'mit';
 }
