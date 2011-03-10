@@ -136,11 +136,21 @@ sub check_acl {
 
 	return if $acl->check($verb);
 
+        #
+        # We also need creds.  This is mainly for my use running this
+        # by hand, but be that as it may...
+
+        if (!defined($subject)) {
+                die [502, "Permission denied: not an authenticated user"];
+        }
+
 	#
 	# More interesting sitebased rules can go here.  Only put rules
 	# here which would be difficult to encode using Kharon's entitlement
 	# framework.
 
+        my @sprinc = parse_princ($subject);
+        my @pprinc = parse_princ($predicate[0]);
 
 	#
 	# The remaining logic is for krb5_keytab and is only to be used
@@ -154,8 +164,6 @@ sub check_acl {
 	#       2.  doesn't differentiate between verbs,
 	#
 	#       3.  allows host/foo@REALM access to <service>/foo@REALM,
-	#
-	#       4.  disallows REALM != 'is1.morgan'
 
 	if ($verb ne 'fetch' && $verb ne 'create' && $verb ne 'change') {
 		die [502, "Permission denied"];
