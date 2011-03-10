@@ -641,6 +641,22 @@ done:
 	}
 }
 
+char *
+krb5_get_realm(krb5_context ctx)
+{
+	krb5_error_code	 ret;
+	char		*realm;
+	char		 croakstr[2048] = "";
+
+	K5BAIL(krb5_get_default_realm(ctx, &realm));
+
+done:
+	if (ret)
+		croak(croakstr);
+
+	return realm;
+}
+
 char **
 krb5_get_kdcs(krb5_context ctx, char *realm)
 {

@@ -374,6 +374,40 @@ done:
 	$1 = k;
 }
 
+%typemap(in,numinputs=0) krb5_principal * {
+	$1 = calloc(sizeof(krb5_principal), 1);
+}
+%typemap(argout) krb5_principal * {
+	krb5_error_code	ret;
+	krb5_context	ctx;
+	krb5_principal	princ;
+	int		i;
+	char		croakstr[2048] = "";
+
+	K5BAIL(krb5_init_context(&ctx));
+
+	princ = *($1);
+
+	EXTEND(sp,1);
+	$result = sv_2mortal(newSVpvn(krb5_princ_realm(ctx, princ)->data,
+	    krb5_princ_realm(ctx, princ)->length));
+	argvi++;
+
+	for (i=0; i < krb5_princ_size(ctx, princ); i++) {
+		EXTEND(sp,1);
+		$result = sv_2mortal(newSVpvn(
+		    krb5_princ_component(ctx, princ, i)->data,
+		    krb5_princ_component(ctx, princ, i)->length));
+		argvi++;
+	}
+
+done:
+	if (ret)
+		croak(croakstr);
+	krb5_free_principal(ctx, princ);
+	free($1);
+}
+
 #if 0
 %typemap(out) char ** {
 	int i = 0;
