@@ -49,44 +49,6 @@ our %flag_map = (
 	support_desmd5			=>	[SUPPORT_DESMD5,       0],
 );
 
-#
-# parse_princ returns a list of the form:
-#
-#	(REALM, component[, component, ...])
-#
-# from a Kerberos principal.
-#
-# XXXrcd: currently lame insofar as it only parses up to 2 components...
-# XXXrcd: also lame because we default to is1.morgan: should get default
-#         realm...
-# XXXrcd: we disallow zero length components but we could change that.
-
-sub parse_princ {
-
-	# XXXrcd: die if called from scalar context?
-
-	if ($_[0] =~ m,[^-A-Za-z0-9_/@.],) {
-		die [503, "Malformed principal name"];
-	}
-
-	$_[0] =~ m,^([^/@]+)(?:/([^/@]+))?(?:@([^/@]+))?$,;
-
-	die [503, "Malformed principal in parse_princ"] if !defined($1);
-
-	my @ret = (defined($3)?$3:'is1.morgan', $1);
-	push(@ret, $2) if (defined($2));
-	@ret;
-}
-
-sub unparse_princ {
-	my ($realm, @comps) = @_;
-
-	# XXXrcd: maybe we should ensure that the realm and comps are not
-	# empty?
-
-	join('/', @comps) . '@' . $realm;
-}
-
 sub require_scalar {
 	my ($usage, $argnum, $arg) = @_;
 
@@ -126,7 +88,7 @@ sub check_acl {
 	# and list from this rule...
 
 	if ($verb ne 'query' && $verb ne 'list' && defined($predicate[0]) &&
-	    $predicate[0] =~ m,^krbtgt/|^kadmin/|^afs(\@is1.morgan)?$,) {
+	    $predicate[0] =~ m,^krbtgt/|^kadmin/|^afs(\@.*)?$,) {
 		die [502, "Modification of $predicate[0] prohibited."];
 	}
 
@@ -149,8 +111,9 @@ sub check_acl {
 	# here which would be difficult to encode using Kharon's entitlement
 	# framework.
 
-        my @sprinc = parse_princ($subject);
-        my @pprinc = parse_princ($predicate[0]);
+	my $ctx = $self->{ctx};
+        my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $subject);
+        my @pprinc = Krb5Admin::C::krb5_parse_name($ctx, $predicate[0]);
 
 	#
 	# The remaining logic is for krb5_keytab and is only to be used
