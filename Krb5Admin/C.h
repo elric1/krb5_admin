@@ -16,7 +16,6 @@ char	**krb5_list_pols(krb5_context, kadm5_handle, char *);
 
 krb5_keyblock		get_kte(krb5_context, char *, char *);
 krb5_keyblock		krb5_make_a_key(krb5_context, krb5_enctype);
-krb5_keyblock		krb5_v4_password(krb5_context, char *);
 kadm5_principal_ent_rec	krb5_query_princ(krb5_context, kadm5_handle, char *);
 kadm5_handle		krb5_get_kadm5_hndl(char *);
 
@@ -28,15 +27,3 @@ void	 krb5_deleteprinc(krb5_context, kadm5_handle, char *);
 
 krb5_error_code	krb5_init_context(krb5_context *);
 krb5_error_code	krb5_parse_name(krb5_context, const char *, krb5_principal *);
-krb5_error_code krb5_auth_con_init(krb5_context, krb5_auth_context *);
-krb5_error_code krb5_auth_con_genaddrs(krb5_context, krb5_auth_context, int,
-				       int);
-krb5_error_code krb5_mk_rep(krb5_context, krb5_auth_context, krb5_data *);
-
-krb5_error_code hack_addrs(krb5_context, krb5_auth_context);
-
-void krb5_rd_req_mine(krb5_context, krb5_auth_context, krb5_data *in);
-krb5_error_code krb5_rd_priv_mine(krb5_context, krb5_auth_context, krb5_data *,
-				  krb5_data *);
-krb5_error_code krb5_mk_priv_mine(krb5_context, krb5_auth_context, krb5_data *,
-				  krb5_data *);
