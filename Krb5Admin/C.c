@@ -47,7 +47,7 @@ typedef struct _key *key;
 #include "C.h"
 
 kadm5_handle
-krb5_get_kadm5_hndl(char *dbname)
+krb5_get_kadm5_hndl(krb5_context ctx, char *dbname)
 {
 	kadm5_config_params	 params;
 	kadm5_ret_t		 ret;

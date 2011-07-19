@@ -17,7 +17,7 @@ char	**krb5_list_pols(krb5_context, kadm5_handle, char *);
 krb5_keyblock		get_kte(krb5_context, char *, char *);
 krb5_keyblock		krb5_make_a_key(krb5_context, krb5_enctype);
 kadm5_principal_ent_rec	krb5_query_princ(krb5_context, kadm5_handle, char *);
-kadm5_handle		krb5_get_kadm5_hndl(char *);
+kadm5_handle		krb5_get_kadm5_hndl(krb5_context, char *);
 
 void	 krb5_modprinc(krb5_context, kadm5_handle, kadm5_principal_ent_rec,
 		       long);

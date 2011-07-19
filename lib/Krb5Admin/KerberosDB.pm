@@ -183,11 +183,13 @@ sub new {
 	    subobject => $subacls);
 	$acl->set_creds($args{client});
 
+	my $ctx = Krb5Admin::C::krb5_init_context();
+
 	$self{client}   = $args{client};
 	$self{addr}     = $args{addr};
 	$self{hostname} = reverse_the($args{addr});
-	$self{ctx}      = Krb5Admin::C::krb5_init_context();
-	$self{hndl}     = Krb5Admin::C::krb5_get_kadm5_hndl($dbname);
+	$self{ctx}      = $ctx;
+	$self{hndl}     = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, $dbname);
 	$self{acl}	= $acl;
 
 	bless(\%self, $isa);
