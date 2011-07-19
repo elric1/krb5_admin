@@ -5,7 +5,7 @@ use warnings;
 use ExtUtils::MakeMaker;
 
 my $HAVE	= '-DHAVE_MIT';
-my $KRB5_DIR	= '/usr/local';
+my $KRB5_DIR	= '/var/tmp/install';
 
 my %args;
 
@@ -21,8 +21,10 @@ $args{LIBS}	= "-L${KRB5_DIR}/lib -Wl,-R${KRB5_DIR}/lib ";
 
 $args{LIBS} .= "-lkrb5 -lkadm5srv";
 
+$args{clean} = { FILES => "C_wrap.c" };
+
 WriteMakefile(%args);
 
 sub MY::xs_c {
-	"C_wrap.c: C.c C.i C.h \n	swig -perl5 ${HAVE} -const C.i\n\n"
+	"C_wrap.c: C.c C.swig C.h \n	swig -perl5 ${HAVE} -const C.swig\n\n"
 }
