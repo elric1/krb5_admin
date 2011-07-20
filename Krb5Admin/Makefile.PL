@@ -21,7 +21,7 @@ $args{LIBS}	= "-L${KRB5_DIR}/lib -Wl,-R${KRB5_DIR}/lib ";
 
 $args{LIBS} .= "-lkrb5 -lkadm5srv";
 
-$args{clean} = { FILES => "C_wrap.c" };
+$args{clean} = { FILES => "C_wrap.c C.pm" };
 
 WriteMakefile(%args);
 
