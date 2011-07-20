@@ -45,6 +45,10 @@ our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, undef);
 my $princ  = 'testprinc';
 my $sprinc = 'testprinc/foodlebrotz.imrryr.org';
 
+# make sure that the princs are not here:
+eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $princ); };
+eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $sprinc); };
+
 eval {
 	Krb5Admin::C::krb5_createkey($ctx, $hndl, $sprinc);
 	Krb5Admin::C::krb5_getkey($ctx, $hndl, $sprinc);
@@ -59,7 +63,7 @@ eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $sprinc); };
 eval {
 	Krb5Admin::C::krb5_createkey($ctx, $hndl, $sprinc);
 	Krb5Admin::C::krb5_setkey($ctx, $hndl, $sprinc, 3,
-	   [{enctype => 1, key => 'TheKey!!'}]);
+	   [{enctype => 17, key => '0123456789abcdef'}]);
 
 	my @keys = Krb5Admin::C::krb5_getkey($ctx, $hndl, $sprinc);
 
@@ -215,7 +219,8 @@ eval {
 };
 
 ok(!$@, "Create 21 principals, list and delete them") or diag($@);
-is_deeply($results, \@princs, "Create 21 principals, list and delete them");
+is_deeply([sort @$results], [sort @princs],
+    "Create 21 principals, list and delete them");
 
 eval {
 	for my $p (@princs) {
