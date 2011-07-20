@@ -1,6 +1,13 @@
 #!/usr/pkg/bin/perl
 #
 
+#
+# XXXrcd: these tests only really test the interfaces and to some degree
+#         that the functions appears to be working in terms of the other
+#         functions.  They _should_ also test that passwds actually work,
+#         but they do not yet.  That would require firing up a KDC which
+#         we'll eventually do.
+
 use Test::More tests => 5;
 
 use Krb5Admin::C;
