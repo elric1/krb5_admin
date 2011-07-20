@@ -8,7 +8,7 @@
 #         but they do not yet.  That would require firing up a KDC which
 #         we'll eventually do.
 
-use Test::More tests => 5;
+use Test::More tests => 9;
 
 use Krb5Admin::C;
 
@@ -78,6 +78,26 @@ ok(!$@, "Create, set, test, and delete a service principal") or diag($@);
 eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $sprinc); };
 
 eval {
+	Krb5Admin::C::krb5_createkey($ctx, $hndl, $sprinc);
+	Krb5Admin::C::krb5_randkey($ctx, $hndl, $sprinc);
+
+	my @keys = Krb5Admin::C::krb5_getkey($ctx, $hndl, $sprinc);
+
+	@keys = grep { $_->{kvno} == 3 } @keys;
+
+	if (@keys == 0) {
+		die "Looks like the key didn't change...";
+	}
+
+	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $sprinc);
+};
+
+ok(!$@, "Create, randkey, test, and delete a service principal") or diag($@);
+
+# just make sure:
+eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $sprinc); };
+
+eval {
 	my ($passwd, $q);
 
 	$passwd = Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
@@ -105,6 +125,71 @@ eval {
 };
 
 ok(!$@, "Create, modify and delete a user principal") or diag($@);
+
+# just make sure:
+eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $princ); };
+
+eval {
+	my $passwd = "Ff1passThePolicy--%!";
+
+	Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
+			principal	=> $princ,
+			policy		=> 'default',
+			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR,
+		}, $passwd);
+
+	#
+	# XXXrcd: test the passwd was appropriately set!
+
+	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $princ);
+};
+
+ok(!$@, "Create with passwd, and delete a user principal") or diag($@);
+
+# just make sure:
+eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $princ); };
+
+eval {
+	my ($passwd);
+
+	$passwd = Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
+			principal	=> $princ,
+			policy		=> 'default',
+			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR,
+		}, undef);
+
+	$passwd = 'Ff1passThePolicy--%!';
+	$passwd = Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, $passwd);
+
+	#
+	# XXXrcd: test the passwd was appropriately set!
+
+	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $princ);
+};
+
+ok(!$@, "Create, setpass and delete a user principal") or diag($@);
+
+# just make sure:
+eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $princ); };
+
+eval {
+	my ($passwd);
+
+	$passwd = Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
+			principal	=> $princ,
+			policy		=> 'default',
+			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR,
+		}, undef);
+
+	$passwd = Krb5Admin::C::krb5_randpass($ctx, $hndl, $princ);
+
+	#
+	# XXXrcd: test the passwd was appropriately set!
+
+	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $princ);
+};
+
+ok(!$@, "Create, randpass and delete a user principal") or diag($@);
 
 # just make sure:
 eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $princ); };
