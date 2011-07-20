@@ -1,7 +1,7 @@
 #!/usr/pkg/bin/perl
 #
 
-use Test::More tests => 2;
+use Test::More;
 
 use Krb5Admin::C;
 
@@ -31,6 +31,32 @@ sub compare_keys {
 	is_deeply($lhs, $rhs);
 }
 
+sub test_remove_one {
+	my ($ctx, $kt, $keys) = @_;
+
+	$kt = "WRFILE:$kt";	# XXXrcd: for some reason, if I evaluate this
+				#         in the two places it is used, then
+				#         it somehow doesn't work in the
+				#         read_kt() case.  So, I set it up
+				#         here which appears to work...
+
+	my $i = int(rand(@$keys - 1));
+
+	Krb5Admin::C::kt_remove_entry($ctx, $kt, $keys->[$i]);
+
+	$keys = [ @{$keys}[0..$i-1], @{$keys}[$i+1..@$keys - 1] ];
+
+	my @nkeys = Krb5Admin::C::read_kt($ctx, $kt);
+
+	for my $key (@nkeys) {
+		delete $key->{timestamp};
+	}
+
+	compare_keys($keys, \@nkeys);
+
+	return $keys;
+}
+
 sub test_keytab {
 	my ($ctx, $realm, $kt, $keys) = @_;
 
@@ -47,6 +73,17 @@ sub test_keytab {
 	}
 
 	compare_keys($keys, \@nkeys);
+
+	#
+	# Here we [optionally] remove a few keys randomly and see if we
+	# maintain some level of consistency with what we expect:
+
+	$keys = test_remove_one($ctx, $kt, $keys)	if @$keys > 1;
+	$keys = test_remove_one($ctx, $kt, $keys)	if @$keys > 1;
+	$keys = test_remove_one($ctx, $kt, $keys)	if @$keys > 1;
+	$keys = test_remove_one($ctx, $kt, $keys)	if @$keys > 1;
+	$keys = test_remove_one($ctx, $kt, $keys)	if @$keys > 1;
+
 	unlink($kt);
 }
 
@@ -73,5 +110,7 @@ test_keytab($ctx, $realm, '/tmp/foo.kt', \@keys);
 );
 
 test_keytab($ctx, $realm, '/tmp/foo.kt', \@keys);
+
+done_testing();
 
 exit(0);
