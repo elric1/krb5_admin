@@ -69,7 +69,7 @@ eval {
 
 	@keys = grep { $_->{kvno} == 3 } @keys;
 
-	if ($keys[0]->{enctype} != 1 || $keys[0]->{key} ne 'TheKey!!') {
+	if ($keys[0]->{enctype} != 17 || $keys[0]->{key} ne '0123456789abcdef'){
 		die "New key failed to match \"TheKey!!\"";
 	}
 
