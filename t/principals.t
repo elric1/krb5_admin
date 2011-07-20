@@ -1,7 +1,7 @@
 #!/usr/pkg/bin/perl
 #
 
-use Test::More tests => 3;
+use Test::More tests => 5;
 
 use Krb5Admin::C;
 
@@ -101,5 +101,34 @@ ok(!$@, "Create, modify and delete a user principal") or diag($@);
 
 # just make sure:
 eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $princ); };
+
+my @princs = sort(map { $princ . $_ . '@IMRRYR.ORG' } (0..20));
+my $results;
+eval {
+	my ($passwd, $q);
+
+	for my $p (@princs) {
+		$passwd = Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
+			principal	=> $p,
+			policy		=> 'default',
+			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR,
+			}, undef);
+	}
+
+	$results = Krb5Admin::C::krb5_list_princs($ctx, $hndl, $princ . "*");
+
+	for my $p (@princs) {
+		Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $p);
+	}
+};
+
+ok(!$@, "Create 21 principals, list and delete them") or diag($@);
+is_deeply($results, \@princs, "Create 21 principals, list and delete them");
+
+eval {
+	for my $p (@princs) {
+		Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $p);
+	}
+};
 
 exit (0);
