@@ -1,5 +1,3 @@
-use ExtUtils::MakeMaker;
-
 use strict;
 use warnings;
 use ExtUtils::MakeMaker;
