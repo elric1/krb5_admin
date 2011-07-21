@@ -730,7 +730,9 @@ krb5_get_kdcs(krb5_context ctx, char *realm)
 	krb5_error_code	  ret;
 	char		 *def_realm = NULL;
 	char		**hostlist = NULL;
+	char		**hlist;
 	char		  croakstr[2048] = "";
+	char		 *tmp;
 
 #ifdef HAVE_MIT
 	krb5_data	  realm_data;
@@ -743,6 +745,22 @@ krb5_get_kdcs(krb5_context ctx, char *realm)
 
 #ifdef HAVE_HEIMDAL
 	K5BAIL(krb5_get_krbhst(ctx, &realm, &hostlist));
+
+	/* XXXrcd: Heidmal includes protocol and port in the output
+	 *         and so we need to strip that out.
+	 */
+
+	for (hlist=hostlist; *hlist; hlist++) {
+		tmp = strrchr(*hlist, ':');
+		if (tmp)
+			*tmp = '\0';
+		tmp = strrchr(*hlist, '/');
+		if (tmp) {
+			tmp = strdup(tmp+1);
+			free(*hlist);
+			*hlist = tmp;
+		}
+	}
 #else
 #ifdef HAVE_MIT
 	realm_data.data = realm;
