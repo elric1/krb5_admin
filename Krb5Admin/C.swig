@@ -106,9 +106,8 @@
 		if (k->timestamp != -1)
 			HV_STORE_IV(hv, (*k), timestamp);
 
-		HV_STORE_IV(hv, (*k).key, enctype);
-		HV_STORE_PVN_LEN_F(hv, "key", (*k).key.contents,
-		    (*k).key.length);
+		HV_STORE_IV(hv, (*k), enctype);
+		HV_STORE_PVN_LEN_F(hv, "key", k->data, k->length);
 
 		$result = sv_2mortal(newRV_noinc((SV*)hv));
 		argvi++;
@@ -120,8 +119,9 @@
 %typemap(out) krb5_keyblock {
 	HV	*hv = newHV();
 
-	HV_STORE_IV(hv, $1, enctype);
-	HV_STORE_PVN_LEN_F(hv, "key", $1.contents, $1.length);
+	HV_STORE_IV_F(hv, "enctype", KEYBLOCK_ENCTYPE($1));
+	HV_STORE_PVN_LEN_F(hv, "key", KEYBLOCK_CONTENTS($1),
+	    KEYBLOCK_CONTENT_LEN($1));
 
 	$result = sv_2mortal(newRV_noinc((SV*)hv));
 	argvi++;
@@ -148,7 +148,7 @@
 
 	K5BAIL(krb5_init_context(&ctx));
 
-        hv = (HV*)SvRV($input);
+	hv = (HV*)SvRV($input);
 
 	HV_FETCH_INTO(hv, tmp, "principal", SvPV_nolen);
 	K5BAIL(krb5_parse_name(ctx, tmp, &p.principal));
@@ -259,7 +259,7 @@ done:
 
 %typemap(in) krb5_keytab_entry * {
 	HV			 *hv;
-	krb5_context		  ctx;
+	krb5_context		  ctx = NULL;
 	krb5_keytab_entry	 *e = NULL;
 	krb5_error_code		  ret;
 	char			 *tmp;
@@ -273,17 +273,21 @@ done:
 
 	K5BAIL(krb5_init_context(&ctx));
 
-        hv  = (HV*)SvRV($input);
+	hv  = (HV*)SvRV($input);
 	HV_FETCH_INTO(hv, tmp, "princ", SvPV_nolen);
 	K5BAIL(krb5_parse_name(ctx, tmp, &e->principal));
 	HV_FETCH_INTO(hv, e->vno, "kvno", SvIV);
 
-	e->key.magic    = KV5M_KEYBLOCK;
-	HV_FETCH_INTO(hv, e->key.enctype, "enctype", SvIV);
-	HV_FETCH_INTO_STRLEN(hv, e->key.contents, e->key.length, "key");
+	KEYBLOCK_SET_MAGIC(KEYTABENT_KEYBLOCK(*e));
+	HV_FETCH_INTO(hv, KEYTABENT_ENCTYPE(*e), "enctype",
+	    SvIV);
+	HV_FETCH_INTO_STRLEN(hv, KEYTABENT_CONTENTS(*e),
+	    KEYTABENT_CONTENT_LEN(*e), "key");
 
 done:
-	/* XXXrcd: free ctx */
+	if (ctx)
+		krb5_free_context(ctx);
+
 	if (ret) {
 		free(e);
 		croak("%s", croakstr);
@@ -294,17 +298,21 @@ done:
 
 %typemap(in) krb5_enctype {
 	krb5_enctype		 enctype;
-	krb5_error_code		 ret = 0;
+	krb5_error_code		 ret;
 	STRLEN			 len;
 	char			*tmp;
 
 	tmp = SvPV($input, len);
-	ret = krb5_string_to_enctype(tmp, &enctype);
+	ret = STRING_TO_ENCTYPE(tmp, &enctype);
 	if (ret)
 		enctype = atoi(tmp);
 
+	if (enctype == 0)
+		croak("unrecognised enctype \"%s\"", tmp);
+
 	if (!krb5_c_valid_enctype(enctype))
 		croak("invalid enctype \"%s\".", tmp);
+
 	$1 = enctype;
 }
 
@@ -346,12 +354,12 @@ done:
 			croak("Argument $argnum contains a list element %d "
 			    "that is not a hash ref.", i);
 
-		k[i].magic = KV5M_KEYBLOCK;
+	KEYBLOCK_SET_MAGIC(k[i]);
 		HV_FETCH(hv, sv, "enctype");
-		k[i].enctype  = SvIV(*sv);
-		if (!k[i].enctype) {
+		KEYBLOCK_ENCTYPE(k[i])  = SvIV(*sv);
+		if (!KEYBLOCK_ENCTYPE(k[i])) {
 			tmp = SvPV(*sv, len);
-			ret = krb5_string_to_enctype(tmp, &k[i].enctype);
+			ret = STRING_TO_ENCTYPE(tmp, &KEYBLOCK_ENCTYPE(k[i]));
 			if (ret) {
 				snprintf(croakstr, sizeof(croakstr),
 				    "invalid enctype \"%s\".", tmp);
@@ -359,9 +367,11 @@ done:
 			}
 			/* XXXrcd: memory leak? */
 		}
-		if (!krb5_c_valid_enctype(k[i].enctype))
-			croak("Invalid enctype \"%d\".", k[i].enctype);
-		HV_FETCH_INTO_STRLEN(hv, k[i].contents, k[i].length, "key");
+		if (!krb5_c_valid_enctype(KEYBLOCK_ENCTYPE(k[i])))
+			croak("Invalid enctype \"%d\".",
+			    KEYBLOCK_ENCTYPE(k[i]));
+		HV_FETCH_INTO_STRLEN(hv, KEYBLOCK_CONTENTS(k[i]),
+		    KEYBLOCK_CONTENT_LEN(k[i]), "key");
 	}
 
 done:
@@ -389,15 +399,14 @@ done:
 	princ = *($1);
 
 	EXTEND(sp,1);
-	$result = sv_2mortal(newSVpvn(krb5_princ_realm(ctx, princ)->data,
-	    krb5_princ_realm(ctx, princ)->length));
+	$result = sv_2mortal(newSVpvn(PRINC_REALM(ctx, princ),
+	    PRINC_REALM_LEN(ctx, princ)));
 	argvi++;
 
-	for (i=0; i < krb5_princ_size(ctx, princ); i++) {
+	for (i=0; i < PRINC_NCOMPS(ctx, princ); i++) {
 		EXTEND(sp,1);
-		$result = sv_2mortal(newSVpvn(
-		    krb5_princ_component(ctx, princ, i)->data,
-		    krb5_princ_component(ctx, princ, i)->length));
+		$result = sv_2mortal(newSVpvn(PRINC_COMP(ctx, princ, i),
+		    PRINC_COMP_LEN(ctx, princ, i)));
 		argvi++;
 	}
 

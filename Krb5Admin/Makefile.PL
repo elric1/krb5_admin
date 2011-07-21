@@ -4,15 +4,21 @@ use ExtUtils::MakeMaker;
 
 my $HAVE	= '-DHAVE_MIT';
 my $KRB5_DIR	= '/var/tmp/install';
+#my $HAVE	= '-DHAVE_HEIMDAL';
+#my $KRB5_DIR  = '/var/tmp/heim-install';
 
 my %args;
 
 $args{NAME}	= 'Krb5Admin::C';
 $args{OBJECT}	= 'C_wrap.o';
-$args{INC}	=  "-I${KRB5_DIR}/include"			.
-		  " -I${KRB5_DIR}/include/krb5"			.
-		  " -I/var/tmp/krb5-1.4.4/src/include"          .
-		  " -I/var/tmp/krb5-1.4.4/src/include/krb5";
+
+$args{INC}	= "-I${KRB5_DIR}/include";
+
+if ($HAVE eq '-DHAVE_MIT') {
+	$args{INC}	.= " -I${KRB5_DIR}/include/krb5"		.
+			   " -I/var/tmp/krb5-1.4.4/src/include"          .
+			   " -I/var/tmp/krb5-1.4.4/src/include/krb5";
+}
 
 $args{CCFLAGS}	= $HAVE;
 $args{LIBS}	= "-L${KRB5_DIR}/lib -Wl,-R${KRB5_DIR}/lib ";

@@ -10,12 +10,11 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 /* Kerberos includes */
-
-#include <k5-int.h>
 
 #include <krb5.h>
 #include <kadm5/admin.h>
@@ -30,7 +29,28 @@
 		}							\
 	} while (0)
 
+#ifdef HAVE_HEIMDAL
+#define K5BAIL(x)	do {						\
+		ret = x;						\
+		if (ret) {						\
+			const char	*tmp;				\
+									\
+			tmp = krb5_get_error_message(ctx, ret);		\
+			if (tmp) {					\
+				snprintf(croakstr, sizeof(croakstr),	\
+				    "%s: %s", #x, tmp);			\
+				krb5_free_error_message(ctx, tmp);	\
+			} else {					\
+				snprintf(croakstr, sizeof(croakstr),	\
+				    "%s: unknown error", #x);		\
+			}						\
+			ret = 1;					\
+			goto done;					\
+		}							\
+	} while (0)
+#else
 #define K5BAIL(x)	BAIL(x, error_message(ret))
+#endif
 
 typedef	void *kadm5_handle;
 
@@ -38,7 +58,9 @@ struct _key {
 	char		*princ;
 	krb5_timestamp	 timestamp;
 	int	 	 kvno;
-	krb5_keyblock	 key;
+	int		 enctype;
+	int		 length;
+	char		 data[1024];
 	struct _key	*next;
 };
 
@@ -62,8 +84,14 @@ krb5_get_kadm5_hndl(krb5_context ctx, char *dbname)
 		params.dbname = dbname;
 	}
 
+#ifdef HAVE_CTX_IN_KADM5
+	K5BAIL(kadm5_init_with_password(ctx, (char *)princstr, NULL, NULL,
+	    &params, KADM5_STRUCT_VERSION, KADM5_API_VERSION_2, NULL,
+	    &hndl));
+#else
 	K5BAIL(kadm5_init_with_password((char *)princstr, NULL, NULL, &params,
 	    KADM5_STRUCT_VERSION, KADM5_API_VERSION_2, &hndl));
+#endif /* HAVE_CTX_IN_KADM5 */
 
 done:
 	if (ret)
@@ -116,6 +144,7 @@ random_passwd(krb5_context ctx, int len)
 	krb5_error_code	 ret;
 	char		 croakstr[256];
 	char		*passwd = NULL;
+	char		*tmp;
 	int		 i;
 
 	passwd = malloc(len + 1);
@@ -155,11 +184,13 @@ random_passwd(krb5_context ctx, int len)
 	 * themselves.
 	 */
 
-	passwd[0] = c_low[key.contents[0] % (sizeof(c_low) - 1)];
-	passwd[1] = c_cap[key.contents[1] % (sizeof(c_cap) - 1)];
-	passwd[2] = c_num[key.contents[2] % (sizeof(c_num) - 1)];
+	tmp = KEYBLOCK_CONTENTS(key);
+	passwd[0] = c_low[tmp[0] % (sizeof(c_low) - 1)];
+	passwd[1] = c_cap[tmp[1] % (sizeof(c_cap) - 1)];
+	passwd[2] = c_num[tmp[2] % (sizeof(c_num) - 1)];
 	for (i=3; i < len; i++)
-		passwd[i] = c_all[key.contents[i] % (sizeof(c_all) - 1)];
+		passwd[i] = c_all[tmp[i] % (sizeof(c_all) - 1)];
+
 	krb5_free_keyblock_contents(ctx, &key);
 	passwd[i] = '\0';
 
@@ -228,6 +259,7 @@ krb5_getkey(krb5_context ctx, kadm5_handle hndl, char *in)
 {
 	kadm5_principal_ent_rec	 dprinc;
 	krb5_principal		 princ = NULL;
+	krb5_keyblock		 kb;
 	kadm5_config_params	 params;
 	kadm5_ret_t		 ret;
 	int			 i;
@@ -268,8 +300,20 @@ krb5_getkey(krb5_context ctx, kadm5_handle hndl, char *in)
 		k->princ = in;
 		k->timestamp = dprinc.last_pwd_change;
 		k->kvno = kd->key_data_kvno;
+#ifdef HAVE_MIT
 		ret = kadm5_decrypt_key(hndl, &dprinc, kd->key_data_type[0],
-		    -1 /*salt*/, kd->key_data_kvno, &k->key, NULL, NULL);
+		    -1 /*salt*/, kd->key_data_kvno, &kb, NULL, NULL);
+
+		/* XXXrcd: assert that we have enough space */
+		k->enctype = kb.enctype;
+		k->length = kb.length;
+		memcpy(k->data, kb.contents, kb.length);
+		krb5_free_keyblock_contents(ctx, &kb);
+#else
+		k->enctype = kd->key_data_type[0];
+		k->length = kd->key_data_length[0];
+		memcpy(k->data, kd->key_data_contents[0], k->length);
+#endif
 	}
 
 done:
@@ -314,6 +358,7 @@ krb5_createkey(krb5_context ctx, kadm5_handle hndl, char *in)
 	K5BAIL(kadm5_create_principal(hndl, &dprinc, KADM5_PRINCIPAL|
 	     KADM5_ATTRIBUTES, dummybuf));
 
+#if HAVE_MIT
 	/*
 	 * XXXrcd: for now, hardcode AES, DES3 and RC4, we'll take this
 	 *         out later, when we can update the configuration.
@@ -329,9 +374,13 @@ krb5_createkey(krb5_context ctx, kadm5_handle hndl, char *in)
 
 	K5BAIL(kadm5_randkey_principal_3(hndl, dprinc.principal, 0,
 	    4, enctypes, NULL, NULL));
+#else
+	K5BAIL(kadm5_randkey_principal_3(hndl, dprinc.principal, 0,
+	    0, 0, NULL, NULL));
+#endif
 
-        dprinc.attributes &= ~KRB5_KDB_DISALLOW_ALL_TIX;
-        K5BAIL(kadm5_modify_principal(hndl, &dprinc, KADM5_ATTRIBUTES));
+	dprinc.attributes &= ~KRB5_KDB_DISALLOW_ALL_TIX;
+	K5BAIL(kadm5_modify_principal(hndl, &dprinc, KADM5_ATTRIBUTES));
 
 done:
 	/* XXXrcd: free up used data structures! */
@@ -380,8 +429,15 @@ krb5_setkey(krb5_context ctx, kadm5_handle hndl, char *in, int kvno,
 	 * is terminated with an extra invalid entry.
 	 */
 
+#ifdef HAVE_HEIMDAL
+	for (n_keys = 0; KEYBLOCK_CONTENTS(keys[n_keys]) != NULL; n_keys++)
+		;
+#else
+#ifdef HAVE_MIT
 	for (n_keys = 0; keys[n_keys].magic == KV5M_KEYBLOCK; n_keys++)
 		;
+#endif /* HAVE_MIT */
+#endif /* HAVE_HEIMDAL */
 
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
 	K5BAIL(kadm5_lock(hndl));
@@ -483,10 +539,16 @@ krb5_randkey(krb5_context ctx, kadm5_handle hndl, char *in)
 	 * Random keys are hardcoded to AES for now: we're only actually
 	 * using them for proids...
 	 */
+#if HAVE_MIT
 	enctypes[0].ks_enctype  = ENCTYPE_AES256_CTS_HMAC_SHA1_96;
 	enctypes[0].ks_salttype = 0;
+
 	K5BAIL(kadm5_randkey_principal_3(hndl, princ, FALSE, 1, enctypes,
 	    NULL, NULL));
+#else
+	K5BAIL(kadm5_randkey_principal_3(hndl, princ, FALSE, 0, NULL,
+	    NULL, NULL));
+#endif
 
 done:
 	if (princ)
@@ -518,7 +580,7 @@ done:
 	/* XXXrcd: free up keytab and stuff */
 	if (ret)
 		croak(croakstr);
-	return e.key;
+	return KEYTABENT_KEYBLOCK(e);
 }
 
 void
@@ -574,11 +636,15 @@ read_kt(krb5_context ctx, char *ktname)
 		K5BAIL(krb5_unparse_name(ctx, e.principal, &k->princ));
 		k->kvno = e.vno;
 		k->timestamp = e.timestamp;
-		K5BAIL(krb5_copy_keyblock_contents(ctx, &e.key, &k->key));
+
+		/* XXXrcd: assert that we have room */
+		k->enctype = KEYTABENT_ENCTYPE(e);
+		k->length = KEYTABENT_CONTENT_LEN(e);
+		memcpy(k->data, KEYTABENT_CONTENTS(e), k->length);
 	}
 
 	if (ret != KRB5_KT_END) {
-		/* do some sort of error here... */
+		/* XXXrcd: do some sort of error here... */
 	}
 
 	/* XXXrcd: should this be below the done: ?? */
@@ -616,18 +682,19 @@ write_kt(krb5_context ctx, char *kt, krb5_keytab_entry *e)
 
 	for (;;) {
 		ret = krb5_kt_get_entry(ctx, keytab, e->principal, e->vno,
-		    e->key.enctype, &old);
+		    KEYTABENT_ENCTYPE(*e), &old);
 
 		if (ret)
 			break;
 
-		if (memcmp(old.key.contents,e->key.contents,old.key.length)) {
-			K5BAIL(krb5_kt_remove_entry(ctx, keytab, &old));
-		} else {
+		if (!memcmp(KEYTABENT_CONTENTS(old), KEYTABENT_CONTENTS(*e),
+		    KEYTABENT_CONTENT_LEN(old))) {
 			/* we found a matching key, so nothing to do... */
 			ret = 0;
 			goto done;
 		}
+
+		K5BAIL(krb5_kt_remove_entry(ctx, keytab, &old));
 	}
 
 	K5BAIL(krb5_kt_add_entry(ctx, keytab, e));
@@ -660,21 +727,29 @@ done:
 char **
 krb5_get_kdcs(krb5_context ctx, char *realm)
 {
-	krb5_data	  realm_data;
 	krb5_error_code	  ret;
 	char		 *def_realm = NULL;
 	char		**hostlist = NULL;
 	char		  croakstr[2048] = "";
+
+#ifdef HAVE_MIT
+	krb5_data	  realm_data;
+#endif /* HAVE_MIT */
 
 	if (!realm || !realm[0]) {
 		K5BAIL(krb5_get_default_realm(ctx, &def_realm));
 		realm = def_realm;
 	}
 
+#ifdef HAVE_HEIMDAL
+	K5BAIL(krb5_get_krbhst(ctx, &realm, &hostlist));
+#else
+#ifdef HAVE_MIT
 	realm_data.data = realm;
 	realm_data.length = strlen(realm);
-
 	K5BAIL(krb5_get_krbhst(ctx, &realm_data, &hostlist));
+#endif /* HAVE_MIT */
+#endif /* HAVE_HEIMDAL */
 
 done:
 	if (def_realm)
@@ -687,6 +762,7 @@ done:
 	return hostlist;
 }
 
+#ifndef HAVE_HEIMDAL	/* XXXrcd: this needs to be implemented */
 char **
 krb5_list_pols(krb5_context ctx, kadm5_handle hndl, char *exp)
 {
@@ -717,6 +793,14 @@ done:
 		croak(croakstr);
         return out;
 }
+#else
+char **
+krb5_list_pols(krb5_context ctx, kadm5_handle hndl, char *exp)
+{
+
+	croak("Policies are not implemented in Heimdal");
+}
+#endif
 
 char **
 krb5_list_princs(krb5_context ctx, kadm5_handle hndl, char *exp)

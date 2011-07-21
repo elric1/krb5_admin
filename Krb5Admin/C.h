@@ -1,4 +1,60 @@
 
+/*
+ * The following macros help deal with the many little differences
+ * between the Heimdal and MIT krb5 APIs.
+ */
+
+#ifdef HAVE_HEIMDAL
+
+/* krb5_keyblock stuff */
+#define	KEYBLOCK_ENCTYPE(k)	((k).keytype)
+#define	KEYBLOCK_CONTENT_LEN(k)	((k).keyvalue.length)
+#define	KEYBLOCK_CONTENTS(k)	((k).keyvalue.data)
+#define	KV5M_KEYBLOCK		1
+#define	KEYBLOCK_MAGIC(k)	KV5M_KEYBLOCK
+#define	KEYBLOCK_SET_MAGIC(k)
+
+/* krb5_keytab_entry stuff */
+#define	KEYTABENT_KEYBLOCK(kte)	((kte).keyblock)
+
+#define	PRINC_REALM(ctx, p)	  krb5_principal_get_realm(ctx, p)
+#define	PRINC_REALM_LEN(ctx, p)	  strlen(PRINC_REALM(ctx, p))
+#define	PRINC_NCOMPS(ctx, p)	  krb5_principal_get_num_comp(ctx, p)
+#define	PRINC_COMP(ctx, p, n)	  krb5_principal_get_comp_string(ctx, p, n)
+#define	PRINC_COMP_LEN(ctx, p, n) strlen(PRINC_COMP(ctx, p, n))
+
+#define	STRING_TO_ENCTYPE(s, e) krb5_string_to_enctype(NULL, s, e)
+
+#else
+#ifdef HAVE_MIT
+
+#define	KEYBLOCK_ENCTYPE(k)	((k).enctype)
+#define	KEYBLOCK_CONTENT_LEN(k)	((k).length)
+#define	KEYBLOCK_CONTENTS(k)	((k).contents)
+#define	KEYBLOCK_MAGIC(k)	((k).magic)
+#define	KEYBLOCK_SET_MAGIC(k)	((k).magic = KV5M_KEYBLOCK)
+
+#define	KEYTABENT_KEYBLOCK(kte) ((kte).key)
+
+#define	PRINC_REALM(ctx, p)	  (krb5_princ_realm(ctx, p)->data)
+#define	PRINC_REALM_LEN(ctx, p)	  (krb5_princ_realm(ctx, p)->length)
+#define	PRINC_NCOMPS(ctx, p)	  (krb5_princ_size(ctx, p))
+#define	PRINC_COMP(ctx, p, n)	  (krb5_princ_component(ctx, p, n)->data)
+#define	PRINC_COMP_LEN(ctx, p, n) (krb5_princ_component(ctx, p, n)->length)
+
+#define	STRING_TO_ENCTYPE(s, e) krb5_string_to_enctype(s, e)
+
+#else
+#error "Must define either HAVE_HEIMDAL or HAVE_MIT"
+#endif /* HAVE_MIT */
+#endif /* HAVE_HEIMDAL */
+
+/* Continued accessor macros defined in terms of prior */
+
+#define	KEYTABENT_ENCTYPE(kte)	   KEYBLOCK_ENCTYPE(KEYTABENT_KEYBLOCK(kte))
+#define	KEYTABENT_CONTENT_LEN(kte) KEYBLOCK_CONTENT_LEN(KEYTABENT_KEYBLOCK(kte))
+#define	KEYTABENT_CONTENTS(kte)	   KEYBLOCK_CONTENTS(KEYTABENT_KEYBLOCK(kte))
+
 key	  krb5_getkey(krb5_context, kadm5_handle, char *);
 void	  krb5_createkey(krb5_context, kadm5_handle, char *);
 key	  read_kt(krb5_context, char *);
