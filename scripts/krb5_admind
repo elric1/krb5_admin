@@ -76,12 +76,21 @@ my @rw_cmds = qw/	master
 			enable
 			disable
 			remove 
+			create_host
+			remove_host
+			insert_hostmap
+			remove_hostmap
+			insert_ticket
+			remove_ticket
 		/;
 my @ro_cmds = qw/	list
 			listpols
 			fetch
 			mquery
 			query
+			query_ticket
+			query_hostmap
+			query_host
 		/;
 
 my %args;

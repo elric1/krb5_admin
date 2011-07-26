@@ -3,6 +3,7 @@
 
 package Krb5Admin::KerberosDB;
 
+use DBI;
 use Sys::Syslog;
 
 use Krb5Admin::Utils qw/reverse_the host_list/;
@@ -31,6 +32,8 @@ use constant {
 	SUPPORT_DESMD5		=> 0x00004000,
 	NEW_PRINC		=> 0x00008000,
 	ACL_FILE		=> '/etc/krb5/krb5_admin.acl',
+	SQL_DB_FILE		=> '/var/kerberos/krb5_admin.db',
+	MAX_TIX_PER_HOST	=> 1024,
 };
 
 our %flag_map = (
@@ -175,10 +178,20 @@ sub new {
 	# set defaults:
 
 	my $acl_file = ACL_FILE;
+	my $sqlite   = SQL_DB_FILE;
 	my $dbname;
 
 	$acl_file = $args{acl_file}	if defined($args{acl_file});
-	$dbname = $args{dbname}		if defined($args{dbname});
+	$dbname   = $args{dbname}	if defined($args{dbname});
+	$sqlite   = $args{sqlite}	if defined($args{sqlite});
+
+	# initialize our database handle
+	my $dbh = DBI->connect("dbi:SQLite:$sqlite", "", "",
+	    {RaiseError => 1, PrintError => 0, AutoCommit => 1});
+	die "Could not open database " . DBI::errstr if !defined($dbh);
+	$dbh->do("PRAGMA foreign_keys = ON");
+	$dbh->do("PRAGMA journal_mode = WAL");
+	$dbh->{AutoCommit} = 0;
 
 	my $subacls = Kharon::Entitlement::Equals->new();
 	my $acl = Kharon::Entitlement::ACLFile->new(filename => $acl_file,
@@ -187,6 +200,7 @@ sub new {
 
 	my $ctx = Krb5Admin::C::krb5_init_context();
 
+	$self{debug}	= $args{debug};
 	$self{local}	= $args{local};
 	$self{client}   = $args{client};
 	$self{addr}     = $args{addr};
@@ -194,11 +208,70 @@ sub new {
 	$self{ctx}      = $ctx;
 	$self{hndl}     = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, $dbname);
 	$self{acl}	= $acl;
+	$self{dbh}	= $dbh;
 
 	$self{local}	= 0			if !defined($self{local});
 	$self{client}	= "LOCAL_MODIFICATION"	if $self{local};
+	$self{debug}	= 0			if !defined($self{debug});
 
 	bless(\%self, $isa);
+}
+
+sub DESTROY {
+	my ($self) = @_;
+
+	if (defined($self->{dbh})) {
+		$self->{dbh}->disconnect();
+		undef($self->{dbh});
+	}
+}
+
+sub init_db {
+	my ($self) = @_;
+	my $dbh = $self->{dbh};
+
+	$dbh->{AutoCommit} = 1;
+	$dbh->do(qq{
+		CREATE TABLE hosts (
+			name		VARCHAR NOT NULL PRIMARY KEY,
+			ip_addr		VARCHAR
+		)
+	});
+
+	$dbh->do(qq{
+		CREATE TABLE hostmap (
+			logical		VARCHAR NOT NULL,
+			physical	VARCHAR NOT NULL,
+
+			PRIMARY KEY (logical, physical)
+			FOREIGN KEY (logical)  REFERENCES hosts(name)
+			FOREIGN KEY (physical) REFERENCES hosts(name)
+		)
+	});
+
+	$dbh->do(qq{
+		CREATE TABLE prestashed (
+			principal	VARCHAR NOT NULL,
+			host		VARCHAR NOT NULL,
+
+			PRIMARY KEY (principal, host)
+			FOREIGN KEY (host) REFERENCES hosts(name)
+		)
+	});
+	$dbh->{AutoCommit} = 0;
+
+	return undef;
+}
+
+sub drop_db {
+	my ($self) = @_;
+	my ($dbh) = $self->{dbh};
+
+	$dbh->{AutoCommit} = 1;
+	$dbh->do('DROP TABLE IF EXISTS prestashed');
+	$dbh->do('DROP TABLE IF EXISTS hostmap');
+	$dbh->do('DROP TABLE IF EXISTS hosts');
+	$dbh->{AutoCommit} = 0;
 }
 
 sub master { undef; }
@@ -445,6 +518,361 @@ sub remove {
 	$self->check_acl('remove', $name);
 	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $name);
 	return undef;
+}
+
+sub _sql_command {
+	my ($self, $stmt, @values) = @_;
+	my $dbh = $self->{dbh};
+
+	print STDERR "SQL: $stmt\n"	if $self->{debug};
+
+	my $sth;
+	eval {
+		$sth = $dbh->prepare($stmt);
+
+		if (!$sth) {
+			die [510, "SQL ERROR: ".$dbh->errstr.", ".$dbh->err];
+		}
+
+		$sth->execute(@values);
+	};
+
+	if ($@) {
+	print STDERR "Rollback...\n"	if $self->{debug};
+		$dbh->rollback();
+		die $@;
+	}
+	return $sth;
+}
+
+sub create_host {
+	my ($self, $host, %args) = @_;
+
+	require_scalar("create_host <host> [args]", 1, $host);
+
+	# XXXrcd: more checking should be done.
+
+	$self->check_acl('create_host', $host, %args);
+
+	for my $key (keys %args) {
+		next if $key eq 'name';
+		next if $key eq 'ip_addr';
+
+		delete $args{$key};
+	}
+
+	my @args = ('name');
+	my @vals = ($host);
+	for my $arg (keys %args) {
+		push(@args, $arg);
+		push(@vals, $args{$arg});
+	}
+
+	my $stmt = "INSERT INTO hosts(" . join(',', @args) . ")" .
+		   "VALUES (" . join(',', map {"?"} @args) . ")";
+
+	$self->_sql_command($stmt, @vals);
+	$self->{dbh}->commit();
+	return undef;
+}
+
+sub query_host {
+	my ($self, %query) = @_;
+
+	#
+	# XXXrcd: validation should be done.
+
+	my @where;
+	my @bindv;
+
+	if (exists($query{name})) {
+		push(@where, "name = ?");
+		push(@bindv, $query{name});
+	}
+
+	my $where = join( ' AND ', @where );
+	$where = "WHERE $where" if length($where) > 0;
+
+	my $fields = "name, ip_addr";
+	my $from   = "hosts";
+
+	my $stmt = "SELECT $fields FROM $from $where";
+
+	my $sth = $self->_sql_command($stmt, @bindv);
+
+	#
+	# We now reformat the result to be comprised of the simplest
+	# data structure we can imagine that represents the query
+	# results:
+
+	if (exists($query{name})) {
+		return $sth->fetch();
+	}
+
+	return $sth->fetchall_hashref('name');
+}
+
+sub remove_host {
+	my ($self, @hosts) = @_;
+
+	require_scalar("remove_host <host> [<host> ...]", 1, $hosts[0]);
+
+	my $i = 2;
+	for my $host (@hosts) {
+		require_scalar("remove_host <princ> <host> [<host> ...]",
+		    $i++, $host);
+	}
+
+	$self->check_acl('remove_host', @hosts);
+
+	while (@hosts) {
+		my @curhosts = splice(@hosts, 0, 500);
+
+                $self->_sql_command("DELETE FROM hosts WHERE "
+		    . join(' OR ', map {"name=?"} @curhosts), @curhosts);
+
+		#
+		# XXXrcd: error handling and all that.
+	}
+
+	$self->{dbh}->commit();
+
+	return;
+}
+
+sub insert_hostmap {
+	my ($self, @hosts) = @_;
+
+	require_scalar("insert_hostmap <logical> <physical>", 1, $hosts[0]);
+	require_scalar("insert_hostmap <logical> <physical>", 2, $hosts[1]);
+
+	@hosts = map { lc($_) } @hosts;
+
+	$self->check_acl('insert_hostmap', @hosts);
+
+	my $stmt = "INSERT INTO hostmap (logical, physical) VALUES (?, ?)";
+
+	$self->_sql_command($stmt, @hosts);
+
+	$self->{dbh}->commit();
+
+	return undef;
+}
+
+sub query_hostmap {
+	my ($self, $host) = @_;
+
+	if (defined($host)) {
+		require_scalar("insert_hostmap <logical> <physical>", 1, $host);
+	}
+
+	$self->check_acl('query_hostmap', $host);
+
+	my $stmt = qq{SELECT logical, physical FROM hostmap
+			WHERE ? IN ('', logical, physical)};
+
+	my $sth = $self->_sql_command($stmt, defined($host)?$host:'');
+
+	$sth->fetchall_arrayref();
+}
+
+sub remove_hostmap {
+	my ($self, @hosts) = @_;
+
+	require_scalar("remove_hostmap <logical> <physical>", 1, $hosts[0]);
+	require_scalar("remove_hostmap <logical> <physical>", 2, $hosts[1]);
+
+	@hosts = map { lc($_) } @hosts;
+
+	$self->check_acl('remove_hostmap', @hosts);
+
+	my $stmt = "DELETE FROM hostmap WHERE logical = ? AND physical = ?";
+
+	$self->_sql_command($stmt, @hosts);
+
+	$self->{dbh}->commit();
+
+	return;
+}
+
+sub insert_ticket {
+	my ($self, $princ, @hosts) = @_;
+
+	require_scalar("insert_ticket <princ> <host> [<host> ...]", 1, $princ);
+	require_scalar("insert_ticket <princ> <host> [<host> ...]", 2,
+	    $hosts[0]);
+
+	my $host;
+	my $i = 3;
+	for $host (@hosts) {
+		require_scalar("insert_ticket <princ> <host> [<host> ...]",
+		    $i++, $host);
+	}
+
+	$self->check_acl('insert_ticket', $princ, @hosts);
+
+	for $host (map {lc($_)} @hosts) {
+                # XXXrcd: validate_hostname($host);
+
+		my $stmt = qq{
+			INSERT INTO prestashed (principal, host) VALUES (?, ?)
+		};
+
+                my ($sth, $str) = $self->_sql_command($stmt, $princ, $host);
+
+#                if (!$sth || ($str =~ /unique/)) {
+#                        die [500, 'tickets already configured for prestash'];
+#                }
+
+                ($sth, $str) = $self->_sql_command(
+                        "SELECT count(principal) FROM prestashed" .
+                        " WHERE host = ?", $host);
+
+                my ($count) = $sth->fetchrow_array();
+                die [500, 'limit exceeded: you can only prestash ' .
+                          MAX_TIX_PER_HOST .
+                          ' tickets on a single host or service address']
+                        if ($count > MAX_TIX_PER_HOST);
+	}
+
+	$self->{dbh}->commit();
+
+	return;
+}
+
+sub query_ticket {
+	my ($self, %query) = @_;
+
+	#
+	# XXXrcd: validation should be done.
+
+	$query{expand} = 1 if $query{verbose};
+
+	my @where;
+	my @bindv;
+
+	if (exists($query{host})) {
+		my $tmp  = "target = ?";
+		   $tmp .= " OR configured = ?"	if $query{expand};
+		push(@where, $tmp);
+		push(@bindv, $query{host});
+		push(@bindv, $query{host})	if $query{expand};
+	}
+
+	if (exists($query{principal})) {
+		push(@where, "principal = ?");
+		push(@bindv, $query{principal});
+	}
+
+	my $where = join( ' AND ', @where );
+	$where = "WHERE $where" if length($where) > 0;
+
+	my $fields = "principal, host AS target";
+	my $from   = "prestashed";
+
+	if ($query{expand}) {
+		$from .= qq{
+			LEFT JOIN hostmap ON prestashed.host = hostmap.logical
+		};
+
+		$fields  =  qq{
+			prestashed.principal	AS principal,
+			prestashed.host		AS configured,
+			hostmap.physical	AS target
+		};
+	}
+
+	my $stmt = "SELECT $fields FROM $from $where";
+
+	my $sth = $self->_sql_command($stmt, @bindv);
+
+	#
+	# We now reformat the result to be comprised of the simplest
+	# data structure we can imagine that represents the query
+	# results, we also remove duplicates and whatnot.  We do this
+	# processing on the server because (1) we have the canonical
+	# information and so it's more accurate, and (2) it reduces
+	# the size of the data structure that is sent over the wire.
+
+	my %ret;
+	if ($query{verbose} || (!exists($query{host}) &&
+	    !exists($query{principal}))) {
+		for my $i (@{$sth->fetchall_arrayref({})}) {
+			my $r;
+
+			my $conf = $i->{configured};
+			my $targ = $i->{target};
+
+			if ($query{verbose}) {
+				push(@{$r}, $conf);
+				push(@{$r}, $targ)	if defined($targ);
+			} else {
+				$r = $targ;
+			}
+
+			push(@{$ret{$i->{principal}}}, $r);
+		}
+		return \%ret;
+	}
+
+	if (exists($query{host}) && exists($query{principal})) {
+		return 1 if defined($sth->fetch());
+		return 0;
+	}
+
+	if (exists($query{host})) {
+		for my $i (@{$sth->fetchall_arrayref({})}) {
+			$ret{$i->{principal}} = 1;
+		}
+		return [keys %ret];
+	}
+
+	#
+	# At this point, we know that $query{principal} has been defined.
+
+	for my $i (@{$sth->fetchall_arrayref({})}) {
+		my $host;
+
+		$host = $i->{configured};
+		$host = $i->{target}		if defined($i->{target});
+
+		$ret{$host} = 1;
+	}
+	return [keys %ret];
+}
+
+sub remove_ticket {
+	my ($self, $princ, @hosts) = @_;
+
+	require_scalar("remove_ticket <princ> <host> [<host> ...]", 1, $princ);
+	require_scalar("remove_ticket <princ> <host> [<host> ...]", 2,
+	    $hosts[0]);
+
+	my $host;
+	my $i = 3;
+	for $host (@hosts) {
+		require_scalar("remove_ticket <princ> <host> [<host> ...]",
+		    $i++, $host);
+	}
+
+	$self->check_acl('remove_ticket', $princ, @hosts);
+
+	while (@hosts) {
+		my @curhosts = splice(@hosts, 0, 500);
+
+                $self->_sql_command(qq{
+                        DELETE FROM prestashed WHERE principal = ? AND (
+		    } . join(' OR ', map {"host=?"} @curhosts) . qq{
+			)
+		    }, $princ, @curhosts);
+
+		#
+		# XXXrcd: error handling and all that.
+	}
+
+	$self->{dbh}->commit();
+
+	return;
 }
 
 1;
