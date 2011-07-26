@@ -92,6 +92,8 @@ sub check_acl {
 		die [502, "Modification of $predicate[0] prohibited."];
 	}
 
+	return if $self->{local};
+
 	#
 	# First we provide an Kharon file based entitlement system which
 	# precedes all of the special processing...
@@ -185,12 +187,16 @@ sub new {
 
 	my $ctx = Krb5Admin::C::krb5_init_context();
 
+	$self{local}	= $args{local};
 	$self{client}   = $args{client};
 	$self{addr}     = $args{addr};
 	$self{hostname} = reverse_the($args{addr});
 	$self{ctx}      = $ctx;
 	$self{hndl}     = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, $dbname);
 	$self{acl}	= $acl;
+
+	$self{local}	= 0			if !defined($self{local});
+	$self{client}	= "LOCAL_MODIFICATION"	if $self{local};
 
 	bless(\%self, $isa);
 }

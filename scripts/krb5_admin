@@ -6,7 +6,9 @@ use POSIX qw/strftime/;
 use Getopt::Std;
 use Term::ReadLine;
 
+use Krb5Admin::KerberosDB;
 use Krb5Admin::Client;
+
 use Kharon::utils qw/encode_var_list/;
 
 use strict;
@@ -293,7 +295,7 @@ EOM
 my %opts;
 my @kdc;
 
-getopts('dh:sv?', \%opts) or usage();
+getopts('dh:lsv?', \%opts) or usage();
 
 usage()			if exists($opts{'?'});
 $debug = 1		if exists($opts{'d'});
@@ -302,7 +304,13 @@ $terse = 1		if exists($opts{'s'});
 @kdc = ($opts{'h'})	if exists($opts{'h'});
 
 my $kmdb;
-eval {$kmdb = Krb5Admin::Client->new(undef, {}, @kdc); };
+eval {
+	if (exists($opts{'l'})) {
+		$kmdb = Krb5Admin::KerberosDB->new(local => 1);
+	} else {
+		$kmdb = Krb5Admin::Client->new(undef, {}, @kdc);
+	}
+};
 if ($@) {
 	printerr(\*STDERR, $@);
 	exit(1);
