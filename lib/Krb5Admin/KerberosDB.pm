@@ -807,7 +807,8 @@ sub query_ticket {
 				push(@{$r}, $conf);
 				push(@{$r}, $targ)	if defined($targ);
 			} else {
-				$r = $targ;
+				$r = $conf;
+				$r = $targ		if defined($targ);
 			}
 
 			push(@{$ret{$i->{principal}}}, $r);
