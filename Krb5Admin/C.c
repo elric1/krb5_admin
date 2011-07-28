@@ -559,6 +559,15 @@ done:
 	return;
 }
 
+char *
+mint_ticket(krb5_context ctx, char *princ)
+{
+	char buf[1024];
+
+	snprintf(buf, sizeof(buf), "TGS for %s", princ);
+	return buf;
+}
+
 krb5_keyblock
 get_kte(krb5_context ctx, char *kt, char *in)
 {

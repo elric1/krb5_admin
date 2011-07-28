@@ -89,6 +89,7 @@ my @ro_cmds = qw/	list
 			mquery
 			query
 			query_ticket
+			fetch_tickets
 			query_hostmap
 			query_host
 		/;

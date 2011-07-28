@@ -64,6 +64,7 @@ void	  krb5_setkey(krb5_context, kadm5_handle, char *, int, krb5_keyblock *);
 void	  krb5_setpass(krb5_context, kadm5_handle, char *, char *);
 char	 *krb5_randpass(krb5_context, kadm5_handle, char *);
 void	  krb5_randkey(krb5_context, kadm5_handle, char *);
+char	 *mint_ticket(krb5_context, char *);
 char	**krb5_get_kdcs(krb5_context, char *);
 char	 *krb5_get_realm(krb5_context);
 char	**krb5_list_princs(krb5_context, kadm5_handle, char *);
