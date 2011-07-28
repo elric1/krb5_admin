@@ -8,11 +8,9 @@
 #         but they do not yet.  That would require firing up a KDC which
 #         we'll eventually do.
 
-use Test::More tests => 9;
+use Test::More tests => 8;
 
 use Krb5Admin::C;
-
-use tests::utils qw{compare_array compare_hash compare};
 
 use strict;
 use warnings;
@@ -70,7 +68,7 @@ eval {
 	@keys = grep { $_->{kvno} == 3 } @keys;
 
 	if ($keys[0]->{enctype} != 17 || $keys[0]->{key} ne '0123456789abcdef'){
-		die "New key failed to match \"TheKey!!\"";
+		die "New key failed to match \"0123456789abcdef\"...";
 	}
 
 	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $sprinc);
@@ -200,6 +198,12 @@ eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $princ); };
 
 my @princs = sort(map { $princ . $_ . '@IMRRYR.ORG' } (0..20));
 my $results;
+
+eval {
+	for my $p (@princs) {
+		Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $p);
+	}
+};
 eval {
 	my ($passwd, $q);
 
@@ -218,9 +222,13 @@ eval {
 	}
 };
 
-ok(!$@, "Create 21 principals, list and delete them") or diag($@);
-is_deeply([sort @$results], [sort @princs],
-    "Create 21 principals, list and delete them");
+if (!$@) {
+	is_deeply([sort @$results], [sort @princs],
+	    "Create 21 principals, list and delete them");
+} else {
+	ok(0, "Create 21 principals, list and delete them");
+	diag($@);
+}
 
 eval {
 	for my $p (@princs) {
@@ -228,4 +236,4 @@ eval {
 	}
 };
 
-exit (0);
+exit(0);
