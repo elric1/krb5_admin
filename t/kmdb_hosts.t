@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 18;
+use Test::More tests => 36;
 
 use Krb5Admin::KerberosDB;
 
@@ -78,13 +78,18 @@ testObjC("Query the hostmap", $kmdb,
 	'query_hostmap', 'logical.imrryr.org');
 
 #
-# And finally, the prestashed tickets:
+# And finally, the prestashed tickets.  First, we insert a reasonable list
+# of prestashed tickets:
 
 testObjC("Insert a ticket", $kmdb, [], qw/insert_ticket proid1 foo.imrryr.org/);
 testObjC("Insert a ticket", $kmdb, [], qw/insert_ticket proid2 bar.imrryr.org/);
 testObjC("Insert a ticket", $kmdb, [], qw/insert_ticket proid3 baz.imrryr.org/);
 testObjC("Insert a ticket", $kmdb, [], qw/insert_ticket proid4
 	logical.imrryr.org/);
+
+#
+# Then we query the resulting state in various ways to ensure that everything
+# appears to be correct:
 
 testObjC("Query all tickets", $kmdb,
 	[{ proid1=>['foo.imrryr.org'],
@@ -107,6 +112,80 @@ testObjC("Query all tickets (with verbose)", $kmdb,
 	   proid4=>[['logical.imrryr.org', 'bar.imrryr.org'],
 		    ['logical.imrryr.org', 'baz.imrryr.org']],
 	}], "query_ticket", "verbose", 1);
+
+#
+# We then query by proid:
+
+testObjC("Query proid1's tickets", $kmdb, [['foo.imrryr.org']],
+	"query_ticket", principal => 'proid1');
+
+testObjC("Query proid1's tickets (expand)", $kmdb, [['foo.imrryr.org']],
+	"query_ticket", principal => 'proid1', expand => 1);
+
+testObjC("Query proid1's tickets (verbose)", $kmdb,
+	[{proid1 => [['foo.imrryr.org']]}],
+	"query_ticket", principal => 'proid1', verbose => 1);
+
+testObjC("Query proid4's tickets", $kmdb, [['logical.imrryr.org']],
+	"query_ticket", principal => 'proid4');
+
+testObjC("Query proid4's tickets (expand)", $kmdb,
+	[['bar.imrryr.org', 'baz.imrryr.org']],
+	"query_ticket", principal => 'proid4', expand => 1);
+
+testObjC("Query proid4's tickets (verbose)", $kmdb,
+	[{proid4 => [['logical.imrryr.org', 'bar.imrryr.org'],
+		     ['logical.imrryr.org', 'baz.imrryr.org']]}],
+	"query_ticket", principal => 'proid4', verbose => 1);
+
+#
+# And we query by host:
+
+testObjC("Query foo.imrryr.org's tickets", $kmdb, [['proid1']],
+	"query_ticket", host => 'foo.imrryr.org');
+
+testObjC("Query foo.imrryr.org's tickets (expand)", $kmdb, [['proid1']],
+	"query_ticket", host => 'foo.imrryr.org', expand => 1);
+
+testObjC("Query foo.imrryr.org's tickets (verbose)", $kmdb,
+	[{proid1 => [['foo.imrryr.org']]}],
+	"query_ticket", host => 'foo.imrryr.org', verbose => 1);
+
+testObjC("Query bar.imrryr.org's tickets", $kmdb, [['proid2']],
+	"query_ticket", host => 'bar.imrryr.org');
+
+testObjC("Query bar.imrryr.org's tickets (expand)", $kmdb,
+	[['proid2', 'proid4']],
+	"query_ticket", host => 'bar.imrryr.org', expand => 1);
+
+testObjC("Query bar.imrryr.org's tickets (verbose)", $kmdb,
+	[{proid2 => [['bar.imrryr.org']],
+	  proid4 => [['logical.imrryr.org','bar.imrryr.org']]}],
+	"query_ticket", host => 'bar.imrryr.org', verbose => 1);
+
+testObjC("Query baz.imrryr.org's tickets", $kmdb, [['proid3']],
+	"query_ticket", host => 'baz.imrryr.org');
+
+testObjC("Query baz.imrryr.org's tickets (expand)", $kmdb,
+	[['proid3', 'proid4']],
+	"query_ticket", host => 'baz.imrryr.org', expand => 1);
+
+testObjC("Query baz.imrryr.org's tickets (verbose)", $kmdb,
+	[{proid3 => [['baz.imrryr.org']],
+	  proid4 => [['logical.imrryr.org','baz.imrryr.org']]}],
+	"query_ticket", host => 'baz.imrryr.org', verbose => 1);
+
+testObjC("Query logical.imrryr.org's tickets", $kmdb, [['proid4']],
+	"query_ticket", host => 'logical.imrryr.org');
+
+testObjC("Query logical.imrryr.org's tickets", $kmdb, [['proid4']],
+	"query_ticket", host => 'logical.imrryr.org', expand => 1);
+
+testObjC("Query logical.imrryr.org's tickets", $kmdb,
+	[{proid4 => [['logical.imrryr.org','bar.imrryr.org'],
+		     ['logical.imrryr.org','baz.imrryr.org']]}],
+	"query_ticket", host => 'logical.imrryr.org', verbose => 1);
+
 
 
 exit(0);
