@@ -172,7 +172,7 @@
 	}
 done:
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 
 	/*
 	 * XXXrcd: &p is about to go out of scope, we can't play fast and
@@ -263,7 +263,7 @@ done:
 	krb5_keytab_entry	 *e = NULL;
 	krb5_error_code		  ret;
 	char			 *tmp;
-	char			  croakstr[256];
+	char			  croakstr[256] = "";
 
 	if (!SvROK($input) || SvTYPE(SvRV($input)) != SVt_PVHV)
 		croak("Argument $argnum is not a hash ref.");
@@ -325,7 +325,7 @@ done:
 	SV			**sv;
 	char			 *tmp;
 	STRLEN			  len;
-	char			  croakstr[256];
+	char			  croakstr[256] = "";
 	int			  n_keys;
 	int			  i;
 
@@ -412,7 +412,7 @@ done:
 
 done:
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 	krb5_free_principal(ctx, princ);
 	free($1);
 }
@@ -426,7 +426,7 @@ done:
 	SV			**sv;
 	char			 *tmp;
 	STRLEN			  len;
-	char			  croakstr[256];
+	char			  croakstr[256] = "";
 
 	if (!SvROK($input) || SvTYPE(SvRV($input)) != SVt_PVHV)
 		croak("Argument $argnum is not a hash ref (krb5_creds).");
@@ -508,7 +508,7 @@ done:
 	krb5_creds	*creds;
 	char		*tmp = NULL;
 	krb5_error_code	 ret;
-	char		 croakstr[256];
+	char		 croakstr[256] = "";
 
 	creds = $1;
 

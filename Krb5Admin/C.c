@@ -95,7 +95,7 @@ krb5_get_kadm5_hndl(krb5_context ctx, char *dbname)
 
 done:
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 
 	return hndl;
 }
@@ -120,7 +120,7 @@ done:
 	/* XXXrcd: free dprinc */
 
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 
 	return dprinc;
 }
@@ -142,7 +142,7 @@ random_passwd(krb5_context ctx, int len)
 {
 	krb5_keyblock	 key;
 	krb5_error_code	 ret;
-	char		 croakstr[256];
+	char		 croakstr[2048] = "";
 	char		*passwd = NULL;
 	char		*tmp;
 	int		 i;
@@ -197,7 +197,7 @@ random_passwd(krb5_context ctx, int len)
 done:
 	if (ret) {
 		free(passwd);
-		croak(croakstr);
+		croak("%s", croakstr);
 	}
 
 	return passwd;
@@ -208,7 +208,7 @@ krb5_createprinc(krb5_context ctx, kadm5_handle hndl,
 		 kadm5_principal_ent_rec p, long mask, char *passwd)
 {
 	kadm5_ret_t	 ret;
-	char		 croakstr[256];
+	char		 croakstr[2048] = "";
 
 	if (!passwd)
 		passwd = random_passwd(ctx, HUMAN_PASSWD_SIZE);
@@ -218,7 +218,7 @@ krb5_createprinc(krb5_context ctx, kadm5_handle hndl,
 done:
 	if (ret) {
 		free(passwd);
-		croak(croakstr);
+		croak("%s", croakstr);
 	}
 
 	return passwd;
@@ -229,13 +229,13 @@ krb5_modprinc(krb5_context ctx, kadm5_handle hndl, kadm5_principal_ent_rec p,
               long mask)
 {
 	kadm5_ret_t	ret;
-	char		croakstr[256];
+	char		croakstr[256] = "";
 
 	K5BAIL(kadm5_modify_principal(hndl, &p, mask));
 
 done:
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 }
 
 void
@@ -243,7 +243,7 @@ krb5_deleteprinc(krb5_context ctx, kadm5_handle hndl, char *in)
 {
 	krb5_principal	princ = NULL;
 	kadm5_ret_t	ret;
-	char		croakstr[1024];
+	char		croakstr[2048] = "";
 
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
 	K5BAIL(kadm5_delete_principal(hndl, princ));
@@ -251,7 +251,7 @@ krb5_deleteprinc(krb5_context ctx, kadm5_handle hndl, char *in)
 done:
 	/* XXXrcd: free the princ. */
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 }
 
 key
@@ -326,7 +326,7 @@ done:
 #if 0 /* XXXrcd: clean up */
 		key_free(ok);
 #endif
-		croak(croakstr);
+		croak("%s", croakstr);
 	}
 
 	return first;
@@ -389,7 +389,7 @@ done:
 		krb5_free_principal(ctx, princ);
 
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 	return;
 }
 
@@ -479,7 +479,7 @@ done:
 	}
 
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 	return;
 }
 
@@ -501,7 +501,7 @@ done:
 
 	if (ret) {
 		free(passwd);
-		croak(croakstr);
+		croak("%s", croakstr);
 	}
 	return passwd;
 }
@@ -521,7 +521,7 @@ done:
 		krb5_free_principal(ctx, princ);
 
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 	return;
 }
 
@@ -555,7 +555,7 @@ done:
 		krb5_free_principal(ctx, princ);
 
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 	return;
 }
 
@@ -579,7 +579,7 @@ get_kte(krb5_context ctx, char *kt, char *in)
 done:
 	/* XXXrcd: free up keytab and stuff */
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 	return KEYTABENT_KEYBLOCK(e);
 }
 
@@ -602,7 +602,7 @@ done:
 		krb5_kt_close(ctx, keytab);
 
 	if (ret) {
-		croak(croakstr);
+		croak("%s", croakstr);
 	}
 }
 
@@ -655,7 +655,7 @@ done:
 	/* XXXrcd: clean up memory and stuff! */
 
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 
 	return first;
 }
@@ -704,7 +704,7 @@ done:
 		krb5_kt_close(ctx, keytab);
 
 	if (ret) {
-		croak(croakstr);
+		croak("%s", croakstr);
 	}
 }
 
@@ -719,7 +719,7 @@ krb5_get_realm(krb5_context ctx)
 
 done:
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 
 	return realm;
 }
@@ -808,7 +808,7 @@ krb5_list_pols(krb5_context ctx, kadm5_handle hndl, char *exp)
 done:
         /* XXXrcd: leaks like a sieve. */
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
         return out;
 }
 #else
@@ -847,7 +847,7 @@ krb5_list_princs(krb5_context ctx, kadm5_handle hndl, char *exp)
 done:
         /* XXXrcd: leaks like a sieve. */
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
         return out;
 }
 
@@ -863,7 +863,7 @@ krb5_make_a_key(krb5_context ctx, krb5_enctype enctype)
 
 done:
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 	return key;
 }
 
@@ -884,7 +884,7 @@ init_store_creds(krb5_context ctx, char *ccname, krb5_creds *creds)
 
 done:
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 }
 
 #ifdef HAVE_HEIMDAL
@@ -1012,7 +1012,7 @@ mint_ticket(krb5_context ctx, kadm5_handle hndl, char *princ, int lifetime,
 
 done:
 	if (ret)
-		croak(croakstr);
+		croak("%s", croakstr);
 
 	return creds;
 }
