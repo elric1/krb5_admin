@@ -417,6 +417,139 @@ done:
 	free($1);
 }
 
+%typemap(in) krb5_creds * {
+	HV			 *hv;
+	HV			 *hvsession;
+	krb5_context		  ctx;
+	krb5_creds		 *creds = NULL;
+	krb5_error_code		  ret = 0;
+	SV			**sv;
+	char			 *tmp;
+	STRLEN			  len;
+	char			  croakstr[256];
+
+	if (!SvROK($input) || SvTYPE(SvRV($input)) != SVt_PVHV)
+		croak("Argument $argnum is not a hash ref (krb5_creds).");
+
+	hv = (HV*)SvRV($input);
+
+	K5BAIL(krb5_init_context(&ctx));
+
+	creds = malloc(sizeof(*creds));
+	if (!creds) {
+		ret = ENOMEM;
+		goto done;
+	}
+
+	memset(creds, 0x0, sizeof(*creds));
+
+	HV_FETCH_INTO(hv, tmp, "client", SvPV_nolen);
+	K5BAIL(krb5_parse_name(ctx, tmp, &creds->client));
+
+	HV_FETCH_INTO(hv, tmp, "server", SvPV_nolen);
+	K5BAIL(krb5_parse_name(ctx, tmp, &creds->server));
+
+	HV_FETCH(hv, sv, "keyblock");
+
+	if (!SvROK(*sv) || SvTYPE(SvRV(*sv)) != SVt_PVHV)
+		croak("keyblock is not a hash ref (krb5_creds).");
+
+	hvsession = (HV*)SvRV(*sv);
+
+	/* Deal with keyblock (or session in Heimdal) */
+	CREDS_KEYBLOCK_SET_MAGIC(*creds);
+	HV_FETCH(hvsession, sv, "enctype");
+	CREDS_KEYBLOCK_ENCTYPE(*creds) = SvIV(*sv);
+	if (!CREDS_KEYBLOCK_ENCTYPE(*creds)) {
+		tmp = SvPV(*sv, len);
+		ret = STRING_TO_ENCTYPE(tmp, &CREDS_KEYBLOCK_ENCTYPE(*creds));
+		if (ret) {
+			snprintf(croakstr, sizeof(croakstr),
+			    "invalid enctype \"%s\".", tmp);
+			goto done;
+		}
+		/* XXXrcd: memory leak? */
+	}
+
+	if (!krb5_c_valid_enctype(CREDS_KEYBLOCK_ENCTYPE(*creds)))
+		croak("Invalid enctype \"%d\".",
+		    CREDS_KEYBLOCK_ENCTYPE(*creds));
+
+	HV_FETCH_INTO_STRLEN(hvsession, CREDS_KEYBLOCK_CONTENTS(*creds),
+	    CREDS_KEYBLOCK_CONTENT_LEN(*creds), "key");
+
+	HV_FETCH_INTO_FULL(hv, creds->times.authtime, "authtime", SvIV,,0);
+	HV_FETCH_INTO(hv, creds->times.starttime, "starttime", SvIV);
+	HV_FETCH_INTO(hv, creds->times.endtime, "endtime", SvIV);
+	HV_FETCH_INTO_FULL(hv, creds->times.renew_till, "renew_till", SvIV,,0);
+	HV_FETCH_INTO(hv, CREDS_FLAGS(*creds), "flags", SvIV);
+
+	HV_FETCH_INTO_STRLEN(hv, creds->ticket.data, creds->ticket.length,
+	    "ticket");
+
+	/* XXXrcd: Punt on second ticket */
+	/* XXXrcd: Punt on authdata */
+	/* XXXrcd: Punt on addresses */
+
+done:
+	/* XXXrcd: free ctx.  mondo memory leak... */
+	if (ret)
+		croak("%s", croakstr);
+
+	$1 = creds;
+}
+
+#ifdef HAVE_HEIMDAL
+
+%typemap(out) krb5_creds * {
+	krb5_context	 ctx;
+	HV		*hv = newHV();
+	HV		*hvsession = newHV();
+	krb5_creds	*creds;
+	char		*tmp = NULL;
+	krb5_error_code	 ret;
+	char		 croakstr[256];
+
+	creds = $1;
+
+	K5BAIL(krb5_init_context(&ctx));
+
+	krb5_unparse_name(ctx, creds->client, &tmp);
+	HV_STORE_PVN_F(hv, "client", tmp);
+	free(tmp);
+	tmp = NULL;
+
+	krb5_unparse_name(ctx, creds->server, &tmp);
+	HV_STORE_PVN_F(hv, "server", tmp);
+	free(tmp);
+	tmp = NULL;
+
+	HV_STORE_IV_F(hvsession, "enctype", KEYBLOCK_ENCTYPE(creds->session));
+	HV_STORE_PVN_LEN_F(hvsession, "key", KEYBLOCK_CONTENTS(creds->session),
+	    KEYBLOCK_CONTENT_LEN(creds->session));
+
+	hv_store(hv, "keyblock", 8, newRV_noinc((SV *)hvsession), 0);
+
+	HV_STORE_IV(hv, (creds->times), authtime);
+	HV_STORE_IV(hv, (creds->times), starttime);
+	HV_STORE_IV(hv, (creds->times), endtime);
+	HV_STORE_IV(hv, (creds->times), renew_till);
+
+	HV_STORE_IV_F(hv, "flags", creds->flags.i);
+
+	HV_STORE_PVN_LEN_F(hv, "ticket", creds->ticket.data,
+	    creds->ticket.length);
+
+done:
+	/* XXXrcd: free ctx.  mondo memory leak... */
+	if (ret)
+		croak("%s", croakstr);
+
+	$result = sv_2mortal(newRV_noinc((SV*)hv));
+	argvi++;
+}
+#endif
+
 #if 0
 %typemap(out) char ** {
 	int i = 0;

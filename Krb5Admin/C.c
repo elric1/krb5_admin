@@ -559,15 +559,6 @@ done:
 	return;
 }
 
-char *
-mint_ticket(krb5_context ctx, char *princ)
-{
-	char buf[1024];
-
-	snprintf(buf, sizeof(buf), "TGS for %s", princ);
-	return buf;
-}
-
 krb5_keyblock
 get_kte(krb5_context ctx, char *kt, char *in)
 {
@@ -875,3 +866,165 @@ done:
 		croak(croakstr);
 	return key;
 }
+
+void
+init_store_creds(krb5_context ctx, char *ccname, krb5_creds *creds)
+{
+	krb5_ccache		ccache;
+	krb5_error_code		ret;
+	char			croakstr[2048] = "";
+
+	if (ccname && ccname[0])
+		K5BAIL(krb5_cc_resolve(ctx, ccname, &ccache));
+	else
+		K5BAIL(krb5_cc_default(ctx, &ccache));
+
+	K5BAIL(krb5_cc_initialize(ctx, ccache, creds->client));
+	K5BAIL(krb5_cc_store_cred(ctx, ccache, creds));
+
+done:
+	if (ret)
+		croak(croakstr);
+}
+
+#ifdef HAVE_HEIMDAL
+
+#include <krb5/hdb.h>
+#include <krb5/hdb_err.h>
+#include <krb5/der.h>
+
+#undef ALLOC
+#define ALLOC(X) do {					\
+		((X) = calloc(1, sizeof(*(X))));	\
+		if (!(X)) {				\
+			ret = ENOMEM;			\
+			goto done;			\
+		}					\
+	} while (0)
+
+krb5_creds *
+mint_ticket(krb5_context ctx, kadm5_handle hndl, char *princ, int lifetime,
+	    int renew_till)
+{
+	Ticket			 t;
+	EncTicketPart		 et;
+	unsigned char		*buf;
+	size_t			 buf_size;
+	size_t			 len = 0;
+	krb5_principal		 client;
+	krb5_principal		 krbtgt;
+	krb5_timestamp		 now;
+	krb5_error_code		 ret;
+	krb5_crypto		 crypto;
+	EncryptionKey		 skey;
+	int			 skvno;
+	krb5_creds		*creds;
+	EncryptionKey		 tmpkey;
+	kadm5_principal_ent_rec	 dprinc;
+	int			 i;
+	krb5_const_realm	 client_realm;
+	char			 croakstr[2048] = "";
+
+	K5BAIL(krb5_parse_name(ctx, princ, &client));
+
+	client_realm = krb5_principal_get_realm(ctx, client);
+	K5BAIL(krb5_make_principal(ctx, &krbtgt, client_realm, KRB5_TGS_NAME,
+	    client_realm, NULL));
+
+	K5BAIL(kadm5_get_principal(hndl, krbtgt, &dprinc, 
+	    KADM5_PRINCIPAL_NORMAL_MASK | KADM5_KEY_DATA));
+
+	for (i=0; i < dprinc.n_key_data; i++) {
+		krb5_key_data	*kd = &dprinc.key_data[i];
+
+		/* XXXrcd: this only works on Heimdal: */
+
+		/* XXXrcd: we should definitely search for the best
+		 *         key, i.e. highest kvno and correct etype.
+		 */
+
+		skvno = kd->key_data_kvno;
+		skey.keytype = kd->key_data_type[0];
+		skey.keyvalue.length = kd->key_data_length[0];
+		skey.keyvalue.data = malloc(skey.keyvalue.length);
+		memcpy(skey.keyvalue.data, kd->key_data_contents[0],
+		   skey.keyvalue.length);
+
+		break;
+	}
+
+	memset((void *)&et, 0x0, sizeof(et));
+
+	krb5_timeofday(ctx, &now);	/* XXXrcd: can't fail? */
+
+	et.flags.initial = 1;
+	K5BAIL(krb5_generate_random_keyblock(ctx, 17, &et.key));
+	copy_PrincipalName(&client->name, &et.cname);
+	copy_Realm(&client->realm, &et.crealm);
+	et.endtime = now + lifetime;
+	if (renew_till > 0) {
+		ALLOC(et.renew_till);
+		*et.renew_till = now + renew_till;
+		et.flags.renewable = 1;
+	}
+
+	K5BAIL(copy_EncryptionKey(&et.key, &tmpkey));
+
+	ASN1_MALLOC_ENCODE(EncTicketPart, buf, buf_size, &et, &len, ret);
+
+	K5BAIL(krb5_crypto_init(ctx, &skey, skey.keytype, &crypto));
+	K5BAIL(krb5_encrypt_EncryptedData(ctx, crypto, KRB5_KU_TICKET, buf,
+	    len, skvno, &t.enc_part));
+
+	free(buf);
+	krb5_crypto_destroy(ctx, crypto);
+
+	/* Fill in the rest of the ticket */
+
+	t.tkt_vno = 5;
+	copy_PrincipalName(&krbtgt->name, &t.sname);
+	copy_Realm(&krbtgt->realm, &t.realm);
+
+	ASN1_MALLOC_ENCODE(Ticket, buf, buf_size, &t, &len, ret);
+
+	/* Okay, now we have a ticket... */
+
+	creds = malloc(sizeof(*creds));
+	memset(creds, 0x0, sizeof(*creds));
+
+	K5BAIL(krb5_copy_principal(ctx, client, &creds->client));
+	K5BAIL(krb5_copy_principal(ctx, krbtgt, &creds->server));
+
+	creds->flags.b.initial = 1;
+
+	creds->times.authtime = now;
+	creds->times.starttime = now;
+	creds->times.endtime = now + lifetime;
+	if (renew_till) {
+		creds->flags.b.renewable = 1;
+		creds->times.renew_till = now + renew_till;
+	}
+
+	creds->ticket.length = len;
+	creds->ticket.data = buf;
+
+	ret = copy_EncryptionKey(&tmpkey, &creds->session);
+
+done:
+	if (ret)
+		croak(croakstr);
+
+	return creds;
+}
+
+#else /* HAVE_HEIMDAL */
+
+krb5_creds *
+mint_ticket(krb5_context ctx, kadm5_handle hndl, char *princ, int lifetime,
+	    int renew_till)
+{
+
+	croak("mint_ticket is not implemented for MIT Kerberos");
+}
+
+#endif

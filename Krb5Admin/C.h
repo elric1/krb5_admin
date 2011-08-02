@@ -14,6 +14,11 @@
 #define	KEYBLOCK_MAGIC(k)	KV5M_KEYBLOCK
 #define	KEYBLOCK_SET_MAGIC(k)
 
+#define CREDS_MAGIC(c)		1
+#define CREDS_SET_MAGIC(c)
+#define CREDS_KEYBLOCK(c)	((c).session)
+#define CREDS_FLAGS(c)		((c).flags.i)
+
 /* krb5_keytab_entry stuff */
 #define	KEYTABENT_KEYBLOCK(kte)	((kte).keyblock)
 
@@ -33,6 +38,11 @@
 #define	KEYBLOCK_CONTENTS(k)	((k).contents)
 #define	KEYBLOCK_MAGIC(k)	((k).magic)
 #define	KEYBLOCK_SET_MAGIC(k)	((k).magic = KV5M_KEYBLOCK)
+
+#define CREDS_MAGIC(c)		((c).magic)
+#define CREDS_SET_MAGIC(c)	((c).magic) = KV5M_CREDS)
+#define CREDS_KEYBLOCK(c)	((c).keyblock)
+#define CREDS_FLAGS(c)		((c).ticket_flags)
 
 #define	KEYTABENT_KEYBLOCK(kte) ((kte).key)
 
@@ -55,6 +65,11 @@
 #define	KEYTABENT_CONTENT_LEN(kte) KEYBLOCK_CONTENT_LEN(KEYTABENT_KEYBLOCK(kte))
 #define	KEYTABENT_CONTENTS(kte)	   KEYBLOCK_CONTENTS(KEYTABENT_KEYBLOCK(kte))
 
+#define CREDS_KEYBLOCK_SET_MAGIC(c)	KEYBLOCK_SET_MAGIC(CREDS_KEYBLOCK(c))
+#define CREDS_KEYBLOCK_ENCTYPE(c)	KEYBLOCK_ENCTYPE(CREDS_KEYBLOCK(c))
+#define CREDS_KEYBLOCK_CONTENTS(c)	KEYBLOCK_CONTENTS(CREDS_KEYBLOCK(c))
+#define CREDS_KEYBLOCK_CONTENT_LEN(c)	KEYBLOCK_CONTENT_LEN(CREDS_KEYBLOCK(c))
+
 key	  krb5_getkey(krb5_context, kadm5_handle, char *);
 void	  krb5_createkey(krb5_context, kadm5_handle, char *);
 key	  read_kt(krb5_context, char *);
@@ -64,17 +79,19 @@ void	  krb5_setkey(krb5_context, kadm5_handle, char *, int, krb5_keyblock *);
 void	  krb5_setpass(krb5_context, kadm5_handle, char *, char *);
 char	 *krb5_randpass(krb5_context, kadm5_handle, char *);
 void	  krb5_randkey(krb5_context, kadm5_handle, char *);
-char	 *mint_ticket(krb5_context, char *);
 char	**krb5_get_kdcs(krb5_context, char *);
 char	 *krb5_get_realm(krb5_context);
 char	**krb5_list_princs(krb5_context, kadm5_handle, char *);
 char	**krb5_list_pols(krb5_context, kadm5_handle, char *);
 
+void	  init_store_creds(krb5_context, char *, krb5_creds *);
 
-krb5_keyblock		get_kte(krb5_context, char *, char *);
-krb5_keyblock		krb5_make_a_key(krb5_context, krb5_enctype);
-kadm5_principal_ent_rec	krb5_query_princ(krb5_context, kadm5_handle, char *);
-kadm5_handle		krb5_get_kadm5_hndl(krb5_context, char *);
+krb5_creds		*mint_ticket(krb5_context, kadm5_handle, char *, int,
+				     int);
+krb5_keyblock		 get_kte(krb5_context, char *, char *);
+krb5_keyblock		 krb5_make_a_key(krb5_context, krb5_enctype);
+kadm5_principal_ent_rec	 krb5_query_princ(krb5_context, kadm5_handle, char *);
+kadm5_handle		 krb5_get_kadm5_hndl(krb5_context, char *);
 
 void	 krb5_modprinc(krb5_context, kadm5_handle, kadm5_principal_ent_rec,
 		       long);
