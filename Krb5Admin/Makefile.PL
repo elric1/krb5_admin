@@ -14,6 +14,8 @@ $args{OBJECT}	= 'C_wrap.o';
 
 $args{INC}	= "-I${KRB5_DIR}/include";
 
+$args{PM}	= { 'C.pm' => '$(INST_LIB)/Krb5Admin/C.pm' };
+
 if ($HAVE eq '-DHAVE_MIT') {
 	$args{INC}	.= " -I${KRB5_DIR}/include/krb5"		.
 			   " -I/var/tmp/krb5-1.4.4/src/include"          .
@@ -30,5 +32,6 @@ $args{clean} = { FILES => "C_wrap.c C.pm" };
 WriteMakefile(%args);
 
 sub MY::xs_c {
-	"C_wrap.c: C.c C.swig C.h \n	swig -perl5 ${HAVE} -const C.swig\n\n"
+	"C.pm: C_wrap.c\n\n" .
+	"C_wrap.c: C.c C.swig C.h \n	swig -perl5 ${HAVE} -const C.swig\n\n";
 }
