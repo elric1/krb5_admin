@@ -144,7 +144,7 @@ random_passwd(krb5_context ctx, int len)
 	krb5_error_code	 ret;
 	char		 croakstr[2048] = "";
 	char		*passwd = NULL;
-	char		*tmp;
+	unsigned char	*tmp;
 	int		 i;
 
 	passwd = malloc(len + 1);
@@ -730,9 +730,12 @@ krb5_get_kdcs(krb5_context ctx, char *realm)
 	krb5_error_code	  ret;
 	char		 *def_realm = NULL;
 	char		**hostlist = NULL;
-	char		**hlist;
 	char		  croakstr[2048] = "";
+
+#ifdef HAVE_HEIMDAL
+	char		**hlist;
 	char		 *tmp;
+#endif
 
 #ifdef HAVE_MIT
 	krb5_data	  realm_data;

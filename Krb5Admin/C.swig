@@ -38,13 +38,15 @@
 
 #define HV_FETCH_INTO_STRLEN(hv, lhs_str, lhs_len, rhs) do {		\
 		SV	**__hv_f_sv;					\
+		STRLEN	  __len;					\
 									\
 		HV_FETCH(hv, __hv_f_sv, rhs);				\
-		lhs_str = SvPV(*__hv_f_sv, lhs_len);			\
+		lhs_str = SvPV(*__hv_f_sv, __len);			\
+		lhs_len = __len;					\
 	} while (0)
 
 #define HV_STORE_INTERNAL_F(hv, key, sv) 				\
-	hv_store((hv), (key), strlen((key)), sv, 0)
+	(void)hv_store((hv), (key), strlen((key)), sv, 0)
 
 #define HV_STORE_PVN_LEN_F(hv, key, val, len) do {			\
 		if (val) 						\
