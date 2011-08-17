@@ -609,7 +609,7 @@ done:
 key
 read_kt(krb5_context ctx, char *ktname)
 {
-	krb5_keytab		 kt;
+	krb5_keytab		 kt = NULL;
 	krb5_keytab_entry	 e;
 	krb5_kt_cursor		 c;
 	key			 k;
@@ -653,6 +653,9 @@ read_kt(krb5_context ctx, char *ktname)
 done:
 
 	/* XXXrcd: clean up memory and stuff! */
+
+	if (kt)
+		krb5_kt_close(ctx, kt);
 
 	if (ret)
 		croak("%s", croakstr);
