@@ -1,11 +1,17 @@
-use strict;
-use warnings;
+#
+#
+
+use Config;
 use ExtUtils::MakeMaker;
 
-my $HAVE	= '-DHAVE_MIT';
-my $KRB5_DIR	= '/var/tmp/install';
-#my $HAVE	= '-DHAVE_HEIMDAL';
-#my $KRB5_DIR  = '/var/tmp/heim-install';
+use strict;
+use warnings;
+
+my $HAVE	 = '-DHAVE_MIT';
+#  $HAVE	.= ' -DHAVE_CTX_IN_KADM5';
+my $KRB5_DIR	 = '/var/tmp/install';
+#my $HAVE	 = '-DHAVE_HEIMDAL';
+#my $KRB5_DIR 	 = '/var/tmp/heim-install';
 
 my %args;
 
@@ -22,7 +28,7 @@ if ($HAVE eq '-DHAVE_MIT') {
 			   " -I/var/tmp/krb5-1.4.4/src/include/krb5";
 }
 
-$args{CCFLAGS}	= $HAVE;
+$args{CCFLAGS}	= $Config{ccflags} . " " . $HAVE;
 $args{LIBS}	= "-L${KRB5_DIR}/lib -Wl,-R${KRB5_DIR}/lib ";
 
 $args{LIBS} .= "-lkrb5 -lkadm5srv";
