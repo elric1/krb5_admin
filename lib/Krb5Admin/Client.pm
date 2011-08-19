@@ -30,6 +30,10 @@ sub new {
 		@servers = @$kdcs;
 	}
 
+	if (scalar(@servers) < 1) {
+		die "Cannot connect: could not find any KDCs.";
+	}
+
 	my $ahr = Kharon::Protocol::ArrayHash->new(banner => {version=>'2.0'});
 
 	my $pec;
