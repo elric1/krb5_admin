@@ -570,7 +570,7 @@ done:
 	int i = 0,len = 0;
 
 	/* Figure out how many elements we have */
-	while ($1[len])
+	while ($1 && $1[len])
 		len++;
 	svs = (SV **) malloc(len*sizeof(SV *));
 	for (i = 0; i < len ; i++) {
