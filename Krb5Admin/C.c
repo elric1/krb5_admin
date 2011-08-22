@@ -353,6 +353,8 @@ krb5_createkey(krb5_context ctx, kadm5_handle hndl, char *in)
 	for (i=0; i < sizeof(dummybuf); i++)
 		dummybuf[i] = 32 + (i % 80);
 
+	dummybuf[i] = '\0';
+
 	dprinc.principal = princ;
 	dprinc.attributes = KRB5_KDB_DISALLOW_ALL_TIX;
 	K5BAIL(kadm5_create_principal(hndl, &dprinc, KADM5_PRINCIPAL|
