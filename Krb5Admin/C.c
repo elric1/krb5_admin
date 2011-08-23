@@ -620,7 +620,7 @@ read_kt(krb5_context ctx, char *ktname)
 	krb5_error_code		 ret;
 	char			 croakstr[2048] = "";
 
-	if (kt)
+	if (ktname)
 		K5BAIL(krb5_kt_resolve(ctx, ktname, &kt));
 	else
 		K5BAIL(krb5_kt_default(ctx, &kt));
