@@ -58,21 +58,30 @@ sub new {
 
 eval mk_array_methods(undef, qw{
 	fetch
+	fetch_tickets
 	list
 	listpols
 	mquery
+	query_ticket
+	query_host
+	query_hostmap
 });
 
 eval mk_scalar_methods(undef, qw{
 	change
 	change_passwd
 	create
+	create_host
 	create_user
 	disable
 	enable
+	insert_hostmap
+	insert_ticket
 	master
 	query
 	remove
+	remove_hostmap
+	remove_ticket
 });
 
 1;
