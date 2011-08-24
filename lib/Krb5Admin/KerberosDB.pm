@@ -118,7 +118,10 @@ sub check_acl {
 
 	my $ctx = $self->{ctx};
         my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $subject);
-        my @pprinc = Krb5Admin::C::krb5_parse_name($ctx, $predicate[0]);
+        my @pprinc;
+	if (defined($predicate[0])) {
+		@pprinc = Krb5Admin::C::krb5_parse_name($ctx, $predicate[0]);
+	}
 
 	#
 	# The remaining logic is for krb5_keytab and is only to be used
