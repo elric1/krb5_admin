@@ -1,8 +1,5 @@
 #!/usr/pkg/bin/perl
 
-use lib 'blib/lib';
-use lib 'blib/arch';
-
 use IO::File;
 
 use Getopt::Std;
