@@ -14,7 +14,7 @@ use Krb5Admin::C;
 use strict;
 use warnings;
 
-our $KINIT    = '/ms/dist/kerberos/PROJ/mitkrb5/1.4-lib-prod/bin/kinit';
+our $KINIT    = '/usr/bin/kinit';
 
 sub new {
 	my ($isa, $princ, $opts, @servers) = @_;
