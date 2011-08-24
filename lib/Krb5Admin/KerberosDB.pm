@@ -302,7 +302,7 @@ sub create_user {
 	$self->check_acl('create_user', $name);
 	my $ret = Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
 			principal	=> $name,
-			policy		=> 'strong_human',
+			policy		=> 'default',
 			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR |
 					   REQUIRES_PWCHANGE,
 		}, $passwd);
