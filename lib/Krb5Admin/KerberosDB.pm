@@ -848,12 +848,17 @@ sub query_ticket {
 sub fetch_tickets {
 	my ($self, $host) = @_;
 	my $ctx = $self->{ctx};
+	my $hndl = $self->{hndl};
 
 	$self->check_acl('fetch_tickets', $host);
 
 	my $tix = $self->query_ticket(host => $host, expand => 1);
 
-	return { map { $_ => Krb5Admin::C::mint_ticket($ctx, $_) } @$tix };
+	# XXXrcd: make configurable...
+	return { map {
+		$_ => Krb5Admin::C::mint_ticket($ctx, $hndl, $_, 3600 * 24,
+		    3600 * 24 * 7 )
+	} @$tix };
 }
 
 sub remove_ticket {
