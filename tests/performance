@@ -14,7 +14,7 @@ sub serialise_test {
 	my $kmdb;
 	$kmdb = Krb5Admin::Client->new(undef, {}, @kdcs);
 
-	my $ret = $kmdb->query('dowdes');
+	my $ret = $kmdb->query('elric');
 }
 
 sub parallelise_test {
