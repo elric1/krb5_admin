@@ -44,16 +44,19 @@ $kmdb->init_db();
 # First, we create three hosts.
 
 testObjC("Create a host", $kmdb, [undef], 'create_host', 'foo.imrryr.org',
-	ip_addr => '1.1.1.1');
-testObjC("Query the host", $kmdb, [['foo.imrryr.org', '1.1.1.1']],
+	ip_addr => '1.1.1.1', realm => 'IMRRYR.ORG');
+testObjC("Query the host", $kmdb,
+	[{realm => 'IMRRYR.ORG', ip_addr => '1.1.1.1'}],
 	'query_host', name => 'foo.imrryr.org');
 testObjC("Create a host", $kmdb, [undef], 'create_host', 'bar.imrryr.org',
-	ip_addr => '2.2.2.2');
-testObjC("Query the host", $kmdb, [['bar.imrryr.org', '2.2.2.2']],
+	ip_addr => '2.2.2.2', realm => 'IMRRYR.ORG');
+testObjC("Query the host", $kmdb,
+	[{ip_addr => '2.2.2.2', realm => 'IMRRYR.ORG'}],
 	'query_host', name => 'bar.imrryr.org');
 testObjC("Create a host", $kmdb, [undef], 'create_host', 'baz.imrryr.org',
-	ip_addr => '3.3.3.3');
-testObjC("Query the host", $kmdb, [['baz.imrryr.org', '3.3.3.3']],
+	ip_addr => '3.3.3.3', realm => 'IMRRYR.ORG');
+testObjC("Query the host", $kmdb,
+	[{realm => 'IMRRYR.ORG', ip_addr => '3.3.3.3'}],
 	'query_host', name => 'baz.imrryr.org');
 
 #
@@ -61,8 +64,9 @@ testObjC("Query the host", $kmdb, [['baz.imrryr.org', '3.3.3.3']],
 # regular host but we'll use it differently below.
 
 testObjC("Create a host", $kmdb, [undef], 'create_host', 'logical.imrryr.org',
-	ip_addr => '3.3.3.3');
-testObjC("Query the logical host", $kmdb, [[qw{logical.imrryr.org 3.3.3.3}]],
+	ip_addr => '3.3.3.3', realm => 'IMRRYR.ORG');
+testObjC("Query the logical host", $kmdb,
+	[{ip_addr => '3.3.3.3', realm => 'IMRRYR.ORG'}],
 	'query_host', name => 'logical.imrryr.org');
 
 #
@@ -73,8 +77,7 @@ testObjC("Create a mapping", $kmdb, [undef], 'insert_hostmap',
 testObjC("Create a mapping", $kmdb, [undef], 'insert_hostmap',
 	qw/logical.imrryr.org baz.imrryr.org/);
 testObjC("Query the hostmap", $kmdb,
-	[[[qw/logical.imrryr.org bar.imrryr.org/],
-	    [qw/logical.imrryr.org baz.imrryr.org/]]],
+	[[qw/bar.imrryr.org baz.imrryr.org/]],
 	'query_hostmap', 'logical.imrryr.org');
 
 #
