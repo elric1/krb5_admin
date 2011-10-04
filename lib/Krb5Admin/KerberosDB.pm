@@ -234,9 +234,15 @@ sub init_db {
 	my $dbh = $self->{dbh};
 
 	$dbh->{AutoCommit} = 1;
+
+	#
+	# XXXrcd: the hosts structure should likely point to a list of
+	#         addresses or something more like that...
+
 	$dbh->do(qq{
 		CREATE TABLE hosts (
 			name		VARCHAR NOT NULL PRIMARY KEY,
+			realm		VARCHAR NOT NULL,
 			ip_addr		VARCHAR
 		)
 	});
@@ -261,6 +267,7 @@ sub init_db {
 			FOREIGN KEY (host) REFERENCES hosts(name)
 		)
 	});
+
 	$dbh->{AutoCommit} = 0;
 
 	return undef;
