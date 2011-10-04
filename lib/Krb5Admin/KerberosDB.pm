@@ -678,18 +678,17 @@ sub create_host {
 
 	$self->check_acl('create_host', $host, %args);
 
-	for my $key (keys %args) {
-		next if $key eq 'name';
-		next if $key eq 'ip_addr';
-
-		delete $args{$key};
-	}
+	my %fields = map { $_ => 1 } @{$field_desc{hosts}->{fields}};
 
 	my @args = ('name');
 	my @vals = ($host);
+	delete $fields{name};
 	for my $arg (keys %args) {
+		next if defined($fields{$arg}) && !$fields{$arg};
+
 		push(@args, $arg);
 		push(@vals, $args{$arg});
+		delete $fields{$arg};
 	}
 
 	my $stmt = "INSERT INTO hosts(" . join(',', @args) . ")" .
