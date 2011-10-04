@@ -825,7 +825,7 @@ sub insert_ticket {
 
 	$self->{dbh}->commit();
 
-	return;
+	return undef;
 }
 
 sub query_ticket {
@@ -977,7 +977,7 @@ sub remove_ticket {
 
 	$self->{dbh}->commit();
 
-	return;
+	return undef;
 }
 
 1;
