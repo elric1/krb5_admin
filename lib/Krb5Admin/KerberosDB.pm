@@ -554,6 +554,120 @@ sub _sql_command {
 	}
 	return $sth;
 }
+our %field_desc = (
+	hosts		=> {
+		pkey		=> 'name',
+		uniq		=> [qw/name ip_addr/],
+		fields		=> [qw/name realm ip_addr/],
+		wontgrow	=> 0,
+	},
+	hostmap		=> {
+		pkey		=> undef,
+		uniq		=> [],
+		fields		=> [qw/logical physical/],
+		wontgrow	=> 1,
+	},
+);
+
+sub generic_query {
+	my ($self, $table, %query) = @_;
+
+	#
+	# XXXrcd: validation should be done.
+
+	my @where;
+	my @bindv;
+
+	my $key_field = $field_desc{$table}->{fields}->[0];
+	my %fields = map { $_ => 1 } @{$field_desc{$table}->{fields}};
+
+	my %tmpquery = %query;
+	for my $field (keys %fields) {
+		next if !exists($query{$field});
+
+		push(@where, "$field = ?");
+		push(@bindv, $query{$field});
+		delete $fields{$field};
+		delete $tmpquery{$field};
+	}
+
+	if (scalar(keys %tmpquery) > 0) {
+		die [500, "Fields: " . join(',', keys %tmpquery) .
+		    " do not exit in $table table"];
+	}
+
+	my $where = join( ' AND ', @where );
+	$where = "WHERE $where" if length($where) > 0;
+
+	my $fields;
+	if (scalar(keys %fields) > 0) {
+		my %tmp_fields = %fields;
+
+		$tmp_fields{$key_field} = 1;
+		$fields = join(',', keys %tmp_fields);
+	} else {
+		$fields = "COUNT($key_field)";
+	}
+
+	my $stmt = "SELECT $fields FROM $table $where";
+
+	my $sth = $self->_sql_command($stmt, @bindv);
+
+	#
+	# We now reformat the result to be comprised of the simplest
+	# data structure we can imagine that represents the query
+	# results:
+
+	if (scalar(keys %fields) == 0) {
+		return $sth->fetch()->[0];
+	}
+
+	my $results = $sth->fetchall_arrayref({});
+
+	my $ret;
+	if (scalar(keys %fields) == 1 && $field_desc{$table}->{wontgrow}) {
+		$fields = join('', keys %fields);
+		for my $result (@$results) {
+			push(@$ret, $result->{$fields});
+		}
+
+		return $ret;
+	}
+
+	my $is_uniq = grep {$key_field eq $_} @{$field_desc{$table}->{uniq}};
+
+	my $single_result = 0;
+	if (scalar(keys %fields) == 2 && $field_desc{$table}->{wontgrow}) {
+		$single_result = 1;
+	}
+
+	for my $result (@$results) {
+		my $key = $result->{$key_field};
+
+		delete $result->{$key_field};
+
+		if ($single_result) {
+			my $result_key = join('', keys %$result);
+			$result = $result->{$result_key};
+		}
+
+		if ($is_uniq) {
+			$ret->{$key} = $result;
+		} else {
+			push(@{$ret->{$key}}, $result);
+		}
+	}
+
+	if ($is_uniq && grep {$key_field eq $_} (keys %query)) {
+		#
+		# this should mean that we get only a single
+		# element in our resultant hashref.
+
+		return $ret->{$query{$key_field}};
+	}
+
+	return $ret;
+}
 
 sub create_host {
 	my ($self, $host, %args) = @_;
@@ -589,37 +703,7 @@ sub create_host {
 sub query_host {
 	my ($self, %query) = @_;
 
-	#
-	# XXXrcd: validation should be done.
-
-	my @where;
-	my @bindv;
-
-	if (exists($query{name})) {
-		push(@where, "name = ?");
-		push(@bindv, $query{name});
-	}
-
-	my $where = join( ' AND ', @where );
-	$where = "WHERE $where" if length($where) > 0;
-
-	my $fields = "name, ip_addr";
-	my $from   = "hosts";
-
-	my $stmt = "SELECT $fields FROM $from $where";
-
-	my $sth = $self->_sql_command($stmt, @bindv);
-
-	#
-	# We now reformat the result to be comprised of the simplest
-	# data structure we can imagine that represents the query
-	# results:
-
-	if (exists($query{name})) {
-		return $sth->fetch();
-	}
-
-	return $sth->fetchall_hashref('name');
+	return $self->generic_query('hosts', %query);
 }
 
 sub remove_host {
@@ -672,18 +756,13 @@ sub insert_hostmap {
 sub query_hostmap {
 	my ($self, $host) = @_;
 
-	if (defined($host)) {
-		require_scalar("insert_hostmap <logical> <physical>", 1, $host);
-	}
-
 	$self->check_acl('query_hostmap', $host);
 
-	my $stmt = qq{SELECT logical, physical FROM hostmap
-			WHERE ? IN ('', logical, physical)};
+	if (defined($host)) {
+		return $self->generic_query('hostmap', logical => $host);
+	}
 
-	my $sth = $self->_sql_command($stmt, defined($host)?$host:'');
-
-	$sth->fetchall_arrayref();
+	return $self->generic_query('hostmap');
 }
 
 sub remove_hostmap {
