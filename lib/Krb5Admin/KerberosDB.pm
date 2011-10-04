@@ -548,7 +548,7 @@ sub _sql_command {
 	};
 
 	if ($@) {
-	print STDERR "Rollback...\n"	if $self->{debug};
+		print STDERR "Rollback...\n"	if $self->{debug};
 		$dbh->rollback();
 		die $@;
 	}
