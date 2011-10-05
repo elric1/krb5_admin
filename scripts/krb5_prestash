@@ -1,0 +1,191 @@
+#!/usr/pkg/bin/perl
+#
+
+use Getopt::Std;
+
+use Krb5Admin::C;
+use Krb5Admin::Client;
+use Krb5Admin::KerberosDB;
+
+use warnings;
+use strict;
+
+my $verbose = 0;
+
+our $expand_srvloc = 0;
+
+my $vfmt = "   %- 16.16s %- 30.30s %s\n";
+
+sub warning {
+	my ($format, @args) = @_;
+        my $num = 50;
+	my $text = sprintf($format, @args);
+        for my $line (split(/(.{$num}.+?)\s/, $text)) {
+		print STDERR "WARNING: $line\n"	if $line ne "";
+	}
+}
+
+sub fetch {
+	my ($kmdb) = @_;
+	my $tix_dir = '/var/spool/tickets';
+
+	my $tix = $kmdb->fetch_tickets('foo.imrryr.org');
+
+	my $ctx = Krb5Admin::C::krb5_init_context();
+
+	for my $proid (keys %$tix) {
+		my ($name, $passwd, $uid, $gid) = getpwnam($proid);
+
+		if (!defined($name) || $name ne $proid) {
+			# XXXrcd: print a warning---in a better way.
+			warning("Tickets sent for non-existent proid %s.  " .
+			    "Skipping", $proid);
+			next;
+		}
+
+		mkdir($tix_dir);
+		chmod(0755, $tix_dir);
+		my $ccache_fn = "$tix_dir/$proid";
+		my $ccache = "FILE:$ccache_fn";
+
+		Krb5Admin::C::init_store_creds($ctx, $ccache, $tix->{$proid});
+
+		chown($uid, 0, $ccache_fn);
+	}
+}
+
+sub query {
+	my ($kmdb, $type, $arg) = @_;
+
+	$type = 'principal'	if defined($type) && $type eq 'proid';
+
+	if (!defined($type) || ($type ne 'host' && $type ne 'principal')) {
+		die "Must supply a type of either host or proid\n";
+	}
+
+	my %args;
+	$args{expand} = 1	if $expand_srvloc;
+	$args{verbose} = 1	if $verbose;
+	$args{$type} = $arg	if defined($type);
+
+	my $out = $kmdb->query_ticket(%args);
+
+	if (!$verbose && defined($type)) {
+		print map { "$_\n" } @$out;
+		return;
+	}
+
+	if (!$verbose) {
+		for my $p (keys %$out) {
+			print $p . " " . join(' ', @{$out->{$p}}) . "\n";
+		}
+		return;
+	}
+
+	printf($vfmt, "Proid", "Configured", "Target");
+	printf($vfmt, "-----", "----------", "------");
+
+	for my $p (keys %$out) {
+		for my $host (@{$out->{$p}}) {
+			printf($vfmt, $p, @$host)	if @$host == 2;
+			printf($vfmt, $p, '', @$host)	if @$host == 1;
+		}
+	}
+}
+
+sub insert {
+	my ($kmdb, $proid, @hosts) = @_;
+
+	# XXXrcd: put in the warnings and FQDNification?  Maybe.
+
+	$kmdb->insert_ticket($proid, @hosts);
+}
+
+sub remove {
+	my ($kmdb, $proid, @hosts) = @_;
+
+	$kmdb->remove_ticket($proid, @hosts);
+}
+
+#
+# Usage
+#
+
+sub usage {
+	print STDERR "usage: krb5_prestash [-Elv] [-h <hostspec>] <command>\n";
+	print STDERR "    where <command> is:\n\n";
+
+	print STDERR "\tinsert <proid>[\@realm] <host>[ <host>]*\n";
+	print STDERR "\tremove <proid>[\@realm] <host>[ <host>]*\n";
+	print STDERR "\tquery [\"proid\"|\"host\"] [<proid>[\@realm]|<host>]\n";
+	print STDERR "\tfetch\n";
+
+	print STDERR "\n    Synonyms: add = insert, delete = remove\n";
+	exit(1);
+}
+
+#
+# Main
+#
+
+# Parse arguments
+
+my %cmds = (
+	fetch	=> \&fetch,
+	insert	=> \&insert,
+	add	=> \&insert,
+	remove	=> \&remove,
+	del	=> \&remove,
+	query	=> \&query,
+);
+
+our %opts;
+getopts('Eh:lv', \%opts);
+
+my @kdcs = ();
+@kdcs = ($opts{h}) if defined($opts{h});
+$expand_srvloc = 1 if defined($opts{E});
+$expand_srvloc = 1 if defined($opts{v});	# -v ==> -E
+$verbose = 1       if defined($opts{v});
+
+my $command = shift @ARGV;
+if (!defined($command)) {
+	usage();
+}
+
+#
+# BROKEN:
+
+my $cmd = $cmds{$command};
+if (!defined($cmd)) {
+	print STDERR "No such command: $command.\n\n";
+	usage();
+}
+
+eval {
+	my $kmdb;
+	if (defined($opts{l})) {
+		$kmdb = Krb5Admin::KerberosDB->new(local => 1);
+	} else {
+		$kmdb = Krb5Admin::Client->new(undef, {}, @kdcs);
+	}
+	&$cmd($kmdb, @ARGV);
+};
+
+if ($@) {
+	print STDERR "ERROR: ";
+	if (ref($@) eq 'ARRAY') {
+		print STDERR join(' ', @{$@});
+		print STDERR "\n";
+		exit(1);
+	}
+	if (ref($@) eq '' || $@->isa('Error')) {
+		print STDERR $@;
+		print STDERR "\n";
+		exit(1);
+	}
+	print STDERR "Can't display error.\n";
+	exit(1);
+}
+
+exit(0);
