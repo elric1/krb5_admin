@@ -84,10 +84,13 @@ testObjC("Query the hostmap", $kmdb,
 # And finally, the prestashed tickets.  First, we insert a reasonable list
 # of prestashed tickets:
 
-testObjC("Insert a ticket", $kmdb, [], qw/insert_ticket proid1 foo.imrryr.org/);
-testObjC("Insert a ticket", $kmdb, [], qw/insert_ticket proid2 bar.imrryr.org/);
-testObjC("Insert a ticket", $kmdb, [], qw/insert_ticket proid3 baz.imrryr.org/);
-testObjC("Insert a ticket", $kmdb, [], qw/insert_ticket proid4
+testObjC("Insert a ticket", $kmdb, [undef], qw/insert_ticket proid1
+	foo.imrryr.org/);
+testObjC("Insert a ticket", $kmdb, [undef], qw/insert_ticket proid2
+	bar.imrryr.org/);
+testObjC("Insert a ticket", $kmdb, [undef], qw/insert_ticket proid3
+	baz.imrryr.org/);
+testObjC("Insert a ticket", $kmdb, [undef], qw/insert_ticket proid4
 	logical.imrryr.org/);
 
 #
