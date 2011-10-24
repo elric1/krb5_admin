@@ -47,7 +47,7 @@ sub new {
 		die "can't use host principal?";
 	}
 
-	$pec->SetServerDefaults({KncService=>'keytab', PeerPort=>$port});
+	$pec->SetServerDefaults({KncService=>'krb5_admin', PeerPort=>$port});
 	if (!$pec->Connect(@servers)) {
 		die [500, qq{Can't connect to any servers}];
 	}
