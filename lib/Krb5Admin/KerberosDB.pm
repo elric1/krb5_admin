@@ -95,7 +95,7 @@ sub check_acl {
 		die [502, "Modification of $predicate[0] prohibited."];
 	}
 
-	return if $self->{local};
+	return if defined($self->{local}) && $self->{local};
 
 	#
 	# First we provide an Kharon file based entitlement system which
