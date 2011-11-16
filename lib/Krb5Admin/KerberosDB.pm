@@ -119,6 +119,20 @@ sub check_acl {
 
 	my $ctx = $self->{ctx};
 	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $subject);
+
+	if ($verb eq 'fetch_tickets') {
+		die [502, "Permission denied"]	if $sprinc[1] ne 'host';
+		die [502, "Permission denied"]	if $sprinc[2] ne $predicate[0];
+
+		# Now, we must also check to ensure that the client is
+		# in the correct realm for the host that we have in our DB.
+
+		my $host = $self->query_host(name=>$predicate[0]);
+		if (!defined($host) || $host->{realm} ne $sprinc[0]) {
+			die [502, "Permission denied"];
+		}
+        }
+
 	my @pprinc;
 	if (defined($predicate[0])) {
 		@pprinc = Krb5Admin::C::krb5_parse_name($ctx, $predicate[0]);
