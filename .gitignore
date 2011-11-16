@@ -1,0 +1,13 @@
+Krb5Admin/C.bs
+Krb5Admin/C.pm
+Krb5Admin/C_wrap.c
+Krb5Admin/C_wrap.o
+Krb5Admin/MYMETA.yml
+Krb5Admin/Makefile
+Krb5Admin/Makefile.old
+Krb5Admin/pm_to_blib
+MYMETA.yml
+Makefile
+Makefile.old
+blib/
+pm_to_blib
