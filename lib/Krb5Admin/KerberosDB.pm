@@ -103,13 +103,13 @@ sub check_acl {
 
 	return if $acl->check($verb);
 
-        #
-        # We also need creds.  This is mainly for my use running this
-        # by hand, but be that as it may...
+	#
+	# We also need creds.  This is mainly for my use running this
+	# by hand, but be that as it may...
 
-        if (!defined($subject)) {
-                die [502, "Permission denied: not an authenticated user"];
-        }
+	if (!defined($subject)) {
+		die [502, "Permission denied: not an authenticated user"];
+	}
 
 	#
 	# More interesting sitebased rules can go here.  Only put rules
@@ -117,8 +117,8 @@ sub check_acl {
 	# framework.
 
 	my $ctx = $self->{ctx};
-        my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $subject);
-        my @pprinc;
+	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $subject);
+	my @pprinc;
 	if (defined($predicate[0])) {
 		@pprinc = Krb5Admin::C::krb5_parse_name($ctx, $predicate[0]);
 	}
@@ -130,11 +130,11 @@ sub check_acl {
 	#
 	# XXXrcd: right now check_acl:
 	#
-	#       1.  assumes that $predicate[0] is the object,
+	#	1.  assumes that $predicate[0] is the object,
 	#
-	#       2.  doesn't differentiate between verbs,
+	#	2.  doesn't differentiate between verbs,
 	#
-	#       3.  allows host/foo@REALM access to <service>/foo@REALM,
+	#	3.  allows host/foo@REALM access to <service>/foo@REALM,
 
 	if ($verb ne 'fetch' && $verb ne 'create' && $verb ne 'change') {
 		die [502, "Permission denied"];
@@ -159,11 +159,11 @@ sub check_acl {
 			$denied .= "]";
 		}
 	} else {
-		$denied = 'realm'       if $sprinc[0] ne $pprinc[0];
-		$denied = 'host'        if $sprinc[1] ne 'host';
-		$denied = 'instance'    if $sprinc[2] ne $pprinc[2];
-		$denied = 'no admin'    if $pprinc[2] eq 'admin';
-		$denied = 'no root'     if $pprinc[2] eq 'root';
+		$denied = 'realm'	if $sprinc[0] ne $pprinc[0];
+		$denied = 'host'	if $sprinc[1] ne 'host';
+		$denied = 'instance'	if $sprinc[2] ne $pprinc[2];
+		$denied = 'no admin'	if $pprinc[2] eq 'admin';
+		$denied = 'no root'	if $pprinc[2] eq 'root';
 	}
 
 	if (defined($denied)) {
@@ -205,11 +205,11 @@ sub new {
 
 	$self{debug}	= $args{debug};
 	$self{local}	= $args{local};
-	$self{client}   = $args{client};
-	$self{addr}     = $args{addr};
+	$self{client}	= $args{client};
+	$self{addr}	= $args{addr};
 	$self{hostname} = reverse_the($args{addr});
-	$self{ctx}      = $ctx;
-	$self{hndl}     = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, $dbname);
+	$self{ctx}	= $ctx;
+	$self{hndl}	= Krb5Admin::C::krb5_get_kadm5_hndl($ctx, $dbname);
 	$self{acl}	= $acl;
 	$self{dbh}	= $dbh;
 
@@ -237,7 +237,7 @@ sub init_db {
 
 	#
 	# XXXrcd: the hosts structure should likely point to a list of
-	#         addresses or something more like that...
+	#	  addresses or something more like that...
 
 	$dbh->do(qq{
 		CREATE TABLE hosts (
@@ -445,8 +445,8 @@ sub mquery {
 	my @ret;
 	for my $i (map { $self->list($_) } (@args)) {
 		# XXXrcd: we ignore errors under the presumption that
-		#         the principal may have been deleted in the
-		#         middle of the operation...
+		#	  the principal may have been deleted in the
+		#	  middle of the operation...
 
 		eval { push(@ret, $self->query($i)); };
 	}
@@ -721,7 +721,7 @@ sub remove_host {
 	while (@hosts) {
 		my @curhosts = splice(@hosts, 0, 500);
 
-                $self->_sql_command("DELETE FROM hosts WHERE "
+		$self->_sql_command("DELETE FROM hosts WHERE "
 		    . join(' OR ', map {"name=?"} @curhosts), @curhosts);
 
 		#
@@ -800,27 +800,27 @@ sub insert_ticket {
 	$self->check_acl('insert_ticket', $princ, @hosts);
 
 	for $host (map {lc($_)} @hosts) {
-                # XXXrcd: validate_hostname($host);
+		# XXXrcd: validate_hostname($host);
 
 		my $stmt = qq{
 			INSERT INTO prestashed (principal, host) VALUES (?, ?)
 		};
 
-                my ($sth, $str) = $self->_sql_command($stmt, $princ, $host);
+		my ($sth, $str) = $self->_sql_command($stmt, $princ, $host);
 
-#                if (!$sth || ($str =~ /unique/)) {
-#                        die [500, 'tickets already configured for prestash'];
-#                }
+#		if (!$sth || ($str =~ /unique/)) {
+#			die [500, 'tickets already configured for prestash'];
+#		}
 
-                ($sth, $str) = $self->_sql_command(
-                        "SELECT count(principal) FROM prestashed" .
-                        " WHERE host = ?", $host);
+		($sth, $str) = $self->_sql_command(
+			"SELECT count(principal) FROM prestashed" .
+			" WHERE host = ?", $host);
 
-                my ($count) = $sth->fetchrow_array();
-                die [500, 'limit exceeded: you can only prestash ' .
-                          MAX_TIX_PER_HOST .
-                          ' tickets on a single host or service address']
-                        if ($count > MAX_TIX_PER_HOST);
+		my ($count) = $sth->fetchrow_array();
+		die [500, 'limit exceeded: you can only prestash ' .
+			  MAX_TIX_PER_HOST .
+			  ' tickets on a single host or service address']
+			if ($count > MAX_TIX_PER_HOST);
 	}
 
 	$self->{dbh}->commit();
@@ -863,7 +863,7 @@ sub query_ticket {
 			LEFT JOIN hostmap ON prestashed.host = hostmap.logical
 		};
 
-		$fields  =  qq{
+		$fields = qq{
 			prestashed.principal	AS principal,
 			prestashed.host		AS configured,
 			hostmap.physical	AS target
@@ -965,8 +965,8 @@ sub remove_ticket {
 	while (@hosts) {
 		my @curhosts = splice(@hosts, 0, 500);
 
-                $self->_sql_command(qq{
-                        DELETE FROM prestashed WHERE principal = ? AND (
+		$self->_sql_command(qq{
+			DELETE FROM prestashed WHERE principal = ? AND (
 		    } . join(' OR ', map {"host=?"} @curhosts) . qq{
 			)
 		    }, $princ, @curhosts);
