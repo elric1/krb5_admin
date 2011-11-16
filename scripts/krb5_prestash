@@ -29,7 +29,7 @@ sub fetch {
 	my ($kmdb) = @_;
 	my $tix_dir = '/var/spool/tickets';
 
-	my $tix = $kmdb->fetch_tickets('foo.imrryr.org');
+	my $tix = $kmdb->fetch_tickets();
 
 	my $ctx = Krb5Admin::C::krb5_init_context();
 

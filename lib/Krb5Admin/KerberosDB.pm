@@ -4,6 +4,7 @@
 package Krb5Admin::KerberosDB;
 
 use DBI;
+use Sys::Hostname;
 use Sys::Syslog;
 
 use Krb5Admin::Utils qw/reverse_the host_list/;
@@ -934,6 +935,19 @@ sub fetch_tickets {
 	my ($self, $host) = @_;
 	my $ctx = $self->{ctx};
 	my $hndl = $self->{hndl};
+
+	if (!defined($host) && $self->{local}) {
+		$host = hostname();
+	}
+
+	if (!defined($host)) {
+		my @sprinc = Krb5Admin::C::krb5_parse_name($ctx,
+		    $self->{client});
+
+		if ($sprinc[1] eq 'host') {
+			$host = $sprinc[2];
+		}
+	}
 
 	$self->check_acl('fetch_tickets', $host);
 
