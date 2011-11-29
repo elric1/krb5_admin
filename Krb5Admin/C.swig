@@ -89,7 +89,24 @@
 
 %typemap(out) krb5_error_code {
 	if ($1) {
+#ifdef HAVE_HEIMDAL 
+		krb5_error_code	 ret = $1;
+		krb5_context	 nullctx = 0;
+		char		 croakstr[2048] = "";
+		const char	*tmp; 
+
+		tmp = krb5_get_error_message(nullctx, ret);
+		if (tmp) {
+			snprintf(croakstr, sizeof(croakstr), "%s", tmp);
+			krb5_free_error_message(nullctx, tmp);
+		} else {
+			snprintf(croakstr, sizeof(croakstr),
+			"unknown error: %ld", (long)ret);
+		}
+		croak(croakstr);
+#else
 		croak(error_message($1));
+#endif
 	}
 }
 
