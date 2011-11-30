@@ -70,6 +70,22 @@
 #define CREDS_KEYBLOCK_CONTENTS(c)	KEYBLOCK_CONTENTS(CREDS_KEYBLOCK(c))
 #define CREDS_KEYBLOCK_CONTENT_LEN(c)	KEYBLOCK_CONTENT_LEN(CREDS_KEYBLOCK(c))
 
+/* And deal with some function differences */
+
+#ifdef HAVE_CTX_IN_KADM5
+#define KADM5_INIT_WITH_PASSWORD(ctx, princ, params, hndl)		\
+		kadm5_init_with_password((ctx), (princstr), NULL,	\
+		    NULL, (params), KADM5_STRUCT_VERSION,		\
+		    KADM5_API_VERSION_2, NULL, (hndl))
+#else
+#define KADM5_INIT_WITH_PASSWORD(ctx, princ, params, hndl)		\
+		kadm5_init_with_password((princstr), NULL,		\
+		    NULL, (params), KADM5_STRUCT_VERSION,		\
+		    KADM5_API_VERSION_2, (hndl))
+#endif
+
+/* And finally the function prototypes */
+
 key	  krb5_getkey(krb5_context, kadm5_handle, char *);
 void	  krb5_createkey(krb5_context, kadm5_handle, char *);
 key	  read_kt(krb5_context, char *);

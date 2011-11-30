@@ -84,14 +84,7 @@ krb5_get_kadm5_hndl(krb5_context ctx, char *dbname)
 		params.dbname = dbname;
 	}
 
-#ifdef HAVE_CTX_IN_KADM5
-	K5BAIL(kadm5_init_with_password(ctx, (char *)princstr, NULL, NULL,
-	    &params, KADM5_STRUCT_VERSION, KADM5_API_VERSION_2, NULL,
-	    &hndl));
-#else
-	K5BAIL(kadm5_init_with_password((char *)princstr, NULL, NULL, &params,
-	    KADM5_STRUCT_VERSION, KADM5_API_VERSION_2, &hndl));
-#endif /* HAVE_CTX_IN_KADM5 */
+	K5BAIL(KADM5_INIT_WITH_PASSWORD(ctx, (char *)princstr, &params, &hndl));
 
 done:
 	if (ret)
