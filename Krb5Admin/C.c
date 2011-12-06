@@ -247,6 +247,131 @@ done:
 		croak("%s", croakstr);
 }
 
+static char *
+encode_curve_string(uint8_t *key)
+{
+	int	 i;
+	char	*result;
+
+	result = malloc(65);
+	if (!result)
+		return NULL;
+
+	for (i=0; i < 32; i++)
+		sprintf(&result[2*i], "%02x", key[i]);
+
+	return result;
+}
+
+static char **
+encode_curve_strings(uint8_t *secret, uint8_t *public)
+{
+	char	**result;
+
+	result = calloc(3, sizeof(*result));
+	if (!result)
+		return NULL;
+
+	result[0] = encode_curve_string(secret);
+	result[1] = encode_curve_string(public);
+
+	if (!result[0] || !result[1]) {
+		free(result[0]);
+		free(result[1]);
+		return NULL;
+	}
+
+	return result;
+}
+
+static void
+decode_curve_string(uint8_t *key, char *keystr)
+{
+	int	i;
+	char	c;
+
+	for (i=0; i < 32; i++) {
+		c = keystr[2*i];
+		if ('0' <= c && c <= '9')
+			c -= '0';
+		else
+			c = c - 'a' + 10;
+		key[i] = (c & 0xf) << 4;
+
+		c = keystr[2*i + 1];
+		if ('0' <= c && c <= '9')
+			c -= '0';
+		else
+			c = c - 'a' + 10;
+		key[i] |= (c & 0xf);
+	}
+}
+
+char **
+curve25519_pass1(krb5_context ctx)
+{
+	krb5_keyblock	  key;
+	krb5_error_code	  ret;
+	uint8_t		  basepoint[32] = {9};
+	uint8_t		  mypublic[32];
+	uint8_t		 *mysecret;
+	char		**result;
+	char		  croakstr[2048] = "";
+	int		  i;
+
+	/*
+	 * get 32 bytes of randomness for mysecret by generating an
+	 * 256 bit AES key.
+	 */
+	K5BAIL(krb5_c_make_random_key(ctx, 18, &key));
+
+	mysecret = KEYBLOCK_CONTENTS(key);
+
+	mysecret[0] &= 248;
+	mysecret[31] &= 127;
+	mysecret[31] |= 64;
+
+	curve25519_donna(mypublic, mysecret, basepoint);
+
+	result = encode_curve_strings(mysecret, mypublic);
+
+done:
+	if (ret)
+		croak("%s", croakstr);
+
+	krb5_free_keyblock_contents(ctx, &key);
+
+	if (!result)
+		croak("malloc failed");
+
+	return result;
+}
+
+char *
+curve25519_pass2(krb5_context ctx, char *mysecretstr, char *theirpublicstr)
+{
+	uint8_t	 shared_key[32];
+	uint8_t	 mysecret[32];
+	uint8_t	 theirpublic[32];
+	char	*ret;
+	int	 i;
+
+	if (strlen(mysecretstr) != 64 || strlen(theirpublicstr) != 64)
+		croak("Strings must be 64 characters");
+
+	decode_curve_string(mysecret, mysecretstr);
+	decode_curve_string(theirpublic, theirpublicstr);
+
+	curve25519_donna(shared_key, mysecret, theirpublic);
+
+	ret = encode_curve_string(shared_key);
+
+	if (!ret)
+		croak("malloc(3) failed");
+
+	return ret;
+}
+
 key
 krb5_getkey(krb5_context ctx, kadm5_handle hndl, char *in)
 {

@@ -16,7 +16,7 @@ my $KRB5_DIR	 = '/var/tmp/install';
 my %args;
 
 $args{NAME}	= 'Krb5Admin::C';
-$args{OBJECT}	= 'C_wrap.o';
+$args{OBJECT}	= 'C_wrap.o curve25519-donna.o';
 
 $args{INC}	= "-I${KRB5_DIR}/include";
 
