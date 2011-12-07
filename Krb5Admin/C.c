@@ -604,7 +604,8 @@ done:
 }
 
 char *
-krb5_randpass(krb5_context ctx, kadm5_handle hndl, char *in)
+krb5_randpass(krb5_context ctx, kadm5_handle hndl, char *in, int n_ks_tuple,
+	      krb5_key_salt_tuple *ks_tuple)
 {
 	krb5_principal		 princ = NULL;
 	kadm5_ret_t		 ret;
@@ -613,7 +614,8 @@ krb5_randpass(krb5_context ctx, kadm5_handle hndl, char *in)
 
 	passwd = random_passwd(ctx, PROID_PASSWD_SIZE);
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
-	K5BAIL(kadm5_chpass_principal_3(hndl, princ, FALSE, 0, NULL, passwd));
+	K5BAIL(kadm5_chpass_principal_3(hndl, princ, FALSE, n_ks_tuple,
+	    ks_tuple, passwd));
 
 done:
 	if (princ)
@@ -627,14 +629,16 @@ done:
 }
 
 void
-krb5_setpass(krb5_context ctx, kadm5_handle hndl, char *in, char *passwd)
+krb5_setpass(krb5_context ctx, kadm5_handle hndl, char *in, int n_ks_tuple,
+	     krb5_key_salt_tuple *ks_tuple, char *passwd)
 {
 	krb5_principal		princ = NULL;
 	kadm5_ret_t		ret;
 	char			croakstr[2048] = "";
 
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
-	K5BAIL(kadm5_chpass_principal_3(hndl, princ, FALSE, 0, NULL, passwd));
+	K5BAIL(kadm5_chpass_principal_3(hndl, princ, FALSE, n_ks_tuple,
+	    ks_tuple, passwd));
 
 done:
 	if (princ)

@@ -30,6 +30,8 @@
 
 #define	STRING_TO_ENCTYPE(s, e) krb5_string_to_enctype(NULL, s, e)
 
+#define SALTTYPE_NORMAL		KRB5_PW_SALT
+
 #else
 #ifdef HAVE_MIT
 
@@ -53,6 +55,8 @@
 #define	PRINC_COMP_LEN(ctx, p, n) (krb5_princ_component(ctx, p, n)->length)
 
 #define	STRING_TO_ENCTYPE(s, e) krb5_string_to_enctype(s, e)
+
+#define SALTTYPE_NORMAL		KRB5_KDB_SALTTYPE_NORMAL
 
 #else
 #error "Must define either HAVE_HEIMDAL or HAVE_MIT"
@@ -92,8 +96,10 @@ key	  read_kt(krb5_context, char *);
 void	  write_kt(krb5_context, char *, krb5_keytab_entry *);
 void	  kt_remove_entry(krb5_context, char *, krb5_keytab_entry *);
 void	  krb5_setkey(krb5_context, kadm5_handle, char *, int, krb5_keyblock *);
-void	  krb5_setpass(krb5_context, kadm5_handle, char *, char *);
-char	 *krb5_randpass(krb5_context, kadm5_handle, char *);
+void	  krb5_setpass(krb5_context, kadm5_handle, char *, int,
+		       krb5_key_salt_tuple *, char *);
+char	 *krb5_randpass(krb5_context, kadm5_handle, char *, int,
+			krb5_key_salt_tuple *);
 void	  krb5_randkey(krb5_context, kadm5_handle, char *);
 char	**krb5_get_kdcs(krb5_context, char *);
 char	 *krb5_get_realm(krb5_context);

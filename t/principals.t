@@ -161,7 +161,7 @@ eval {
 		}, undef);
 
 	$passwd = 'Ff1passThePolicy--%!';
-	$passwd = Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, $passwd);
+	$passwd = Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, [], $passwd);
 
 	#
 	# XXXrcd: test the passwd was appropriately set!
@@ -183,7 +183,7 @@ eval {
 			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR,
 		}, undef);
 
-	$passwd = Krb5Admin::C::krb5_randpass($ctx, $hndl, $princ);
+	$passwd = Krb5Admin::C::krb5_randpass($ctx, $hndl, $princ, []);
 
 	#
 	# XXXrcd: test the passwd was appropriately set!

@@ -518,6 +518,33 @@ done:
 	$1 = creds;
 }
 
+%typemap(in) (int, krb5_key_salt_tuple *) {
+	int			  n_ks_tuple = 0;
+	krb5_key_salt_tuple	 *ks_tuple = NULL;
+	int			  i;
+	AV			 *av;
+	SV			**sv;
+
+	if (!SvROK($input) || SvTYPE(SvRV($input)) != SVt_PVAV)
+		croak("Argument $argnum is not an array ref.");
+
+	av = (AV*)SvRV($input);
+	n_ks_tuple = av_len(av) + 1;
+	ks_tuple = calloc(n_ks_tuple, sizeof(*ks_tuple));
+
+	for (i=0; i < n_ks_tuple; i++) {
+		sv = av_fetch(av, i, 0);
+		ks_tuple[i].ks_enctype = SvIV(*sv);
+		ks_tuple[i].ks_salttype = SALTTYPE_NORMAL;
+	}
+
+	$1 = n_ks_tuple;
+	$2 = ks_tuple;
+}
+%typemap(freearg) (int, krb5_key_salt_typle *) {
+	free($2);
+}
+
 #ifdef HAVE_HEIMDAL
 
 %typemap(out) krb5_creds * {

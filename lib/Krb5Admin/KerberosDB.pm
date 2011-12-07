@@ -392,9 +392,9 @@ sub change_passwd {
 	$self->check_acl('change_passwd', $name);
 
 	if (defined($passwd)) {
-		Krb5Admin::C::krb5_setpass($ctx, $hndl, $name, $passwd);
+		Krb5Admin::C::krb5_setpass($ctx, $hndl, $name, [], $passwd);
 	} else {
-		$passwd = Krb5Admin::C::krb5_randpass($ctx, $hndl, $name);
+		$passwd = Krb5Admin::C::krb5_randpass($ctx, $hndl, $name, []);
 	}
 
 	return $passwd if !defined($opt);
