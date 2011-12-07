@@ -373,7 +373,7 @@ done:
 			croak("Argument $argnum contains a list element %d "
 			    "that is not a hash ref.", i);
 
-	KEYBLOCK_SET_MAGIC(k[i]);
+		KEYBLOCK_SET_MAGIC(k[i]);
 		HV_FETCH(hv, sv, "enctype");
 		KEYBLOCK_ENCTYPE(k[i])  = SvIV(*sv);
 		if (!KEYBLOCK_ENCTYPE(k[i])) {
