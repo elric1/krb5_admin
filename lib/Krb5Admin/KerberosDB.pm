@@ -141,15 +141,9 @@ sub check_acl {
 	#
 	# The remaining logic is for krb5_keytab and is only to be used
 	# for ``create'', ``fetch'', or ``change'':
-
 	#
-	# XXXrcd: right now check_acl:
-	#
-	#	1.  assumes that $predicate[0] is the object,
-	#
-	#	2.  doesn't differentiate between verbs,
-	#
-	#	3.  allows host/foo@REALM access to <service>/foo@REALM,
+	# We allow host/foo@REALM to access <service>/foo@REALM for any
+	# <service>.
 
 	if ($verb ne 'fetch' && $verb ne 'create' && $verb ne 'change') {
 		die [502, "Permission denied"];
