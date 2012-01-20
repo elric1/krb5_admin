@@ -16,6 +16,10 @@ use Krb5Admin::Log;
 use strict;
 use warnings;
 
+use constant {
+	KRB5_ADMIND_CONFIG	=> '/etc/krb5/krb5_admind.conf',
+};
+
 my $master;
 
 sub who_is_master {
@@ -42,21 +46,36 @@ sub usage {
 
 openlog('krb5_admind', 'pid', 'auth');
 
-our %opts;
-getopts('MPa:d:m:', \%opts) or usage();
+our $acl_file;
+our $config = KRB5_ADMIND_CONFIG;
+our $dbname;
+our %xrealm_bootstrap;
 
-$master = hostname()	  if  defined($opts{M});
-$master = $opts{m}	  if !defined($master);
-$master = who_is_master() if !defined($master);
+our %opts;
+getopts('MPa:c:d:m:', \%opts) or usage();
+
+$master   = hostname()		if  defined($opts{M});
+$master   = $opts{m}		if !defined($master);
+$master   = who_is_master()	if !defined($master);
+$acl_file = $opts{a}		if  defined($opts{a});
+$dbname   = $opts{d}		if  defined($opts{d});
+$config   = $opts{c}		if  defined($opts{c});
+
+if (-f $config || defined($opts{c})) {
+	my $ret = do $config;
+	die "Couldn't parse $config: $@\n"	if $@;
+	die "Couldn't find $config\n"		if ! -f $config;
+}
 
 sub mk_kmdb {
 	my %args = @_;
 
 	my %kmdb_args;
-	$kmdb_args{client}   = $args{CREDS};
-	$kmdb_args{addr}     = $args{REMOTE_IP};
-	$kmdb_args{acl_file} = $opts{a}	if defined($opts{a});
-	$kmdb_args{dbname}   = $opts{d} if defined($opts{d});
+	$kmdb_args{client}	     = $args{CREDS};
+	$kmdb_args{addr}	     = $args{REMOTE_IP};
+	$kmdb_args{xrealm_bootstrap} = \%xrealm_bootstrap;
+	$kmdb_args{acl_file}	     = $acl_file;
+	$kmdb_args{dbname}	     = $dbname;
 
 	return Krb5Admin::KerberosDB->new(%kmdb_args);
 }

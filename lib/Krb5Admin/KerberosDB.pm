@@ -168,7 +168,16 @@ sub check_acl {
 			$denied .= "]";
 		}
 	} else {
-		$denied = 'realm'	if $sprinc[0] ne $pprinc[0];
+		my @xbs = ();
+		if (ref($self->{xrealm_bootstrap}) eq 'HASH' &&
+		    ref($self->{xrealm_bootstrap}->{$sprinc[0]}) eq 'ARRAY') {
+			@xbs = @{$self->{xrealm_bootstrap}->{$sprinc[0]}};
+		}
+
+		if ($sprinc[0] ne $pprinc[0] && ($pprinc[1] ne 'host' ||
+		    !grep { $pprinc[0] eq $_ } @xbs)) {
+			$denied = 'realm';
+		}
 		$denied = 'host'	if $sprinc[1] ne 'host';
 		$denied = 'instance'	if $sprinc[2] ne $pprinc[2];
 		$denied = 'no admin'	if $pprinc[2] eq 'admin';
@@ -225,6 +234,8 @@ sub new {
 	$self{local}	= 0			if !defined($self{local});
 	$self{client}	= "LOCAL_MODIFICATION"	if $self{local};
 	$self{debug}	= 0			if !defined($self{debug});
+
+	$self{xrealm_bootstrap} = $args{xrealm_bootstrap};
 
 	bless(\%self, $isa);
 }
