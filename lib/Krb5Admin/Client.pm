@@ -24,9 +24,12 @@ sub new {
 	$port = $opts->{port} if exists($opts->{port});
 	$port = 'krb5_admin' if !defined($port);
 
+	my $realm = '';
+	$realm = $opts->{realm} if exists($opts->{realm});
+
 	my $ctx = Krb5Admin::C::krb5_init_context();
 	if (scalar(@servers) < 1) {
-		my $kdcs = Krb5Admin::C::krb5_get_kdcs($ctx, '');
+		my $kdcs = Krb5Admin::C::krb5_get_kdcs($ctx, $realm);
 		@servers = @$kdcs;
 	}
 
