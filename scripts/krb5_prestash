@@ -33,22 +33,22 @@ sub fetch {
 
 	my $ctx = Krb5Admin::C::krb5_init_context();
 
-	for my $proid (keys %$tix) {
-		my ($name, $passwd, $uid, $gid) = getpwnam($proid);
+	for my $user (keys %$tix) {
+		my ($name, $passwd, $uid, $gid) = getpwnam($user);
 
-		if (!defined($name) || $name ne $proid) {
+		if (!defined($name) || $name ne $user) {
 			# XXXrcd: print a warning---in a better way.
-			warning("Tickets sent for non-existent proid %s.  " .
-			    "Skipping", $proid);
+			warning("Tickets sent for non-existent user %s.  " .
+			    "Skipping", $user);
 			next;
 		}
 
 		mkdir($tix_dir);
 		chmod(0755, $tix_dir);
-		my $ccache_fn = "$tix_dir/$proid";
+		my $ccache_fn = "$tix_dir/$user";
 		my $ccache = "FILE:$ccache_fn";
 
-		Krb5Admin::C::init_store_creds($ctx, $ccache, $tix->{$proid});
+		Krb5Admin::C::init_store_creds($ctx, $ccache, $tix->{$user});
 
 		chown($uid, 0, $ccache_fn);
 	}
@@ -57,10 +57,11 @@ sub fetch {
 sub query {
 	my ($kmdb, $type, $arg) = @_;
 
+	$type = 'principal'	if defined($type) && $type eq 'user';
 	$type = 'principal'	if defined($type) && $type eq 'proid';
 
 	if (!defined($type) || ($type ne 'host' && $type ne 'principal')) {
-		die "Must supply a type of either host or proid\n";
+		die "Must supply a type of either host or principal\n";
 	}
 
 	my %args;
@@ -82,8 +83,8 @@ sub query {
 		return;
 	}
 
-	printf($vfmt, "Proid", "Configured", "Target");
-	printf($vfmt, "-----", "----------", "------");
+	printf($vfmt, "Principal", "Configured", "Target");
+	printf($vfmt, "---------", "----------", "------");
 
 	for my $p (keys %$out) {
 		for my $host (@{$out->{$p}}) {
@@ -94,17 +95,17 @@ sub query {
 }
 
 sub insert {
-	my ($kmdb, $proid, @hosts) = @_;
+	my ($kmdb, $princ, @hosts) = @_;
 
 	# XXXrcd: put in the warnings and FQDNification?  Maybe.
 
-	$kmdb->insert_ticket($proid, @hosts);
+	$kmdb->insert_ticket($princ, @hosts);
 }
 
 sub remove {
-	my ($kmdb, $proid, @hosts) = @_;
+	my ($kmdb, $princ, @hosts) = @_;
 
-	$kmdb->remove_ticket($proid, @hosts);
+	$kmdb->remove_ticket($princ, @hosts);
 }
 
 #
@@ -115,9 +116,10 @@ sub usage {
 	print STDERR "usage: krb5_prestash [-Elv] [-h <hostspec>] <command>\n";
 	print STDERR "    where <command> is:\n\n";
 
-	print STDERR "\tinsert <proid>[\@realm] <host>[ <host>]*\n";
-	print STDERR "\tremove <proid>[\@realm] <host>[ <host>]*\n";
-	print STDERR "\tquery [\"proid\"|\"host\"] [<proid>[\@realm]|<host>]\n";
+	print STDERR "\tinsert <principal> <host>[ <host>]*\n";
+	print STDERR "\tremove <principal> <host>[ <host>]*\n";
+	print STDERR "\tquery [\"principal\"|\"host\"] " .
+	    "[<principal>|<host>]\n";
 	print STDERR "\tfetch\n";
 
 	print STDERR "\n    Synonyms: add = insert, delete = remove\n";
