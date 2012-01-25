@@ -41,13 +41,6 @@ Commands that operate on users:
 	create_user user	creates a new user account
 	desdeco user		upgrades the user to the strong_human policy
 
-Commands that operate on proids:
-
-	nkkps proid		puts the proid in the NKKPS
-	create_proid proid	creates a new proid account
-	proid_passwd proid file	resets a proids passwd writing the new passwd
-				into file (file must be locked down)
-
 Commands that operate on service principals:
 
 none, yet.
