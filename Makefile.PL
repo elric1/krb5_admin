@@ -15,6 +15,8 @@ my %args = (
     clean    => { FILES => 'Kharon-*' },
 );
 
+my @manpages = qw{ man/krb5_admin.1 man/krb5_admind.8 };
+
 if ($ExtUtils::MakeMaker::VERSION >= 6.3002) {
 	$args{LICENSE} = 'mit';
 }
@@ -57,8 +59,33 @@ sub install {
 
 	my $txt = $self->SUPER::install(@args);
 
+	$txt =~ s#^(doc_install.*)$#$1 manpage_install#m;
+
 	$txt =~
 	    s#^(\s*..INST)(_SCRIPT.*)(SCRIPT\).*)$#\1\2\3\n\1_SBIN\2SBIN\3#mg;
+
+	my %manhash;
+	for my $manpage (@manpages) {
+		$manpage =~ /^(.*)\.(\d)$/;
+		# XXXrcd: errors??
+
+		push(@{$manhash{"man$2"}}, $manpage);
+	}
+
+	$txt .= "\n\nmanpage_install: " . join(' ', @manpages) . "\n";
+
+	for my $mansect (keys %manhash) {
+		for my $manpage (@{$manhash{$mansect}}) {
+			my $mpbase = $manpage;
+			$mpbase =~ s#.*/##;
+			$txt .= "\tmkdir -p " .
+			    "\$(DESTDIR)\$(PREFIX)/man/$mansect\n";
+			$txt .= "\tinstall -c -m 644 $manpage " .
+			    "\$(DESTDIR)\$(PREFIX)/man/$mansect/$mpbase\n";
+		}
+	}
+
+	$txt .= "\n";
 
 	return $txt;
 }
