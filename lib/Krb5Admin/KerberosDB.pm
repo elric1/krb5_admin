@@ -131,6 +131,8 @@ sub check_acl {
 		if (!defined($host) || $host->{realm} ne $sprinc[0]) {
 			die [502, "Permission denied"];
 		}
+		# The request is authorised.
+		return;
         }
 
 	my @pprinc;
