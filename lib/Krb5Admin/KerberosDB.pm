@@ -164,7 +164,6 @@ sub check_acl {
 	}
 
 	if ($pprinc[1] eq 'host') {
-		my @v;
 
 		#
 		# If Krb5Admin::Utils::reverse_the is defined then we
@@ -172,12 +171,8 @@ sub check_acl {
 		# that the request is coming from a properly mapped host.
 		# Otherwise, we ignore it.
 
-		if (defined($self->{hostname})) {
-			@v = grep { $_ eq $pprinc[2] }
-			    host_list($self->{hostname});
-		} else {
-			@v = (1);
-		}
+		my $host_ok = defined($self->{hostname}) ?
+		    grep { $_ eq $pprinc[2] } host_list($self->{hostname}) : 1;
 
 		#
 		# We check to see if we are doing an xrealm bootstrap, we
@@ -192,17 +187,26 @@ sub check_acl {
 			@xbs = map { unparse_princ([$_, @sprinc[1,2]]) } @xbs;
 		}
 
-		my $up_sprinc = unparse_princ([@sprinc]);
+		#
+		# Windows principals are case insensitive, so we canonicalize
+		# the non-realm part of the principal name to lower-case,
+		# and expect the lookup keys in win_xrealm_bootstrap to be
+		# likewise lower case.
+
+		my $up_sprinc =
+		    unparse_princ([$sprinc[0],
+				   map {lc $_} @sprinc[1..$#sprinc]]);
 		my $win_xrealm_bootstrap = $self->{win_xrealm_bootstrap};
 		if (ref($win_xrealm_bootstrap) eq 'HASH' &&
 		    ref($win_xrealm_bootstrap->{$up_sprinc}) eq 'ARRAY') {
 			push(@xbs, @{$win_xrealm_bootstrap->{$up_sprinc}});
 		}
 
-		return if @v == 1 && grep {$_ eq unparse_princ(\@pprinc)} @xbs;
+		my $up_pprinc = unparse_princ(\@pprinc);
+		return if $host_ok == 1 && grep {$_ eq $up_pprinc} @xbs;
 
 		$denied = "not an admin user";
-		if ($#v != 0) {
+		if (!$host_ok) {
 			$denied  = "host does not match IP address";
 			$denied .= " [" . $self->{hostname} . " not in " .
 
