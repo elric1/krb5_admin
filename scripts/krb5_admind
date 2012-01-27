@@ -79,6 +79,8 @@ sub mk_kmdb {
 		acl_file		=> $acl_file,
 		dbname			=> $dbname,
 	);
+	syslog('info', '%s connected from %s', $args{CREDS},
+	    $args{REMOTE_IP});
 
 	return Krb5Admin::KerberosDB->new(%kmdb_args);
 }
@@ -126,7 +128,5 @@ if ($opts{P}) {
 } else {
 	$args{object}	= &mk_kmdb(CREDS => $ENV{KNC_CREDS},
 	    REMOTE_IP => $ENV{KNC_REMOTE_IP});
-	syslog('info', '%s connected from %s', $ENV{'KNC_CREDS'},
-	    $ENV{KNC_REMOTE_IP});
 	$pes->RunObj(%args);
 }
