@@ -71,6 +71,14 @@ sub require_hashref {
 	    if ref($arg) ne 'HASH';
 }
 
+# XXXrcd: maybe we should perform a little validation later.
+# XXXrcd: also lame because it is code duplication.
+sub unparse_princ {
+	my ($realm, @comps) = @{$_[0]};
+
+	return join('/', @comps) . '@' . $realm;
+}
+
 #
 # check_acl is expected to throw an exception with a reason if the access
 # is denied.  Otherwise it will simply return undef.  This function needs
@@ -151,17 +159,49 @@ sub check_acl {
 		die [502, "Permission denied"];
 	}
 
-	if (@sprinc != 3 || @pprinc != 3) {
+	if (@pprinc != 3) {
 		die [502, "Permission denied"];
 	}
 
-	if ($pprinc[1] eq 'host' && defined($self->{hostname})) {
+	if ($pprinc[1] eq 'host') {
 		my @v;
-		@v = grep { $_ eq $pprinc[2] } host_list($self->{hostname});
 
-		return if @v == 1 && $sprinc[2] eq 'admin';
+		#
+		# If Krb5Admin::Utils::reverse_the is defined then we
+		# will have $self->{hostname} and we'll use it to validate
+		# that the request is coming from a properly mapped host.
+		# Otherwise, we ignore it.
 
-		$denied = "not an admin user" if $sprinc[2] ne 'admin';
+		if (defined($self->{hostname})) {
+			@v = grep { $_ eq $pprinc[2] }
+			    host_list($self->{hostname});
+		} else {
+			@v = (1);
+		}
+
+		#
+		# We check to see if we are doing an xrealm bootstrap, we
+		# do this by generating a list of principals that we will
+		# accept first and then seeing if our client is one of them.
+
+		my @xbs = ();
+		if (@sprinc == 3 && $sprinc[1] eq 'host' &&
+		    ref($self->{xrealm_bootstrap}) eq 'HASH' &&
+		    ref($self->{xrealm_bootstrap}->{$sprinc[0]}) eq 'ARRAY') {
+			@xbs = @{$self->{xrealm_bootstrap}->{$sprinc[0]}};
+			@xbs = map { unparse_princ([$_, @sprinc[1,2]]) } @xbs;
+		}
+
+		my $up_sprinc = unparse_princ([@sprinc]);
+		my $win_xrealm_bootstrap = $self->{win_xrealm_bootstrap};
+		if (ref($win_xrealm_bootstrap) eq 'HASH' &&
+		    ref($win_xrealm_bootstrap->{$up_sprinc}) eq 'ARRAY') {
+			push(@xbs, @{$win_xrealm_bootstrap->{$up_sprinc}});
+		}
+
+		return if @v == 1 && grep {$_ eq unparse_princ(\@pprinc)} @xbs;
+
+		$denied = "not an admin user";
 		if ($#v != 0) {
 			$denied  = "host does not match IP address";
 			$denied .= " [" . $self->{hostname} . " not in " .
@@ -170,16 +210,11 @@ sub check_acl {
 			$denied .= "]";
 		}
 	} else {
-		my @xbs = ();
-		if (ref($self->{xrealm_bootstrap}) eq 'HASH' &&
-		    ref($self->{xrealm_bootstrap}->{$sprinc[0]}) eq 'ARRAY') {
-			@xbs = @{$self->{xrealm_bootstrap}->{$sprinc[0]}};
+		if (@sprinc != 3) {
+			die [502, "Permission denied"];
 		}
 
-		if ($sprinc[0] ne $pprinc[0] && ($pprinc[1] ne 'host' ||
-		    !grep { $pprinc[0] eq $_ } @xbs)) {
-			$denied = 'realm';
-		}
+		$denied = 'realm'	if $sprinc[0] ne $pprinc[0];
 		$denied = 'host'	if $sprinc[1] ne 'host';
 		$denied = 'instance'	if $sprinc[2] ne $pprinc[2];
 		$denied = 'no admin'	if $pprinc[2] eq 'admin';
@@ -237,7 +272,8 @@ sub new {
 	$self{client}	= "LOCAL_MODIFICATION"	if $self{local};
 	$self{debug}	= 0			if !defined($self{debug});
 
-	$self{xrealm_bootstrap} = $args{xrealm_bootstrap};
+	$self{xrealm_bootstrap}		= $args{xrealm_bootstrap};
+	$self{win_xrealm_bootstrap}	= $args{win_xrealm_bootstrap};
 
 	bless(\%self, $isa);
 }

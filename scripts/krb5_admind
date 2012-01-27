@@ -50,6 +50,7 @@ our $acl_file;
 our $config = KRB5_ADMIND_CONFIG;
 our $dbname;
 our %xrealm_bootstrap;
+our %win_xrealm_bootstrap;
 
 our %opts;
 getopts('MPa:c:d:m:', \%opts) or usage();
@@ -70,12 +71,14 @@ if (-f $config || defined($opts{c})) {
 sub mk_kmdb {
 	my %args = @_;
 
-	my %kmdb_args;
-	$kmdb_args{client}	     = $args{CREDS};
-	$kmdb_args{addr}	     = $args{REMOTE_IP};
-	$kmdb_args{xrealm_bootstrap} = \%xrealm_bootstrap;
-	$kmdb_args{acl_file}	     = $acl_file;
-	$kmdb_args{dbname}	     = $dbname;
+	my %kmdb_args = (
+		client			=> $args{CREDS},
+		addr			=> $args{REMOTE_IP},
+		xrealm_bootstrap	=> \%xrealm_bootstrap,
+		win_xrealm_bootstrap	=> \%win_xrealm_bootstrap,
+		acl_file		=> $acl_file,
+		dbname			=> $dbname,
+	);
 
 	return Krb5Admin::KerberosDB->new(%kmdb_args);
 }
