@@ -12,9 +12,10 @@ use strict;
 
 my $verbose = 0;
 
+our $ctx;
 our $expand_srvloc = 0;
 
-my $vfmt = "   %- 16.16s %- 30.30s %s\n";
+my $vfmt = "   %- 22.22s %- 25.25s %s\n";
 
 sub warning {
 	my ($format, @args) = @_;
@@ -25,15 +26,38 @@ sub warning {
 	}
 }
 
+sub qualify_princ {
+	my ($princstr) = @_;
+
+	my @princ = Krb5Admin::C::krb5_parse_name($ctx, $princstr);
+
+	return join('/', @princ[1..$#princ]) . '@' . $princ[0];
+}
+
 sub fetch {
 	my ($kmdb) = @_;
 	my $tix_dir = '/var/spool/tickets';
 
 	my $tix = $kmdb->fetch_tickets();
 
-	my $ctx = Krb5Admin::C::krb5_init_context();
+	for my $princstr (keys %$tix) {
+		my @princ = Krb5Admin::C::krb5_parse_name($ctx, $princstr);
 
-	for my $user (keys %$tix) {
+		#
+		# XXXrcd: Implement more appropriate name mappings, in
+		#         the future...
+		#
+		#         For now, we just use the princ's name which is
+		#         suboptimal...
+
+		if (@princ != 2) {
+			warning("Fully qualified principal (\"%s\") is not " .
+			    "eligible for prestashed tickets.", $princstr);
+			next;
+		}
+
+		my $user = $princ[1];
+
 		my ($name, $passwd, $uid, $gid) = getpwnam($user);
 
 		if (!defined($name) || $name ne $user) {
@@ -48,7 +72,8 @@ sub fetch {
 		my $ccache_fn = "$tix_dir/$user";
 		my $ccache = "FILE:$ccache_fn";
 
-		Krb5Admin::C::init_store_creds($ctx, $ccache, $tix->{$user});
+		Krb5Admin::C::init_store_creds($ctx, $ccache,
+		    $tix->{$princstr});
 
 		chown($uid, 0, $ccache_fn);
 	}
@@ -63,6 +88,8 @@ sub query {
 	if (!defined($type) || ($type ne 'host' && $type ne 'principal')) {
 		die "Must supply a type of either host or principal\n";
 	}
+
+	$arg = qualify_princ($arg)	if $type eq 'principal';
 
 	my %args;
 	$args{expand} = 1	if $expand_srvloc;
@@ -99,13 +126,13 @@ sub insert {
 
 	# XXXrcd: put in the warnings and FQDNification?  Maybe.
 
-	$kmdb->insert_ticket($princ, @hosts);
+	$kmdb->insert_ticket(qualify_princ($princ), @hosts);
 }
 
 sub remove {
 	my ($kmdb, $princ, @hosts) = @_;
 
-	$kmdb->remove_ticket($princ, @hosts);
+	$kmdb->remove_ticket(qualify_princ($princ), @hosts);
 }
 
 #
@@ -163,6 +190,8 @@ if (!defined($cmd)) {
 	print STDERR "No such command: $command.\n\n";
 	usage();
 }
+
+$ctx = Krb5Admin::C::krb5_init_context();
 
 eval {
 	my $kmdb;
