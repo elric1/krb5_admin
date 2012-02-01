@@ -62,6 +62,40 @@ sub require_scalar {
 	    if ref($arg) ne '';
 }
 
+sub require_princ {
+	my ($ctx, $usage, $argnum, $princ) = @_;
+
+	eval {
+		Krb5Admin::C::krb5_parse_name($ctx, $princ);
+	};
+
+	if ($@) {
+		die [503, "Syntax error: arg $argnum must be a principal: " .
+		    "$@\nusage: $usage"];
+	}
+}
+
+sub require_fqprinc {
+	my ($ctx, $usage, $argnum, $princ) = @_;
+	my @p;
+	my $tmp;
+
+	eval {
+		@p = Krb5Admin::C::krb5_parse_name($ctx, $princ);
+		$tmp = unparse_princ(\@p);
+	};
+
+	if ($@) {
+		die [503, "Syntax error: arg $argnum must be a fully " .
+		    "qualified principal: $@\nusage: $usage"];
+	}
+
+	if ($tmp ne $princ) {
+		die [503, "Syntax error: arg $argnum must be a fully " .
+		    "qualified principal: $tmp ne $princ\nusage: $usage"];
+	}
+}
+
 sub require_hashref {
 	my ($usage, $argnum, $arg) = @_;
 
@@ -847,10 +881,11 @@ sub remove_hostmap {
 
 sub insert_ticket {
 	my ($self, $princ, @hosts) = @_;
+	my $ctx = $self->{ctx};
+	my $usage = "insert_ticket <princ> <host> [<host> ...]";
 
-	require_scalar("insert_ticket <princ> <host> [<host> ...]", 1, $princ);
-	require_scalar("insert_ticket <princ> <host> [<host> ...]", 2,
-	    $hosts[0]);
+	require_fqprinc($ctx, $usage, 1, $princ);
+	require_scalar($usage, 2, $hosts[0]);
 
 	my $host;
 	my $i = 3;
@@ -1024,7 +1059,7 @@ sub fetch_tickets {
 sub remove_ticket {
 	my ($self, $princ, @hosts) = @_;
 
-	require_scalar("remove_ticket <princ> <host> [<host> ...]", 1, $princ);
+	require_fqprinc("remove_ticket <princ> <host> [<host> ...]", 1, $princ);
 	require_scalar("remove_ticket <princ> <host> [<host> ...]", 2,
 	    $hosts[0]);
 
