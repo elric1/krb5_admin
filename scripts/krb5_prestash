@@ -34,48 +34,65 @@ sub qualify_princ {
 	return join('/', @princ[1..$#princ]) . '@' . $princ[0];
 }
 
-sub fetch {
-	my ($kmdb) = @_;
+sub save_tickets {
+	my ($princstr, $tix) = @_;
 	my $tix_dir = '/var/spool/tickets';
 
-	my $tix = $kmdb->fetch_tickets();
+	my @princ = Krb5Admin::C::krb5_parse_name($ctx, $princstr);
 
-	for my $princstr (keys %$tix) {
-		my @princ = Krb5Admin::C::krb5_parse_name($ctx, $princstr);
+	#
+	# XXXrcd: Implement more appropriate name mappings, in
+	#         the future...
+	#
+	#         For now, we just use the princ's name which is
+	#         suboptimal...
 
-		#
-		# XXXrcd: Implement more appropriate name mappings, in
-		#         the future...
-		#
-		#         For now, we just use the princ's name which is
-		#         suboptimal...
+	if (@princ != 2) {
+		warning("Fully qualified principal (\"%s\") is not " .
+		    "eligible for prestashed tickets.", $princstr);
+		next;
+	}
 
-		if (@princ != 2) {
-			warning("Fully qualified principal (\"%s\") is not " .
-			    "eligible for prestashed tickets.", $princstr);
-			next;
+	my $user = $princ[1];
+
+	my ($name, $passwd, $uid, $gid) = getpwnam($user);
+
+	if (!defined($name) || $name ne $user) {
+		# XXXrcd: print a warning---in a better way.
+		warning("Tickets sent for non-existent user %s.  " .
+		    "Skipping", $user);
+		next;
+	}
+
+	mkdir($tix_dir);
+	chmod(0755, $tix_dir);
+	my $ccache_fn = "$tix_dir/$user";
+	my $ccache = "FILE:$ccache_fn";
+
+	Krb5Admin::C::init_store_creds($ctx, $ccache,
+	    $tix->{$princstr});
+
+	chown($uid, 0, $ccache_fn);
+}
+
+sub fetch {
+	my ($global_kmdb, @realms) = @_;
+
+	if (@realms == 0) {
+		@realms = (Krb5Admin::C::krb5_get_realm($ctx));
+	}
+
+	my $kmdb = $global_kmdb;
+	for my $realm (@realms) {
+		if (!defined($global_kmdb)) {
+			$kmdb = Krb5Admin::Client->new(undef, {realm=>$realm});
 		}
 
-		my $user = $princ[1];
+		my $tix = $kmdb->fetch_tickets($realm);
 
-		my ($name, $passwd, $uid, $gid) = getpwnam($user);
-
-		if (!defined($name) || $name ne $user) {
-			# XXXrcd: print a warning---in a better way.
-			warning("Tickets sent for non-existent user %s.  " .
-			    "Skipping", $user);
-			next;
+		for my $princstr (keys %$tix) {
+			save_tickets($princstr, $tix);
 		}
-
-		mkdir($tix_dir);
-		chmod(0755, $tix_dir);
-		my $ccache_fn = "$tix_dir/$user";
-		my $ccache = "FILE:$ccache_fn";
-
-		Krb5Admin::C::init_store_creds($ctx, $ccache,
-		    $tix->{$princstr});
-
-		chown($uid, 0, $ccache_fn);
 	}
 }
 
@@ -90,6 +107,15 @@ sub query {
 	}
 
 	$arg = qualify_princ($arg)	if $type eq 'principal';
+
+	if (!defined($kmdb) && $type eq 'principal') {
+		my ($realm) = Krb5Admin::C::krb5_parse_name($ctx, $arg);
+		$kmdb = Krb5Admin::Client->new(undef, {realm=>$realm});
+	}
+
+	if (!defined($kmdb)) {
+		$kmdb = Krb5Admin::Client->new();
+	}
 
 	my %args;
 	$args{expand} = 1	if $expand_srvloc;
@@ -124,6 +150,11 @@ sub query {
 sub insert {
 	my ($kmdb, $princ, @hosts) = @_;
 
+	if (!defined($kmdb)) {
+		my ($realm) = Krb5Admin::C::krb5_parse_name($ctx, $princ);
+		$kmdb = Krb5Admin::Client->new(undef, {realm=>$realm});
+	}
+
 	# XXXrcd: put in the warnings and FQDNification?  Maybe.
 
 	$kmdb->insert_ticket(qualify_princ($princ), @hosts);
@@ -131,6 +162,11 @@ sub insert {
 
 sub remove {
 	my ($kmdb, $princ, @hosts) = @_;
+
+	if (!defined($kmdb)) {
+		my ($realm) = Krb5Admin::C::krb5_parse_name($ctx, $princ);
+		$kmdb = Krb5Admin::Client->new(undef, {realm=>$realm});
+	}
 
 	$kmdb->remove_ticket(qualify_princ($princ), @hosts);
 }
@@ -177,6 +213,11 @@ $expand_srvloc = 1 if defined($opts{E});
 $expand_srvloc = 1 if defined($opts{v});	# -v ==> -E
 $verbose = 1       if defined($opts{v});
 
+if (@kdcs and $opts{l}) {
+	print STDERR "-h and -l are mutually exclusive.\n";
+	usage();
+}
+
 my $command = shift @ARGV;
 if (!defined($command)) {
 	usage();
@@ -197,7 +238,8 @@ eval {
 	my $kmdb;
 	if (defined($opts{l})) {
 		$kmdb = Krb5Admin::KerberosDB->new(local => 1);
-	} else {
+	}
+	if (@kdcs) {
 		$kmdb = Krb5Admin::Client->new(undef, {}, @kdcs);
 	}
 	&$cmd($kmdb, @ARGV);

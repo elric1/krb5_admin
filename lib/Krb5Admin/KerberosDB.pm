@@ -949,6 +949,15 @@ sub query_ticket {
 		push(@bindv, $query{principal});
 	}
 
+	if (exists($query{realm})) {
+		if ($query{realm} =~ /\@_%/) {
+			die [503, "Invalid character in supplied realm."];
+		}
+
+		push(@where, "principal LIKE ?");
+		push(@bindv, '%@' . $query{realm});
+	}
+
 	my $where = join( ' AND ', @where );
 	$where = "WHERE $where" if length($where) > 0;
 
@@ -1028,7 +1037,7 @@ sub query_ticket {
 }
 
 sub fetch_tickets {
-	my ($self, $host) = @_;
+	my ($self, $realm, $host) = @_;
 	my $ctx = $self->{ctx};
 	my $hndl = $self->{hndl};
 
@@ -1047,7 +1056,8 @@ sub fetch_tickets {
 
 	$self->check_acl('fetch_tickets', $host);
 
-	my $tix = $self->query_ticket(host => $host, expand => 1);
+	my $tix = $self->query_ticket(host => $host, realm => $realm,
+	    expand => 1);
 
 	# XXXrcd: make configurable...
 	return { map {
