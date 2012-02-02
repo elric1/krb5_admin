@@ -92,7 +92,7 @@ sub save_tickets {
 sub fetch {
 	my ($global_kmdb, @realms) = @_;
 
-	my $clnt = 'host' .  [host_list(hostname())]->[0];
+	my $clnt = 'host/' .  [host_list(hostname())]->[0];
 
 	if (@realms == 0) {
 		@realms = (Krb5Admin::C::krb5_get_realm($ctx));
