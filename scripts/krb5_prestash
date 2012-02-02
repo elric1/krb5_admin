@@ -40,12 +40,6 @@ sub qualify_princ {
 	return join('/', @princ[1..$#princ]) . '@' . $princ[0];
 }
 
-sub unparse_princ {
-        my ($realm, @comps) = @{$_[0]};
-
-        return join('/', @comps) . '@' . $realm;
-}
-
 sub save_tickets {
 	my ($princstr, $tix) = @_;
 	my $tix_dir = '/var/spool/tickets';
@@ -98,12 +92,10 @@ sub save_tickets {
 sub fetch {
 	my ($global_kmdb, @realms) = @_;
 
-	my $def_realm = Krb5Admin::C::krb5_get_realm($ctx);
-	my $fqdn = [host_list(hostname())]->[0];
-	my $clnt = unparse_princ([$def_realm, "host", $fqdn]);
+	my $clnt = 'host' .  [host_list(hostname())]->[0];
 
 	if (@realms == 0) {
-		@realms = ($def_realm);
+		@realms = (Krb5Admin::C::krb5_get_realm($ctx));
 	}
 
 	my $kmdb = $global_kmdb;
