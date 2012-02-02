@@ -29,6 +29,10 @@ sub warning {
 sub qualify_princ {
 	my ($princstr) = @_;
 
+	if (!defined($princstr)) {
+		die "qualify_princ called on undefined value.\n"
+	}
+
 	my @princ = Krb5Admin::C::krb5_parse_name($ctx, $princstr);
 
 	return join('/', @princ[1..$#princ]) . '@' . $princ[0];
@@ -37,6 +41,14 @@ sub qualify_princ {
 sub save_tickets {
 	my ($princstr, $tix) = @_;
 	my $tix_dir = '/var/spool/tickets';
+
+	if (!defined($princstr)) {
+		die "save_tickets called on undefined value.\n"
+	}
+
+	if (!defined($tix)) {
+		die "save_tickets called without \$tix.\n"
+	}
 
 	my @princ = Krb5Admin::C::krb5_parse_name($ctx, $princstr);
 
@@ -106,6 +118,10 @@ sub query {
 		die "Must supply a type of either host or principal\n";
 	}
 
+	if (!defined($arg)) {
+		die "Missing argument of type $type.\n";
+	}
+
 	$arg = qualify_princ($arg)	if $type eq 'principal';
 
 	if (!defined($kmdb) && $type eq 'principal') {
@@ -150,6 +166,10 @@ sub query {
 sub insert {
 	my ($kmdb, $princ, @hosts) = @_;
 
+	if (!defined($princ)) {
+		die "Missing argument principal.\n";
+	}
+
 	if (!defined($kmdb)) {
 		my ($realm) = Krb5Admin::C::krb5_parse_name($ctx, $princ);
 		$kmdb = Krb5Admin::Client->new(undef, {realm=>$realm});
@@ -162,6 +182,10 @@ sub insert {
 
 sub remove {
 	my ($kmdb, $princ, @hosts) = @_;
+
+	if (!defined($princ)) {
+		die "Missing argument principal.\n";
+	}
 
 	if (!defined($kmdb)) {
 		my ($realm) = Krb5Admin::C::krb5_parse_name($ctx, $princ);
