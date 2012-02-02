@@ -6,6 +6,8 @@ use Getopt::Std;
 use Krb5Admin::C;
 use Krb5Admin::Client;
 use Krb5Admin::KerberosDB;
+use Krb5Admin::Utils qw/host_list/;
+use Sys::Hostname;
 
 use warnings;
 use strict;
@@ -36,6 +38,12 @@ sub qualify_princ {
 	my @princ = Krb5Admin::C::krb5_parse_name($ctx, $princstr);
 
 	return join('/', @princ[1..$#princ]) . '@' . $princ[0];
+}
+
+sub unparse_princ {
+        my ($realm, @comps) = @{$_[0]};
+
+        return join('/', @comps) . '@' . $realm;
 }
 
 sub save_tickets {
@@ -90,14 +98,18 @@ sub save_tickets {
 sub fetch {
 	my ($global_kmdb, @realms) = @_;
 
+	my $def_realm = Krb5Admin::C::krb5_get_realm($ctx);
+	my $fqdn = [host_list(hostname())]->[0];
+	my $clnt = unparse_princ([$def_realm, "host", $fqdn]);
+
 	if (@realms == 0) {
-		@realms = (Krb5Admin::C::krb5_get_realm($ctx));
+		@realms = ($def_realm);
 	}
 
 	my $kmdb = $global_kmdb;
 	for my $realm (@realms) {
 		if (!defined($global_kmdb)) {
-			$kmdb = Krb5Admin::Client->new(undef, {realm=>$realm});
+			$kmdb = Krb5Admin::Client->new($clnt, {realm=>$realm});
 		}
 
 		my $tix = $kmdb->fetch_tickets($realm);
