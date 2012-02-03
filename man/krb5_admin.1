@@ -9,36 +9,22 @@
 .Nd kerberos administration tool
 .Sh SYNOPSIS
 .Nm
-.Op Fl Mv
-.Op Fl a Ar acl_file
-.Op Fl d Ar database
-.Op Fl m Ar master
+.Op Fl dlv
+.Op Fl h Ar hostspec
+.Ar command Ar command Oo Ar arg ... Oc
 .Sh DESCRIPTION
 .Nm
-is the daemon end of the kerberos administrative service.
-It expects to be spawned as an inetd-style service via
-.Xr knc 1 .
-.Pp
-.Nm
-when invoked will allow the client to create, fetch, change or remove keys.
-It uses a simple ACL logic, namely that
-.Ar host/<hostname>
-is entitled to perform requests for
-.Ar <service>/<hostname> .
-Some additional limitations on the target principal may be defined.
+is used to make modifications to the Kerberos database, either remotely
+via the
+.Xr krb5_admind 8
+daemon, or locally (with the
+.Fl l
+flag.)
 .Pp
 The options are as follows:
 .Bl -tag -width indentxxxxxx
-.It Fl M
-specifies that the master is the current host.
-Should be used only for setting up test servers.
-.It Fl a Ar acl_file
-specifies the location of the ACL file.
-Defaults to
-.Pa /etc/krb5/krb5_admin.acl .
-.It Fl d Ar database
-specifies the location of the MIT Kerberos DB.
-Defaults to the location built into the MIT Kerberos libriares.
+.It Fl d
+print debugging output.
 .It Fl h Ar hostspec
 Connect to
 .Ar hostspec
@@ -47,16 +33,50 @@ A
 .Ar hostspec
 has a format of
 .Oo Ar service@ Oc Ns Ar hostname Ns Oo : Ns Ar port Oc .
-.It Fl m Ar master
-specifies the hostname of the master KDC.
-If a KDC which is not the master is asked to perform a write operation
-it will deliver a redirect to the client which will break the connexion
-and reconnect to the master.
-Defaults to
-.Pa /etc/krb5/master .
+.It Fl l
+operate on the local Kerberos DB.
 .It Fl v
-increment verbose level.
+make the output a bit more verbose.
+.El
+.Pp
+If no
+.Ar command
+is provided on the command line,
+.Nm
+will prompt for commands to process.
+.Pp
+Commands that operate on principals:
+.Pp
+.Bl -ohang -offset ind
+.It Ar list Op Ar glob
+will list the principals that match the
+.Ar glob .
+.It Ar query Ar princ
+will display the principal
+.Ar princ .
+.It Ar remove Ar princ
+will remove the principal
+.Ar princ .
+.It Ar enable Ar princ
+will enable the principal
+.Ar princ
+by removing the attribute
+.Fl allow_tix .
+.It Ar disable Ar princ
+will disable the principal
+.Ar princ
+by adding the attribute
+.Fl allow_tix .
+.El
+.Pp
+Commands that operate on policies:
+.Bl -ohang -offset ind
+.It Ar listpols Op Ar glob
+will list the policies that match
+.Ar glob .
 .El
 .Sh SEE ALSO
 .Xr knc 1 ,
-.Xr krb5_keytab 8 .
+.Xr krb5_admind 8 ,
+.Xr krb5_keytab 8 ,
+.Xr krb5_prestash 1 .
