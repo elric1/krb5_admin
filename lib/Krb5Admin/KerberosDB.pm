@@ -312,6 +312,7 @@ sub new {
 
 	$self{xrealm_bootstrap}		= $args{xrealm_bootstrap};
 	$self{win_xrealm_bootstrap}	= $args{win_xrealm_bootstrap};
+	$self{prestash_xrealm}		= $args{prestash_xrealm};
 
 	bless(\%self, $isa);
 }
@@ -879,6 +880,54 @@ sub remove_hostmap {
 	return;
 }
 
+sub _deny_xrealm {
+    my ($pname, $prealm, $hname, $hrealm) = @_;
+
+    return [504, sprintf("Realm %s of principal %s".
+			 " not compatible with".
+			 " realm %s of host %s",
+			 $prealm, $pname, $hrealm, $hname)];
+}
+
+sub _deny_nohost {
+	my ($host) = @_;
+	return [504, "Host $host not pre-defined in krb5_admin database.".
+		     " Please contact your system administrator."];
+}
+
+sub _check_hosts {
+    my ($self, $princ, $prealm, $realms, @hosts) = @_;
+    my $dbh = $self->{dbh};
+    my $stmt = "SELECT realm FROM hosts WHERE name = ?";
+    my $sth = eval { $dbh->prepare($stmt); };
+    my $deny;
+
+    if (!defined($sth)) {
+	$deny = [510, "SQL ERROR: ".$dbh->errstr];
+    } else {
+	my $hrealm;
+	$sth->bind_columns(\$hrealm);
+	eval {
+	    foreach my $host (@hosts) {
+		$sth->execute($host);
+		if (! $sth->fetch) {
+		    $deny = _deny_nohost($host);
+		    last;
+		}
+		if (!grep($_ eq $hrealm, @$realms)) {
+		    $deny = _deny_xrealm($princ, $prealm, $host, $hrealm);
+		    last;
+		}
+	    }
+	};
+	$deny = [510, "SQL ERROR: ".$sth->errstr] if ($sth->err);
+    }
+    if ($deny) {
+	$dbh->rollback();
+	die $deny;
+    }
+}
+
 sub insert_ticket {
 	my ($self, $princ, @hosts) = @_;
 	my $ctx = $self->{ctx};
@@ -887,17 +936,29 @@ sub insert_ticket {
 	require_fqprinc($ctx, $usage, 1, $princ);
 	require_scalar($usage, 2, $hosts[0]);
 
-	my $host;
-	my $i = 3;
-	for $host (@hosts) {
+	for (my $i = 1; $i <= $#hosts; ++$i) {
 		require_scalar("insert_ticket <princ> <host> [<host> ...]",
-		    $i++, $host);
+		    $i+2, $hosts[$i]);
 	}
 
-	$self->check_acl('insert_ticket', $princ, @hosts);
+	#
+	# The ACL-check is host-insensitive, the caller just needs to
+	# own the principal.
 
-	for $host (map {lc($_)} @hosts) {
-		# XXXrcd: validate_hostname($host);
+	$self->check_acl('insert_ticket', $princ);
+
+	#
+	# If no host realm list is explicitly configured for the given
+	# principal's realm, the principal's realm must match the realm
+	# of each host. Otherwise, the realm of each host must be one of
+	# the explicitly configured list values.
+
+	my $prealm = [Krb5Admin::C::krb5_parse_name($self->{ctx}, $princ)]->[0];
+	my $realms = $self->{prestash_xrealm}->{$prealm};
+	$realms ||= [$prealm];
+	$self->_check_hosts($princ, $prealm, $realms, @hosts);
+
+	for my $host (map {lc($_)} @hosts) {
 
 		my $stmt = qq{
 			INSERT INTO prestashed (principal, host) VALUES (?, ?)
@@ -1068,8 +1129,10 @@ sub fetch_tickets {
 
 sub remove_ticket {
 	my ($self, $princ, @hosts) = @_;
+	my $usage = "remove_ticket <princ> <host> [<host> ...]";
+	my $ctx = $self->{ctx};
 
-	require_fqprinc("remove_ticket <princ> <host> [<host> ...]", 1, $princ);
+	require_fqprinc($ctx, $usage, 1, $princ);
 	require_scalar("remove_ticket <princ> <host> [<host> ...]", 2,
 	    $hosts[0]);
 

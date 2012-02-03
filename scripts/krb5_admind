@@ -51,6 +51,7 @@ our $config = KRB5_ADMIND_CONFIG;
 our $dbname;
 our %xrealm_bootstrap;
 our %win_xrealm_bootstrap;
+our %prestash_xrealm;
 
 our %opts;
 getopts('MPa:c:d:m:', \%opts) or usage();
@@ -76,6 +77,7 @@ sub mk_kmdb {
 		addr			=> $args{REMOTE_IP},
 		xrealm_bootstrap	=> \%xrealm_bootstrap,
 		win_xrealm_bootstrap	=> \%win_xrealm_bootstrap,
+		prestash_xrealm		=> \%prestash_xrealm,
 		acl_file		=> $acl_file,
 		dbname			=> $dbname,
 	);
