@@ -1,0 +1,98 @@
+.\"
+.\"
+.\" Blame: Roland Dowdeswell <elric@imrryr.org>
+.Dd Feb 3, 2012
+.Os
+.Dt KRB5_PRESTASH 1
+.Sh NAME
+.Nm krb5_prestash
+.Nd manage/fetch prestashed tickets
+.Sh SYNOPSIS
+.Nm
+.Op Fl Elv
+.Op Fl h Ar hostspec
+.Ar command Ar command Oo Ar arg ... Oc
+.Sh DESCRIPTION
+.Nm
+is used to add, remove, query and fetch prestashed tickets.
+.Pp
+The options are as follows:
+.Bl -tag -width indentxxxxxx
+.It Fl E
+expand hosts accoring to site-specific rules.
+.It Fl h Ar hostspec
+Connect to
+.Ar hostspec
+instead of searching for KDCs using the usual method.
+A
+.Ar hostspec
+has a format of
+.Oo Ar service@ Oc Ns Ar hostname Ns Oo : Ns Ar port Oc .
+.It Fl l
+operate on the local Kerberos DB.
+.It Fl v
+make the output a bit more verbose.
+.El
+.Pp
+The commands are:
+.Pp
+.Bl -ohang -offset ind
+.It fetch Ar REALM Oo Ar REALM ... Oc
+will fetch all of the configured prestashed tickets for the current
+host and install them in
+.Pa /var/spool/tickets .
+This command must be run as root as it must change the ownership of
+the installed credentials caches to the appropriate users.
+.It insert Ar principal Ar host Oo Ar host ... Oc
+will prestash tickets for the principal
+.Ar principal
+on the provided list of hosts.
+.It query principal Ar principal
+will output the hosts on which
+.Ar principal Ns 's
+tickets have been prestashed.
+The default output of this command is a newline separated list of hostnames.
+If 
+.Fl E
+is specified, the hosts will be ``expanded'' before they are listed.
+If
+.Fl v
+is specified, a table will be output displaying both the configured host
+and the expanded target.
+See
+.Sx Host Expansion ,
+below.
+.It query host Ar host
+will output the list of principal's whose tickets are are prestashed on
+.Ar host .
+The default output of this command is a newline separated list of Kerberos
+principals.
+If 
+.Fl E
+is specified, the hosts will be ``expanded'' before the query is made.
+If
+.Fl v
+is specified, a table will be output displaying both the configured host
+and the expanded target.
+See
+.Sx Host Expansion ,
+below.
+.It remove Ar principal Ar host Oo Ar host ... Oc
+will remove prestashed tickets for the principal
+.Ar principal
+on the provided list of hosts.
+.El
+.Ss Host Expansion
+Each site may provide a host expansion mechanism which allows for
+host aliases to be used in
+.Nm .
+In this case, the flags
+.Fl E
+and
+.Fl v
+will cause queries to use host expansion.
+.Sh SEE ALSO
+.Xr knc 1 ,
+.Xr krb5_admind 8 ,
+.Xr krb5_keytab 8 ,
+.Xr krb5_prestash 1 .

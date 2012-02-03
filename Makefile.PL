@@ -15,7 +15,7 @@ my %args = (
     clean    => { FILES => 'Kharon-*' },
 );
 
-my @manpages = qw{ man/krb5_admin.1 man/krb5_admind.8 };
+my @manpages = qw{ man/krb5_admin.1 man/krb5_admind.8 man/krb5_prestash.1 };
 
 if ($ExtUtils::MakeMaker::VERSION >= 6.3002) {
 	$args{LICENSE} = 'mit';
