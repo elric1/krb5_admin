@@ -175,7 +175,7 @@ sub check_acl {
 		}
 		# The request is authorised.
 		return;
-        }
+	}
 
 	my @pprinc;
 	if (defined($predicate[0])) {
@@ -881,51 +881,50 @@ sub remove_hostmap {
 }
 
 sub _deny_xrealm {
-    my ($pname, $prealm, $hname, $hrealm) = @_;
+	my ($pname, $prealm, $hname, $hrealm) = @_;
 
-    return [504, sprintf("Realm %s of principal %s".
-			 " not compatible with".
-			 " realm %s of host %s",
-			 $prealm, $pname, $hrealm, $hname)];
+	die [504, sprintf("Realm %s of principal %s not compatible with " .
+	    "realm %s of host %s", $prealm, $pname, $hrealm, $hname)];
 }
 
 sub _deny_nohost {
 	my ($host) = @_;
-	return [504, "Host $host not pre-defined in krb5_admin database.".
-		     " Please contact your system administrator."];
+	die [504, "Host $host not pre-defined in krb5_admin database." .
+	    " Please contact your system administrator."];
 }
 
 sub _check_hosts {
-    my ($self, $princ, $prealm, $realms, @hosts) = @_;
-    my $dbh = $self->{dbh};
-    my $stmt = "SELECT realm FROM hosts WHERE name = ?";
-    my $sth = eval { $dbh->prepare($stmt); };
-    my $deny;
+	my ($self, $princ, $prealm, $realms, @hosts) = @_;
+	my $dbh = $self->{dbh};
+	my $stmt = "SELECT realm FROM hosts WHERE name = ?";
+	my $sth = eval { $dbh->prepare($stmt); };
+	my $deny;
 
-    if (!defined($sth)) {
-	$deny = [510, "SQL ERROR: ".$dbh->errstr];
-    } else {
+	if (!defined($sth)) {
+		$dbh->rollback();
+		die [510, "SQL ERROR: ".$dbh->errstr];
+	}
+
 	my $hrealm;
 	$sth->bind_columns(\$hrealm);
 	eval {
-	    foreach my $host (@hosts) {
-		$sth->execute($host);
-		if (! $sth->fetch) {
-		    $deny = _deny_nohost($host);
-		    last;
+		for my $host (@hosts) {
+			$sth->execute($host);
+			if (! $sth->fetch) {
+				_deny_nohost($host);
+			}
+			if (!grep($_ eq $hrealm, @$realms)) {
+				_deny_xrealm($princ, $prealm, $host, $hrealm);
+			}
 		}
-		if (!grep($_ eq $hrealm, @$realms)) {
-		    $deny = _deny_xrealm($princ, $prealm, $host, $hrealm);
-		    last;
-		}
-	    }
 	};
+	$deny = $@ if $@;
 	$deny = [510, "SQL ERROR: ".$sth->errstr] if ($sth->err);
-    }
-    if ($deny) {
-	$dbh->rollback();
-	die $deny;
-    }
+
+	if ($deny) {
+		$dbh->rollback();
+		die $deny;
+	}
 }
 
 sub insert_ticket {
