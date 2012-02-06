@@ -53,6 +53,11 @@ if (!defined($HAVE)) {
 	}
 }
 
+if (-f "$KRB5DIR/include/krb5/hdb.h") {
+	$HAVE .= 'HEIMDAL_INCLUDES_IN_KRB5';
+}
+
+# XXXrcd: we still need to deal with this one:
 #  $HAVE	.= ' -DHAVE_CTX_IN_KADM5';
 
 if (!defined($KRB5DIR)) {

@@ -1019,9 +1019,15 @@ done:
 
 #ifdef HAVE_HEIMDAL
 
+#ifdef HEIMDAL_INCLUDES_IN_KRB5
 #include <krb5/hdb.h>
 #include <krb5/hdb_err.h>
 #include <krb5/der.h>
+#else
+#include <hdb.h>
+#include <hdb_err.h>
+#include <der.h>
+#endif
 
 #undef ALLOC
 #define ALLOC(X) do {					\
