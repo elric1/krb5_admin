@@ -1,0 +1,13 @@
+Source: libkrb5admin-perl
+Section: perl
+Priority: optional
+Build-Depends: debhelper (>= 7), perl
+Maintainer: elric <elric@>
+Standards-Version: 3.8.3
+Homepage: http://oskt.secure-endpoints.com/krb5_admin
+
+Package: libkrb5admin-perl
+Architecture: any
+Depends: ${perl:Depends}, ${shlibs:Depends}, ${misc:Depends}
+Description: Kerberos administration framework
+ Kerberos administration framework
