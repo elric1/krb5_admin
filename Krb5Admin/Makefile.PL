@@ -49,12 +49,12 @@ if (!defined($HAVE)) {
 		$HAVE = '-DHAVE_HEIMDAL';
 	}
 	if (-f "$KRB5DIR/lib/libkrb5support.so") {
-		$HAVE = 'DHAVE_MIT';
+		$HAVE = '-DHAVE_MIT';
 	}
 }
 
 if (-f "$KRB5DIR/include/krb5/hdb.h") {
-	$HAVE .= 'HEIMDAL_INCLUDES_IN_KRB5';
+	$HAVE .= '-DHEIMDAL_INCLUDES_IN_KRB5';
 }
 
 # XXXrcd: we still need to deal with this one:
