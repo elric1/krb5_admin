@@ -13,6 +13,7 @@ my %args = (
 
     dist     => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean    => { FILES => 'Kharon-*' },
+    test     => { TESTS => 't/curve25519.t t/getkdc.t t/getrealm.t'},
 );
 
 my @manpages = qw{ man/krb5_admin.1 man/krb5_admind.8 man/krb5_prestash.1 };
