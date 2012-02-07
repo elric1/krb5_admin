@@ -268,7 +268,11 @@ eval {
 		$kmdb = Krb5Admin::KerberosDB->new(local => 1);
 	}
 	if (@kdcs) {
-		$kmdb = Krb5Admin::Client->new(undef, {}, @kdcs);
+		my $clnt;
+		if ($cmd eq 'fetch') {
+			$clnt = 'host/' .  [host_list(hostname())]->[0];
+		}
+		$kmdb = Krb5Admin::Client->new($clnt, {}, @kdcs);
 	}
 	&$cmd($kmdb, @ARGV);
 };
