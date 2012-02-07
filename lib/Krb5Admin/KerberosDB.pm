@@ -3,6 +3,8 @@
 
 package Krb5Admin::KerberosDB;
 
+use base qw/Krb5Admin/;
+
 use DBI;
 use Sys::Hostname;
 use Sys::Syslog;
@@ -1163,3 +1165,82 @@ sub remove_ticket {
 }
 
 1;
+
+__END__
+
+=head1 NAME
+
+Krb5Admin::KerberosDB - locally manipulate a Kerberos DB
+
+=head1 SYNOPSIS
+
+	use Krb5Admin::KerberosDB;
+
+	my $kmdb = Krb5Admin::KerberosDB->new();
+
+=head1 DESCRIPTION
+
+=head1 CONSTRUCTOR
+
+=over 4
+
+=item new(ARGS)
+
+Creates a new "Krb5Admin::KerberosDB" object.  ARGS is a hash which
+can contain
+
+=over 4
+
+=item acl_file
+
+the path to the acl_file, defaults to /etc/krb5/krb5_admin.acl
+
+=item dbname
+
+broken.
+
+=item sqlite
+
+the path to the adjunct sqlite DB.
+
+=item debug
+
+if true, turns on debugging.
+
+=item local
+
+if true, sets the DB access mode to local which will circumvent ACL
+checks and ignore client, add and hostname.
+
+=item client
+
+the Kerberos principal under whose authority actions will be taken.
+
+=item addr
+
+the address from which the client connected.
+
+=item xrealm_bootstrap
+
+the cross realm bootstrapping table.  Must be a hash reference.
+
+=item win_xrealm_bootstarp
+
+the Windows cross realm bootstrapping table.  Must be a hash reference.
+
+=item prestash_xrealm
+
+the prestashed cross realm authorisation table.  Must be a hash reference.
+
+=back
+
+=back
+
+=head1 METHODS
+
+All of the user-visible methods are inherited from Krb5Admin and are
+documented there as well.
+
+=head1 SEE ALSO
+
+L<Krb5Admin>
