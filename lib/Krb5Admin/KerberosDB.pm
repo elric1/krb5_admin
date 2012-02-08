@@ -1123,7 +1123,8 @@ sub fetch_tickets {
 
 	# XXXrcd: make configurable...
 	return { map {
-		$_ => Krb5Admin::C::mint_ticket($ctx, $hndl, $_, 3600 * 24, 0);
+		$_ => Krb5Admin::C::mint_ticket($ctx, $hndl, $_, 7 * 3600 * 24,
+		    0);
 	} @$tix };
 }
 
