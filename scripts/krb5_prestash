@@ -244,8 +244,8 @@ $expand_srvloc = 1 if defined($opts{E});
 $expand_srvloc = 1 if defined($opts{v});	# -v ==> -E
 $verbose = 1       if defined($opts{v});
 
-if (@kdcs and $opts{l}) {
-	print STDERR "-h and -l are mutually exclusive.\n";
+if (@kdcs + $opts{l}?1:0 + $opts{r}?1:0 > 1) {
+	print STDERR "-h, -l, and -r are mutually exclusive.\n";
 	usage();
 }
 

@@ -309,6 +309,11 @@ $terse = 1		if exists($opts{'s'});
 @kdcs = ($opts{'h'})	if exists($opts{'h'});
 $realm = $opts{'r'}	if exists($opts{'r'});
 
+if (@kdcs + $opts{l}?1:0 + $opts{r}?1:0 > 1) {
+	print STDERR "-h, -l, and -r are mutually exclusive.\n";
+	usage();
+}
+
 my $kmdb;
 eval {
 	if (exists($opts{'l'})) {
