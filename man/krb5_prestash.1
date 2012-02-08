@@ -11,6 +11,7 @@
 .Nm
 .Op Fl Elv
 .Op Fl h Ar hostspec
+.Op Fl r Ar REALM
 .Ar command Ar arg Oo Ar arg ... Oc
 .Sh DESCRIPTION
 .Nm
@@ -28,6 +29,9 @@ A
 .Ar hostspec
 has a format of
 .Oo Ar service@ Oc Ns Ar hostname Ns Oo : Ns Ar port Oc .
+.It Fl r Ar REALM
+connect to one of the KDCs for realm
+.Ar REALM .
 .It Fl l
 operate on the local Kerberos DB.
 .It Fl v

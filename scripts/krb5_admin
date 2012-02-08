@@ -297,22 +297,26 @@ EOM
 }
 
 my %opts;
-my @kdc;
+my @kdcs;
+my $realm;
 
-getopts('dh:lsv?', \%opts) or usage();
+getopts('dh:lr:sv?', \%opts) or usage();
 
 usage()			if exists($opts{'?'});
 $debug = 1		if exists($opts{'d'});
 $verbose = 1		if exists($opts{'v'});
 $terse = 1		if exists($opts{'s'});
-@kdc = ($opts{'h'})	if exists($opts{'h'});
+@kdcs = ($opts{'h'})	if exists($opts{'h'});
+$realm = $opts{'r'}	if exists($opts{'r'});
 
 my $kmdb;
 eval {
 	if (exists($opts{'l'})) {
 		$kmdb = Krb5Admin::KerberosDB->new(local => 1);
 	} else {
-		$kmdb = Krb5Admin::Client->new(undef, {}, @kdc);
+		my %args;
+		$args{realm} = $realm	if defined($realm);
+		$kmdb = Krb5Admin::Client->new(undef, \%args, @kdcs);
 	}
 };
 if ($@) {
@@ -343,7 +347,7 @@ while (1) {
 
 	if ($debug) {
 		print STDERR "DEBUG: Doing: $cmd";
-		print STDERR ", via kdc \"$kdc[0]\"" if defined($kdc[0]);
+		print STDERR ", via kdc \"$kdcs[0]\"" if defined($kdcs[0]);
 		print STDERR "\n";
 	}
 

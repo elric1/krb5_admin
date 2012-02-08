@@ -233,10 +233,13 @@ my %cmds = (
 );
 
 our %opts;
-getopts('Eh:lv', \%opts);
+my @kdcs;
+my $realm;
 
-my @kdcs = ();
+getopts('Eh:lr:v', \%opts);
+
 @kdcs = ($opts{h}) if defined($opts{h});
+$realm = $opts{r}  if defined($opts{r});
 $expand_srvloc = 1 if defined($opts{E});
 $expand_srvloc = 1 if defined($opts{v});	# -v ==> -E
 $verbose = 1       if defined($opts{v});
@@ -267,12 +270,14 @@ eval {
 	if (defined($opts{l})) {
 		$kmdb = Krb5Admin::KerberosDB->new(local => 1);
 	}
-	if (@kdcs) {
+	if (@kdcs || defined($realm)) {
+		my %args;
 		my $clnt;
 		if ($cmd eq 'fetch') {
 			$clnt = 'host/' .  [host_list(hostname())]->[0];
 		}
-		$kmdb = Krb5Admin::Client->new($clnt, {}, @kdcs);
+		$args{realm} = $realm	if defined($realm);
+		$kmdb = Krb5Admin::Client->new($clnt, \%args, @kdcs);
 	}
 	&$cmd($kmdb, @ARGV);
 };
