@@ -204,7 +204,7 @@ sub remove {
 #
 
 sub usage {
-	print STDERR "usage: krb5_prestash [-Elv] [-h <hostspec>] <command>\n";
+	print STDERR "usage: krb5_prestash [-Elv] [-h <hostspec> | -r realm | -l] <command>\n";
 	print STDERR "    where <command> is:\n\n";
 
 	print STDERR "\tinsert <principal> <host>[ <host>]*\n";

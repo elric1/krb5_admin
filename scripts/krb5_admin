@@ -291,7 +291,7 @@ sub printvar {
 
 sub usage {
 	print STDERR <<EOM;
-usage: krb5_admin [-v] [-h kdc_host] user [user ...]
+usage: krb5_admin [-v] [-h kdc_host | -r realm | -l] user [user ...]
 EOM
 	exit(1);
 }
