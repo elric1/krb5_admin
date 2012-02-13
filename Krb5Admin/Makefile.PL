@@ -15,29 +15,20 @@ use warnings;
 #
 #         We also attempt to locate a few of these things automagically.
 
-my $KRB5DIR;
-my $HAVE;
+my $KRB5DIR = $ENV{KRB5DIR};
 
-$KRB5DIR = $ENV{KRB5DIR}	if defined($ENV{KRB5DIR});
+if (!defined($KRB5DIR)) {
+	die "Must have KRB5DIR set before building this Makefile.PL, " . 
+	    "this should be done by the parent Makefile.PL.\n";
+}
+
+my $HAVE;
 if (defined($ENV{KRB5TYPE})) {
 	$HAVE = '-DHAVE_MIT'		if $ENV{KRB5TYPE} eq 'mit';
 	$HAVE = '-DHAVE_HEIMDAL'	if $ENV{KRB5TYPE} eq 'heimdal';
 
 	die "Unrecognised Kerberos type: " . $ENV{KRB5TYPE} .
 	    ".  Must be mit or heimdal.\n";
-}
-
-#
-# XXXrcd: we look for the .so rather than .so.X or .so.X.Y because we
-#         are building and we therefore expect that the symlinks will
-#         be installed.
-
-for my $dir (qw{/usr /usr/local /usr/pkg}) {
-	last	if defined($KRB5DIR);
-
-	if (-f "$dir/lib/libgssapi.so" || -f "$dir/lib/libgssapi_krb5.so") {
-		$KRB5DIR = $dir;
-	}
 }
 
 #

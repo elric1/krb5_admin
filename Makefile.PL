@@ -1,8 +1,44 @@
 use strict;
 use ExtUtils::MakeMaker;
 
-my $KRB5DIR = '/usr';
-   $KRB5DIR = $ENV{KRB5DIR}	if defined($ENV{KRB5DIR});
+#
+# First, we find the Kerberos libraries.  The builder can specify a
+# number of environment variables to help us:
+#
+#		KRB5DIR		the directory to find Kerberos.
+#				If not specified, we will look for
+#				libgssapi{,_krb5}.so in /usr, /usr/pkg,
+#				and /usr/local.
+#		KRB5TYPE	either mit or heimdal.  We'll try to
+#				figure it out if not specified.
+#
+# NOTE: we do not allow the user to pass KRB5DIR and KRB5TYPE on the
+# command line as ExtUtils::MakeMaker will complain if we do that.
+#
+# NOTE: Krb5Admin/Makefile.PL does more autodiscovery because it needs
+# to know a bit more about Kerberos than does this Makefile.PL.
+
+my $KRB5DIR;
+$KRB5DIR = $ENV{KRB5DIR}	if defined($ENV{KRB5DIR});
+
+#
+# XXXrcd: we look for the .so rather than .so.X or .so.X.Y because we
+#         are building and we therefore expect that the symlinks will
+#         be installed.
+
+for my $dir (qw{/usr /usr/local /usr/pkg}) {
+	last	if defined($KRB5DIR);
+
+	if (-f "$dir/lib/libgssapi.so" || -f "$dir/lib/libgssapi_krb5.so") {
+		$KRB5DIR = $dir;
+	}
+}
+
+if (!defined($KRB5DIR)) {
+	die "Can't find the Kerberos libraries.\n";
+}
+
+$ENV{KRB5DIR} = $KRB5DIR;
 
 my %args = (
     NAME     => 'Krb5Admin',
