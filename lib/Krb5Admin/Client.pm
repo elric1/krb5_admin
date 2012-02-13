@@ -16,7 +16,7 @@ use Krb5Admin::C;
 use strict;
 use warnings;
 
-our $KINIT    = '/usr/bin/kinit';
+our $KINIT    = '@@KINIT@@';
 
 sub new {
 	my ($isa, $princ, $opts, @servers) = @_;

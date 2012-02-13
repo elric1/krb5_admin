@@ -1,6 +1,9 @@
 use strict;
 use ExtUtils::MakeMaker;
 
+my $KRB5DIR = '/usr';
+   $KRB5DIR = $ENV{KRB5DIR}	if defined($ENV{KRB5DIR});
+
 my %args = (
     NAME     => 'Krb5Admin',
     AUTHOR   => 'Roland C. Dowdeswell <elric@imrryr.org>',
@@ -10,6 +13,8 @@ my %args = (
     OPTIMIZE => '-g',
     EXE_FILES=> ['scripts/krb5_admind', 'scripts/krb5_admin',
 		 'scripts/krb5_prestash'],
+
+    PM_FILTER=> qq{sed -e s,\@\@KINIT\@\@,$KRB5DIR/bin/kinit, },
 
     dist     => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean    => { FILES => 'Kharon-*' },
