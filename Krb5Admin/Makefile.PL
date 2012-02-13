@@ -45,7 +45,7 @@ if (!defined($HAVE)) {
 }
 
 if (-f "$KRB5DIR/include/krb5/hdb.h") {
-	$HAVE .= '-DHEIMDAL_INCLUDES_IN_KRB5';
+	$HAVE .= ' -DHEIMDAL_INCLUDES_IN_KRB5';
 }
 
 # XXXrcd: we still need to deal with this one:
