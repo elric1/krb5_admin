@@ -476,7 +476,7 @@ sub change_passwd {
 	$self->check_acl('change_passwd', $name);
 
 	if (defined($passwd)) {
-		Krb5Admin::C::krb5_setpass($ctx, $hndl, $name, [], $passwd);
+		Krb5Admin::C::krb5_setpass($ctx, $hndl, $name, -1, [], $passwd);
 	} else {
 		$passwd = Krb5Admin::C::krb5_randpass($ctx, $hndl, $name, []);
 	}

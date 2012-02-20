@@ -160,11 +160,21 @@ eval {
 			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR,
 		}, undef);
 
-	$passwd = 'Ff1passThePolicy--%!';
-	$passwd = Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, [], $passwd);
+	#
+	# Now, we change the passwd a few times requiring that the kvno
+	# increment.  This tests that the prior changes at least incremented
+	# the kvno if not actually set the passwd correctly.
+
+	Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, 2, [], "$passwd 2");
+	Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, 3, [], "$passwd 3");
+	Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, 4, [], "$passwd 4");
+	Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, 5, [], "$passwd 5");
 
 	#
-	# XXXrcd: test the passwd was appropriately set!
+	# And finally, we pass -1 for the kvno to ensure that this works.
+	# This is likely the most common case...
+
+	Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, -1, [], "$passwd -1");
 
 	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $princ);
 };

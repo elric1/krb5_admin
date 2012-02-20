@@ -96,7 +96,7 @@ key	  read_kt(krb5_context, char *);
 void	  write_kt(krb5_context, char *, krb5_keytab_entry *);
 void	  kt_remove_entry(krb5_context, char *, krb5_keytab_entry *);
 void	  krb5_setkey(krb5_context, kadm5_handle, char *, int, krb5_keyblock *);
-void	  krb5_setpass(krb5_context, kadm5_handle, char *, int,
+void	  krb5_setpass(krb5_context, kadm5_handle, char *, int, int,
 		       krb5_key_salt_tuple *, char *);
 char	 *krb5_randpass(krb5_context, kadm5_handle, char *, int,
 			krb5_key_salt_tuple *);

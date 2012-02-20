@@ -529,11 +529,40 @@ max_kvno(kadm5_principal_ent_rec dprinc)
 	return max_kvno;
 }
 
+static int
+is_next_kvno(krb5_context ctx, kadm5_handle hndl, krb5_principal princ,
+	     int kvno, char *errstr, int errlen)
+{
+	kadm5_principal_ent_rec	dprinc;
+	int			ret;
+	char			croakstr[2048] = "";
+
+	memset(&dprinc, 0, sizeof(dprinc));
+
+	if (kvno >= 2) {
+		K5BAIL(kadm5_get_principal(hndl, princ, &dprinc, 
+		    KADM5_PRINCIPAL_NORMAL_MASK | KADM5_KEY_DATA));
+
+		if (max_kvno(dprinc) != (kvno - 1)) {
+			snprintf(errstr, errlen, "not the next key");
+			return 0;
+		}
+	}
+
+done:
+	if (ret) {
+		strncpy(errstr, croakstr, errlen);
+		errstr[errlen - 1] = '\0';
+		return 0;
+	}
+
+	return 1;
+}
+
 void
 krb5_setkey(krb5_context ctx, kadm5_handle hndl, char *in, int kvno,
 	    krb5_keyblock *keys)
 {
-	kadm5_principal_ent_rec	 dprinc;
 	kadm5_config_params	 params;
 	krb5_principal		 princ = NULL;
 	kadm5_ret_t		 ret;
@@ -542,7 +571,6 @@ krb5_setkey(krb5_context ctx, kadm5_handle hndl, char *in, int kvno,
 	char			 croakstr[2048] = "";
 
 	memset((char *) &params, 0, sizeof(params));	
-	memset(&dprinc, 0, sizeof(dprinc));
 
 	/*
 	 * We expect that our typemap will give us an array of keys that
@@ -563,26 +591,13 @@ krb5_setkey(krb5_context ctx, kadm5_handle hndl, char *in, int kvno,
 	K5BAIL(kadm5_lock(hndl));
 	locked = 1;
 
-	if (kvno >= 2) {
-		K5BAIL(kadm5_get_principal(hndl, princ, &dprinc, 
-		    KADM5_PRINCIPAL_NORMAL_MASK | KADM5_KEY_DATA));
-
-		if (max_kvno(dprinc) != (kvno - 1)) {
-			snprintf(croakstr, sizeof(croakstr), "not the next "
-			    "key");
-			ret = 1;
-			goto done;
-		}
+	if (!is_next_kvno(ctx, hndl, princ, kvno, croakstr, sizeof(croakstr))) {
+		ret = 1;
+		goto done;
 	}
 
 	K5BAIL(kadm5_setkey_principal_3(hndl, princ, TRUE, 0, NULL,
 	    keys, n_keys));
-
-#if 0
-	/* XXXrcd: this is a little L4M3.  Maybe a different function? */
-	dprinc.attributes &= ~KRB5_KDB_DISALLOW_ALL_TIX;
-	K5BAIL(kadm5_modify_principal(hndl, &dprinc, KADM5_ATTRIBUTES));
-#endif
 
 done:
 	/* XXXrcd: free up used data structures! */
@@ -629,20 +644,37 @@ done:
 }
 
 void
-krb5_setpass(krb5_context ctx, kadm5_handle hndl, char *in, int n_ks_tuple,
-	     krb5_key_salt_tuple *ks_tuple, char *passwd)
+krb5_setpass(krb5_context ctx, kadm5_handle hndl, char *in, int kvno,
+	     int n_ks_tuple, krb5_key_salt_tuple *ks_tuple, char *passwd)
 {
 	krb5_principal		princ = NULL;
 	kadm5_ret_t		ret;
+	int			locked = 0;
 	char			croakstr[2048] = "";
 
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
+	K5BAIL(kadm5_lock(hndl));
+	locked = 1;
+
+	if (!is_next_kvno(ctx, hndl, princ, kvno, croakstr, sizeof(croakstr))) {
+		ret = 1;
+		goto done;
+	}
+
 	K5BAIL(kadm5_chpass_principal_3(hndl, princ, FALSE, n_ks_tuple,
 	    ks_tuple, passwd));
 
 done:
 	if (princ)
 		krb5_free_principal(ctx, princ);
+	if (locked) {
+		/*
+		 * Strangely, writes are tossed if you do not unlock before
+		 * destroying the DB.  Also, don't flush while you have a
+		 * lock.  That tosses writes...
+		 */
+		kadm5_unlock(hndl);
+	}
 
 	if (ret)
 		croak("%s", croakstr);
