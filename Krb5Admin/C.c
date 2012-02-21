@@ -356,6 +356,9 @@ curve25519_pass2(krb5_context ctx, char *mysecretstr, char *theirpublicstr)
 	char	*ret;
 	int	 i;
 
+	if (!mysecretstr || !theirpublicstr)
+		croak("mysecret and theirpublic must not be undef");
+
 	if (strlen(mysecretstr) != 64 || strlen(theirpublicstr) != 64)
 		croak("Strings must be 64 characters");
 
