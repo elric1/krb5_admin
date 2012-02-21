@@ -403,6 +403,56 @@ done:
 	$1 = k;
 }
 
+%typemap(in,numinputs=0) krb5_keyblock *OUTPUT (krb5_keyblock tmp) {
+	$1 = &tmp;
+}
+%typemap(argout) krb5_keyblock *OUTPUT {
+	HV	*hv = newHV();
+
+	HV_STORE_IV_F(hv, "enctype", KEYBLOCK_ENCTYPE((*$1)));
+	HV_STORE_PVN_LEN_F(hv, "key", KEYBLOCK_CONTENTS((*$1)),
+	    KEYBLOCK_CONTENT_LEN((*$1)));
+
+	$result = sv_2mortal(newRV_noinc((SV*)hv));
+	argvi++;
+}
+
+%typemap(in) krb5_principal {
+	krb5_error_code	 ret;
+	krb5_context	 ctx = NULL;
+	STRLEN		 len;
+	char		*tmp;
+	char		 croakstr[2048] = "";
+
+	tmp = SvPV($input, len);
+
+	ret = krb5_init_context(&ctx);
+	if (!ret)
+		ret = krb5_parse_name(ctx, tmp, &($1));
+
+	if (ctx)
+		krb5_free_context(ctx);
+	if (ret) {
+#ifdef HAVE_HEIMDAL 
+		krb5_context	 nullctx = 0;
+		char		 croakstr[2048] = "";
+		const char	*tmp; 
+
+		tmp = krb5_get_error_message(nullctx, ret);
+		if (tmp) {
+			snprintf(croakstr, sizeof(croakstr), "%s", tmp);
+			krb5_free_error_message(nullctx, tmp);
+		} else {
+			snprintf(croakstr, sizeof(croakstr),
+			"unknown error: %ld", (long)ret);
+		}
+		croak(croakstr);
+#else
+		croak(error_message(ret));
+#endif
+	}
+}
+
 %typemap(in,numinputs=0) krb5_principal * {
 	$1 = calloc(sizeof(krb5_principal), 1);
 }

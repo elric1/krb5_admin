@@ -123,6 +123,9 @@ void	 krb5_deleteprinc(krb5_context, kadm5_handle, char *);
 
 krb5_error_code	krb5_init_context(krb5_context *);
 krb5_error_code	krb5_parse_name(krb5_context, const char *, krb5_principal *);
+krb5_error_code krb5_string_to_key(krb5_context, krb5_enctype, const char *,
+				   krb5_principal, krb5_keyblock *OUTPUT);
+
 
 char 	**curve25519_pass1(krb5_context);
 char 	 *curve25519_pass2(krb5_context, char *, char *);
