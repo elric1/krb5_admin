@@ -38,7 +38,9 @@ use constant {
 $ENV{KRB5_CONFIG} = 'FILE:./t/krb5.conf';
 
 my  $ctx   = Krb5Admin::C::krb5_init_context();
-our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, undef);
+our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb');
+
+Krb5Admin::C::init_kdb($ctx, $hndl);
 
 my $princ  = 'testprinc';
 my $sprinc = 'testprinc/foodlebrotz.imrryr.org';

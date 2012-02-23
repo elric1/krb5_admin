@@ -31,6 +31,7 @@ my $kmdb;
 $kmdb = Krb5Admin::KerberosDB->new(
     local	=> 1,
     client	=> 'host/arioch.imrryr.org@IMRRYR.ORG',
+    dbname	=> 'db:t/test-hdb',
     acl_file	=> 't/krb5_admin.acl',
     sqlite	=> 't/sqlite.db',
 );
