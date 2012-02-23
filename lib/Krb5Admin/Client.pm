@@ -64,7 +64,7 @@ sub new {
 	}
 	$self->{pec} = $pec;
 
-	bless($self, $isa);
+	bless($self, $class);
 }
 
 eval mk_array_methods(undef, qw{
