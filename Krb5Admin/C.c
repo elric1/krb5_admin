@@ -1199,3 +1199,31 @@ mint_ticket(krb5_context ctx, kadm5_handle hndl, char *princ, int lifetime,
 }
 
 #endif
+
+#ifdef HAVE_HEIMDAL
+
+#include <sys/un.h>
+
+#include <kadm5/private.h>
+
+krb5_error_code
+init_kdb(krb5_context ctx, kadm5_handle hndl)
+{
+	krb5_error_code	 ret;
+	HDB		*db;
+
+	db = _kadm5_s_get_db(hndl);
+	ret = db->hdb_open(ctx, db, O_RDWR | O_CREAT, 0600);
+	if (ret)
+		return ret;
+	db->hdb_close(ctx, db);
+	return 0;
+}
+#else
+krb5_error_code
+init_kdb(krb5_context ctx, kadm5_handle hndl)
+{
+
+	croak("init_kdb is not implemented for MIT Kerberos");
+}
+#endif

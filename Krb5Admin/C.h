@@ -108,6 +108,7 @@ char	**krb5_list_pols(krb5_context, kadm5_handle, char *);
 
 void	  init_store_creds(krb5_context, char *, krb5_creds *);
 
+krb5_error_code		 init_kdb(krb5_context, kadm5_handle);
 krb5_creds		*mint_ticket(krb5_context, kadm5_handle, char *, int,
 				     int);
 krb5_keyblock		 get_kte(krb5_context, char *, char *);
