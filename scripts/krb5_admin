@@ -291,23 +291,27 @@ sub printvar {
 
 sub usage {
 	print STDERR <<EOM;
-usage: krb5_admin [-v] [-h kdc_host | -r realm | -l] user [user ...]
+usage: krb5_admin [-v] [-D dbname] [-h kdc_host | -r realm | -l] user [user ...]
 EOM
 	exit(1);
 }
 
 my %opts;
+my $dbname;
 my @kdcs;
 my $realm;
 
-getopts('dh:lr:sv?', \%opts) or usage();
+getopts('D:dh:lr:sv?', \%opts) or usage();
 
 usage()			if exists($opts{'?'});
+$dbname = $opts{'D'}	if exists($opts{'D'});
 $debug = 1		if exists($opts{'d'});
 $verbose = 1		if exists($opts{'v'});
 $terse = 1		if exists($opts{'s'});
 @kdcs = ($opts{'h'})	if exists($opts{'h'});
 $realm = $opts{'r'}	if exists($opts{'r'});
+
+$opts{'l'} = 1		if defined($dbname);
 
 if (@kdcs + ($opts{l}?1:0) + ($opts{r}?1:0) > 1) {
 	print STDERR "-h, -l, and -r are mutually exclusive.\n";
@@ -317,7 +321,7 @@ if (@kdcs + ($opts{l}?1:0) + ($opts{r}?1:0) > 1) {
 my $kmdb;
 eval {
 	if (exists($opts{'l'})) {
-		$kmdb = Krb5Admin::KerberosDB->new(local => 1);
+		$kmdb = Krb5Admin::KerberosDB->new(local=>1, dbname=>$dbname);
 	} else {
 		my %args;
 		$args{realm} = $realm	if defined($realm);
