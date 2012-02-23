@@ -318,7 +318,7 @@ sub new {
 	$self->{win_xrealm_bootstrap}	= $args{win_xrealm_bootstrap};
 	$self->{prestash_xrealm}	= $args{prestash_xrealm};
 
-	bless(\%self, $isa);
+	bless($self, $class);
 }
 
 sub DESTROY {
