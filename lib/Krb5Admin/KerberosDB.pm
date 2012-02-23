@@ -298,25 +298,25 @@ sub new {
 	    subobject => $subacls);
 	$acl->set_creds($args{client});
 
-	my $ctx = Krb5Admin::C::krb5_init_context();
+	my $ctx = $self->{ctx};
 
-	$self{debug}	= $args{debug};
-	$self{local}	= $args{local};
-	$self{client}	= $args{client};
-	$self{addr}	= $args{addr};
-	$self{hostname} = reverse_the($args{addr});
-	$self{ctx}	= $ctx;
-	$self{hndl}	= Krb5Admin::C::krb5_get_kadm5_hndl($ctx, $dbname);
-	$self{acl}	= $acl;
-	$self{dbh}	= $dbh;
+	$self->{debug}	  = $args{debug};
+	$self->{local}	  = $args{local};
+	$self->{client}	  = $args{client};
+	$self->{addr}	  = $args{addr};
+	$self->{hostname} = reverse_the($args{addr});
+	$self->{ctx}	  = $ctx;
+	$self->{hndl}	  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, $dbname);
+	$self->{acl}	  = $acl;
+	$self->{dbh}	  = $dbh;
 
-	$self{local}	= 0			if !defined($self{local});
-	$self{client}	= "LOCAL_MODIFICATION"	if $self{local};
-	$self{debug}	= 0			if !defined($self{debug});
+	$self->{local}	= 0			if !defined($self{local});
+	$self->{client}	= "LOCAL_MODIFICATION"	if          $self{local};
+	$self->{debug}	= 0			if !defined($self{debug});
 
-	$self{xrealm_bootstrap}		= $args{xrealm_bootstrap};
-	$self{win_xrealm_bootstrap}	= $args{win_xrealm_bootstrap};
-	$self{prestash_xrealm}		= $args{prestash_xrealm};
+	$self->{xrealm_bootstrap}	= $args{xrealm_bootstrap};
+	$self->{win_xrealm_bootstrap}	= $args{win_xrealm_bootstrap};
+	$self->{prestash_xrealm}	= $args{prestash_xrealm};
 
 	bless(\%self, $isa);
 }
