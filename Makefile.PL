@@ -40,6 +40,28 @@ if (!defined($KRB5DIR)) {
 
 $ENV{KRB5DIR} = $KRB5DIR;
 
+#
+# XXXrcd: here we take a rather heuristic approach for now.  We're just
+#         looking for known differences between the two alternatives.
+
+if (!defined($ENV{KRB5TYPE})) {
+	if (-f "$KRB5DIR/lib/libheimbase.so") {
+		$ENV{KRB5TYPE} = 'heimdal';
+	}
+	if (-f "$KRB5DIR/lib/libkrb5support.so") {
+		$ENV{KRB5TYPE} = 'mit';
+	}
+}
+
+if (!defined($ENV{KRB5TYPE})) {
+	die "Could not determine Kerberos type.\n";
+}
+
+if ($ENV{KRB5TYPE} != 'heimdal' && $ENV{KRB5TYPE} != 'mit') {
+	die "Unrecognised Kerberos type: " . $ENV{KRB5TYPE} .
+	    ".  Must be mit or heimdal.\n";
+}
+
 my %args = (
     NAME     => 'Krb5Admin',
     AUTHOR   => 'Roland C. Dowdeswell <elric@imrryr.org>',
@@ -54,8 +76,15 @@ my %args = (
 
     dist     => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean    => { FILES => 'Kharon-*' },
-    test     => { TESTS => 't/curve25519.t t/getkdc.t t/getrealm.t'},
+#    test     => { TESTS => 't/curve25519.t t/getkdc.t t/getrealm.t'},
 );
+
+#
+# XXXrcd: For MIT Kerberos, we only support a subset of the tests, currently.
+
+if ($ENV{KRB5TYPE} eq 'mit') {
+	$args{test} = { TESTS => 't/curve25519.t t/getkdc.t t/getrealm.t'};
+}
 
 my @manpages = qw{ man/krb5_admin.1 man/krb5_admind.8 man/krb5_prestash.1 };
 

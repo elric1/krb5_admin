@@ -22,26 +22,20 @@ if (!defined($KRB5DIR)) {
 	    "this should be done by the parent Makefile.PL.\n";
 }
 
+if (!defined($ENV{KRB5TYPE})) {
+	die "Must have KRB5TYPE set before building this Makefile.PL, " .
+	    "this should be done by the parent Makefile.PL.\n";
+}
+
 my $HAVE;
 if (defined($ENV{KRB5TYPE})) {
 	$HAVE = '-DHAVE_MIT'		if $ENV{KRB5TYPE} eq 'mit';
 	$HAVE = '-DHAVE_HEIMDAL'	if $ENV{KRB5TYPE} eq 'heimdal';
-
-	die "Unrecognised Kerberos type: " . $ENV{KRB5TYPE} .
-	    ".  Must be mit or heimdal.\n";
 }
 
-#
-# XXXrcd: here we take a rather heuristic approach for now.  We're just
-#         looking for known differences between the two alternatives.
-
 if (!defined($HAVE)) {
-	if (-f "$KRB5DIR/lib/libheimbase.so") {
-		$HAVE = '-DHAVE_HEIMDAL';
-	}
-	if (-f "$KRB5DIR/lib/libkrb5support.so") {
-		$HAVE = '-DHAVE_MIT';
-	}
+	die "Unrecognised Kerberos type: " . $ENV{KRB5TYPE} .
+	    ".  Must be mit or heimdal.\n";
 }
 
 if (-f "$KRB5DIR/include/krb5/hdb.h") {
@@ -50,14 +44,6 @@ if (-f "$KRB5DIR/include/krb5/hdb.h") {
 
 # XXXrcd: we still need to deal with this one:
 #  $HAVE	.= ' -DHAVE_CTX_IN_KADM5';
-
-if (!defined($KRB5DIR)) {
-	die "Can't find the Kerberos libraries.\n";
-}
-
-if (!defined($HAVE)) {
-	die "Can't determine type of Kerberos libraries.\n";
-}
 
 my %args;
 
