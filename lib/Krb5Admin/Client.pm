@@ -19,8 +19,15 @@ use warnings;
 our $KINIT    = '@@KINIT@@';
 
 sub new {
-	my ($isa, $princ, $opts, @servers) = @_;
-	my $self;
+	my ($proto, $princ, $opts, @servers) = @_;
+	my $class = ref($proto) || $proto;
+
+	#
+	# XXXrcd: we may need to define a mechanism for passing args
+	#         to this...
+
+	my $self = $class->SUPER::new();
+	my $ctx  = $self->{ctx};
 
 	my $port;
 	$port = $opts->{port} if exists($opts->{port});
@@ -29,7 +36,6 @@ sub new {
 	my $realm = '';
 	$realm = $opts->{realm} if exists($opts->{realm});
 
-	my $ctx = Krb5Admin::C::krb5_init_context();
 	if (scalar(@servers) < 1) {
 		my $kdcs = Krb5Admin::C::krb5_get_kdcs($ctx, $realm);
 		@servers = @$kdcs;

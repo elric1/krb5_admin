@@ -3,12 +3,16 @@
 
 package Krb5Admin;
 
+use Krb5Admin::C;
+
 use strict;
 use warnings;
 
 sub new {
 	my ($isa, %args) = @_;
 	my %self;
+
+	$self{ctx} = Krb5Admin::C::krb5_init_context();
 
 	bless(\%self, $isa);
 }

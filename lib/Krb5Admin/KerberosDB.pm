@@ -269,8 +269,10 @@ sub check_acl {
 }
 
 sub new {
-	my ($isa, %args) = @_;
-	my %self;
+	my ($proto, %args) = @_;
+	my $class = ref($proto) || $proto;
+
+	my $self = $class->SUPER::new(%args);
 
 	#
 	# set defaults:
