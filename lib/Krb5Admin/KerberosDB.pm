@@ -310,9 +310,9 @@ sub new {
 	$self->{acl}	  = $acl;
 	$self->{dbh}	  = $dbh;
 
-	$self->{local}	= 0			if !defined($self{local});
-	$self->{client}	= "LOCAL_MODIFICATION"	if          $self{local};
-	$self->{debug}	= 0			if !defined($self{debug});
+	$self->{local}	= 0			if !defined($self->{local});
+	$self->{client}	= "LOCAL_MODIFICATION"	if          $self->{local};
+	$self->{debug}	= 0			if !defined($self->{debug});
 
 	$self->{xrealm_bootstrap}	= $args{xrealm_bootstrap};
 	$self->{win_xrealm_bootstrap}	= $args{win_xrealm_bootstrap};
