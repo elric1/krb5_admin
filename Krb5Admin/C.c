@@ -203,8 +203,14 @@ krb5_createprinc(krb5_context ctx, kadm5_handle hndl,
 	kadm5_ret_t	 ret;
 	char		 croakstr[2048] = "";
 
-	if (!passwd)
+	if (passwd)
+		passwd = strdup(passwd);
+	else
 		passwd = random_passwd(ctx, HUMAN_PASSWD_SIZE);
+
+	if (!passwd)
+		croak("Out of memory.");
+
 	mask |= KADM5_PRINCIPAL;
 	K5BAIL(kadm5_create_principal(hndl, &p, mask, passwd));
 
@@ -317,7 +323,6 @@ curve25519_pass1(krb5_context ctx)
 	uint8_t		 *mysecret;
 	char		**result;
 	char		  croakstr[2048] = "";
-	int		  i;
 
 	/*
 	 * get 32 bytes of randomness for mysecret by generating an
@@ -461,7 +466,7 @@ krb5_createkey(krb5_context ctx, kadm5_handle hndl, char *in)
 	kadm5_config_params	 params;
 	krb5_principal		 princ = NULL;
 	kadm5_ret_t		 ret;
-	int			 i;
+	size_t			 i;
 	char			 croakstr[2048] = "";
 	char			 dummybuf[256];
 
@@ -542,14 +547,15 @@ is_next_kvno(krb5_context ctx, kadm5_handle hndl, krb5_principal princ,
 
 	memset(&dprinc, 0, sizeof(dprinc));
 
-	if (kvno >= 2) {
-		K5BAIL(kadm5_get_principal(hndl, princ, &dprinc, 
-		    KADM5_PRINCIPAL_NORMAL_MASK | KADM5_KEY_DATA));
+	if (kvno < 2)
+		return 1;
 
-		if (max_kvno(dprinc) != (kvno - 1)) {
-			snprintf(errstr, errlen, "not the next key");
-			return 0;
-		}
+	K5BAIL(kadm5_get_principal(hndl, princ, &dprinc, 
+	    KADM5_PRINCIPAL_NORMAL_MASK | KADM5_KEY_DATA));
+
+	if (max_kvno(dprinc) != (kvno - 1)) {
+		snprintf(errstr, errlen, "not the next key");
+		return 0;
 	}
 
 done:
