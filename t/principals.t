@@ -108,7 +108,7 @@ eval {
 			principal	=> $princ,
 			policy		=> 'default',
 			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR,
-		}, undef);
+		}, [], undef);
 
 	$q = Krb5Admin::C::krb5_query_princ($ctx, $hndl, $princ);
 	if ($q->{attributes} != (REQUIRES_PRE_AUTH | DISALLOW_SVR)) {
@@ -140,7 +140,7 @@ eval {
 			principal	=> $princ,
 			policy		=> 'default',
 			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR,
-		}, $passwd);
+		}, [], $passwd);
 
 	#
 	# XXXrcd: test the passwd was appropriately set!
@@ -160,17 +160,17 @@ eval {
 			principal	=> $princ,
 			policy		=> 'default',
 			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR,
-		}, undef);
+		}, [16, 17, 18], undef);
 
 	#
 	# Now, we change the passwd a few times requiring that the kvno
 	# increment.  This tests that the prior changes at least incremented
 	# the kvno if not actually set the passwd correctly.
 
-	Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, 2, [], "$passwd 2");
-	Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, 3, [], "$passwd 3");
-	Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, 4, [], "$passwd 4");
-	Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, 5, [], "$passwd 5");
+	Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, 2, [17], "$passwd 2");
+	Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, 3, [18], "$passwd 3");
+	Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, 4, [23], "$passwd 4");
+	Krb5Admin::C::krb5_setpass($ctx, $hndl, $princ, 5, [16], "$passwd 5");
 
 	#
 	# And finally, we pass -1 for the kvno to ensure that this works.
@@ -193,9 +193,9 @@ eval {
 			principal	=> $princ,
 			policy		=> 'default',
 			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR,
-		}, undef);
+		}, [17, 18], undef);
 
-	$passwd = Krb5Admin::C::krb5_randpass($ctx, $hndl, $princ, []);
+	$passwd = Krb5Admin::C::krb5_randpass($ctx, $hndl, $princ, [18]);
 
 	#
 	# XXXrcd: test the passwd was appropriately set!
@@ -224,7 +224,7 @@ eval {
 			principal	=> $p,
 			policy		=> 'default',
 			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR,
-			}, undef);
+			}, [17, 18, 16, 23], undef);
 	}
 
 	$results = Krb5Admin::C::krb5_list_princs($ctx, $hndl, $princ . "*");

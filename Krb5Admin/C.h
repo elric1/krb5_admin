@@ -119,7 +119,9 @@ kadm5_handle		 krb5_get_kadm5_hndl(krb5_context, char *);
 void	 krb5_modprinc(krb5_context, kadm5_handle, kadm5_principal_ent_rec,
 		       long);
 char	*krb5_createprinc(krb5_context, kadm5_handle,
-                 	  kadm5_principal_ent_rec, long, char *);
+                 	  kadm5_principal_ent_rec, long,
+			  int, krb5_key_salt_tuple *,
+			  char *);
 void	 krb5_deleteprinc(krb5_context, kadm5_handle, char *);
 
 krb5_error_code	krb5_init_context(krb5_context *);

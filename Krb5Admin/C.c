@@ -198,7 +198,9 @@ done:
 
 char *
 krb5_createprinc(krb5_context ctx, kadm5_handle hndl,
-		 kadm5_principal_ent_rec p, long mask, char *passwd)
+		 kadm5_principal_ent_rec p, long mask,
+		 int n_ks_tuple, krb5_key_salt_tuple *ks_tuple,
+		 char *passwd)
 {
 	kadm5_ret_t	 ret;
 	char		 croakstr[2048] = "";
@@ -212,7 +214,8 @@ krb5_createprinc(krb5_context ctx, kadm5_handle hndl,
 		croak("Out of memory.");
 
 	mask |= KADM5_PRINCIPAL;
-	K5BAIL(kadm5_create_principal(hndl, &p, mask, passwd));
+	K5BAIL(kadm5_create_principal_3(hndl, &p, mask, n_ks_tuple, ks_tuple,
+	    passwd));
 
 done:
 	if (ret) {
