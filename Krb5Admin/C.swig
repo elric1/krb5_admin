@@ -580,7 +580,8 @@ done:
 
 	av = (AV*)SvRV($input);
 	n_ks_tuple = av_len(av) + 1;
-	ks_tuple = calloc(n_ks_tuple, sizeof(*ks_tuple));
+	if (n_ks_tuple > 0)
+		ks_tuple = calloc(n_ks_tuple, sizeof(*ks_tuple));
 
 	for (i=0; i < n_ks_tuple; i++) {
 		sv = av_fetch(av, i, 0);
@@ -591,7 +592,7 @@ done:
 	$1 = n_ks_tuple;
 	$2 = ks_tuple;
 }
-%typemap(freearg) (int, krb5_key_salt_typle *) {
+%typemap(freearg) (int, krb5_key_salt_tuple *) {
 	free($2);
 }
 
