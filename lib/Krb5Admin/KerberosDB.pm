@@ -334,6 +334,8 @@ sub init_db {
 	my ($self) = @_;
 	my $dbh = $self->{dbh};
 
+	Krb5Admin::C::init_kdb($self->{ctx}, $self->{hndl});
+
 	$dbh->{AutoCommit} = 1;
 
 	#
@@ -378,6 +380,8 @@ sub drop_db {
 	my ($self) = @_;
 	my ($dbh) = $self->{dbh};
 
+	# XXXrcd: should we unlink(2) the Kerberos DB?  Maybe not.
+
 	$dbh->{AutoCommit} = 1;
 	$dbh->do('DROP TABLE IF EXISTS prestashed');
 	$dbh->do('DROP TABLE IF EXISTS hostmap');
@@ -396,7 +400,7 @@ sub create {
 	$self->check_acl('create', $name);
 	Krb5Admin::C::krb5_createkey($ctx, $hndl, $name);
 	syslog('info', "%s", $self->{client} . " created $name");
-	{ created => $name };
+	return undef;
 }
 
 sub create_user {
@@ -413,7 +417,7 @@ sub create_user {
 			policy		=> 'default',
 			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR |
 					   REQUIRES_PWCHANGE,
-		}, $passwd);
+		}, [], $passwd);
 	syslog('info', "%s", $self->{client} . " created $name");
 	$ret;
 }
@@ -459,7 +463,7 @@ sub change {
 	require_scalar("change <princ>", 1, $name);
 	$self->check_acl('change', $name);
 	Krb5Admin::C::krb5_setkey($ctx, $hndl, $name, $kvno, $keys);
-	{ setkey => $name };
+	return undef;
 }
 
 sub change_passwd {
