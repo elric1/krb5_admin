@@ -13,7 +13,7 @@ sub mk_kte {
 
 	my $key = Krb5Admin::C::krb5_make_a_key($ctx, $enctype);
 
-	$key->{princ} = 'elric/straasha.imrryr.org@IMRRYR.ORG';
+	$key->{princ} = 'userA/host8.test.realm@TEST.REALM';
 	$key->{kvno}  = $kvno;
 
 	return $key;

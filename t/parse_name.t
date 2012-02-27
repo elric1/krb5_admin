@@ -16,14 +16,14 @@ my $ctx = Krb5Admin::C::krb5_init_context();
 my @tests = (
 	['a@BAR.COM', [ 'BAR.COM', 'a' ]],
 	['user@EXAMPLE.COM', [ 'EXAMPLE.COM', 'user' ]],
-	['elric@IMRRYR.ORG', [ 'IMRRYR.ORG', 'elric' ]],
-	['elric@imrryr.org', [ 'imrryr.org', 'elric' ]],
-	['elric/root@IMRRYR.ORG', [ 'IMRRYR.ORG', 'elric', 'root' ]],
-	['yyrkoon/admin@IMRRYR.ORG', [ 'IMRRYR.ORG', 'yyrkoon', 'admin' ]],
-	['host/arioch.imrryr.org@IMRRYR.ORG',
-	    [ 'IMRRYR.ORG', 'host', 'arioch.imrryr.org' ]],
-	['HTTP/mournblade.imrryr.org@IMRRYR.ORG',
-	    [ 'IMRRYR.ORG', 'HTTP', 'mournblade.imrryr.org' ]],
+	['userA@TEST.REALM', [ 'TEST.REALM', 'userA' ]],
+	['userA@test.realm', [ 'test.realm', 'userA' ]],
+	['userA/root@TEST.REALM',  [ 'TEST.REALM', 'userA', 'root' ]],
+	['userB/admin@TEST.REALM', [ 'TEST.REALM', 'userB', 'admin' ]],
+	['host/host1.test.realm@TEST.REALM',
+	    [ 'TEST.REALM', 'host', 'host1.test.realm' ]],
+	['HTTP/host2.test.realm@TEST.REALM',
+	    [ 'TEST.REALM', 'HTTP', 'host2.test.realm' ]],
 );
 
 plan tests => scalar(@tests);

@@ -43,7 +43,7 @@ our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb');
 Krb5Admin::C::init_kdb($ctx, $hndl);
 
 my $princ  = 'testprinc';
-my $sprinc = 'testprinc/foodlebrotz.imrryr.org';
+my $sprinc = 'testprinc/foodlebrotz.test.realm';
 
 # make sure that the princs are not here:
 eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $princ); };
@@ -208,7 +208,7 @@ ok(!$@, "Create, randpass and delete a user principal") or diag($@);
 # just make sure:
 eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $princ); };
 
-my @princs = sort(map { $princ . $_ . '@IMRRYR.ORG' } (0..20));
+my @princs = sort(map { $princ . $_ . '@TEST.REALM' } (0..20));
 my $results;
 
 eval {

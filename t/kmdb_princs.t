@@ -48,14 +48,16 @@ sub testObjC {
 	}
 }
 
-my $sprinc = 'service@IMRRYR.ORG';
-my $uprinc = 'user@IMRRYR.ORG';
+$ENV{'KRB5_CONFIG'} = 't/krb5.conf';
+
+my $sprinc = 'service@TEST.REALM';
+my $uprinc = 'user@TEST.REALM';
 
 my $kmdb;
 
 $kmdb = Krb5Admin::KerberosDB->new(
     local	=> 1,
-    client	=> 'host/arioch.imrryr.org@IMRRYR.ORG',
+    client	=> 'host/hostA.test.realm@TEST.REALM',
     dbname	=> 'db:t/test-hdb',
     acl_file	=> 't/krb5_admin.acl',
     sqlite	=> 't/sqlite.db',

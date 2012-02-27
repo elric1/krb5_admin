@@ -11,7 +11,7 @@ use warnings;
 $ENV{KRB5_CONFIG} = 'FILE:./t/krb5.conf';
 
 my  $ctx   = Krb5Admin::C::krb5_init_context();
-our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, undef);
+our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb');
 our $realm = Krb5Admin::C::krb5_get_realm($ctx);
 
 #
@@ -21,7 +21,11 @@ our $realm = Krb5Admin::C::krb5_get_realm($ctx);
 my $ret;
 
 eval {
-	$ret = Krb5Admin::C::mint_ticket($ctx, $hndl, 'elric', 3600, 7200);
+	Krb5Admin::C::krb5_createkey($ctx, $hndl,
+	    'krbtgt/TEST.REALM@TEST.REALM');
+	$ret = Krb5Admin::C::mint_ticket($ctx, $hndl, 'user', 3600, 7200);
+	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl,
+	    'krbtgt/TEST.REALM@TEST.REALM');
 };
 
 ok(!$@) or diag("$@");
@@ -32,8 +36,8 @@ eval {
 		# Well...  for now, construct them.
 
 		$ret = {
-			client   => 'user@EXAMPLE.COM',
-			server   => 'krbtgt/EXAMPLE.COM@EXAMPLE.COM',
+			client   => 'user@TEST.REALM',
+			server   => 'krbtgt/TEST.REALM@TEST.REALM',
 			keyblock => { enctype => 17, key => '0123456789abcdef'},
 			ticket   => 'This is my ticket!!!',
 			flags    => 0x00400000,

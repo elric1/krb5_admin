@@ -16,7 +16,7 @@ sub compare_kdcs_to_expected {
 	}
 
 	for (my $i = 1; $i < 10; $i++) {
-		my $kdc = "kdc$i.imrryr.org";
+		my $kdc = "kdc$i.test.realm";
 
 		if (!exists($kdcs{$kdc})) {
 			return 0;
@@ -38,7 +38,7 @@ my  $ctx   = Krb5Admin::C::krb5_init_context();
 our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, undef);
 our $realm = Krb5Admin::C::krb5_get_realm($ctx);
 
-my $expected = [map { "kdc$_.imrryr.org" } (1..9)];
+my $expected = [map { "kdc$_.test.realm" } (1..9)];
 
 my $kdcs;
 
