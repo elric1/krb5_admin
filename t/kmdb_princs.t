@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 16;
+use Test::More tests => 28;
 
 use Krb5Admin::KerberosDB;
 
@@ -48,6 +48,9 @@ sub testObjC {
 	}
 }
 
+my $sprinc = 'service@IMRRYR.ORG';
+my $uprinc = 'user@IMRRYR.ORG';
+
 my $kmdb;
 
 $kmdb = Krb5Admin::KerberosDB->new(
@@ -73,20 +76,20 @@ my $p = "Aa1thisisapasswd!!!!";
 # testing on Heimdal at the moment and our stuff works a tad differently,
 # anyway.
 
-testObjC("create", $kmdb, [undef], 'create', 'service');
-testObjC("create_user", $kmdb, [$p], 'create_user', 'user', $p);
+testObjC("create", $kmdb, [undef], 'create', $sprinc);
+testObjC("create_user", $kmdb, [$p], 'create_user', $uprinc, $p);
 
 #
 # Now, we test to ensure that the princs are what we expect them to be.
 
-testObjC("list", $kmdb, [ map { "$_\@IMRRYR.ORG" } (qw/user service/)], 'list');
+testObjC("list", $kmdb, [$uprinc, $sprinc], 'list');
 
 my $result;
 
 $result = $kmdb->query('user');
 
 ok($result->{policy} eq 'default', qq{user policy is ``default''});
-ok($result->{principal} eq 'user@IMRRYR.ORG', qq{query returned correct princ});
+ok($result->{principal} eq $uprinc, qq{query returned correct princ});
 compare_princ_to_attrs($result, [qw/+requires_preauth -allow_svr +needchange/],
     "user has correct attributes 1");
 compare_keytypes($result, [
@@ -97,10 +100,9 @@ compare_keytypes($result, [
 
 $result = $kmdb->query('service');
 
-ok($result->{policy} eq 'default', qq{user policy is ``default''});
-ok($result->{principal} eq 'service@IMRRYR.ORG',
-    qq{query returned correct princ});
-compare_princ_to_attrs($result, [], "user has correct attributes");
+ok($result->{policy} eq 'default', qq{service policy is ``default''});
+ok($result->{principal} eq $sprinc, qq{query returned correct princ});
+compare_princ_to_attrs($result, [], "service has correct attributes");
 compare_keytypes($result, [
 		{enctype=>18,kvno=>2},
 		{enctype=>16,kvno=>2},
@@ -110,7 +112,7 @@ compare_keytypes($result, [
 #
 # MODIFY AND TEST...
 
-testObjC("change", $kmdb, [undef], 'change', 'service', 3, [{enctype=>17,
+testObjC("change", $kmdb, [undef], 'change', $sprinc, 3, [{enctype=>17,
     key=>'0123456789abcdef'}]);
 $result = $kmdb->query('service');
 compare_keytypes($result, [
@@ -120,7 +122,7 @@ compare_keytypes($result, [
 		{enctype=>23,kvno=>2}
 	], "service has correct key types 2");
 
-testObjC("change_passwd", $kmdb, ["${p}1"], 'change_passwd', 'user', "${p}1");
+testObjC("change_passwd", $kmdb, ["${p}1"], 'change_passwd', $uprinc, "${p}1");
 $result = $kmdb->query('user');
 compare_keytypes($result, [
 		{enctype=>18,kvno=>2},
@@ -131,7 +133,59 @@ compare_princ_to_attrs($result, [qw/+requires_preauth -allow_svr/],
     "user has correct attributes 2");
 
 #
-# Test mquery, enable, disable and remove.
+# Test enable, disable:
 
+testObjC("disable", $kmdb, [undef], 'disable', 'user');
+$result = $kmdb->query('user');
+compare_princ_to_attrs($result, [qw/-allow_tix +requires_preauth -allow_svr/],
+    "user has correct attributes 2");
+
+testObjC("enable", $kmdb, [undef], 'enable', 'user');
+$result = $kmdb->query('user');
+compare_princ_to_attrs($result, [qw/+requires_preauth -allow_svr/],
+    "user has correct attributes 2");
+
+#
+# Test mquery and remove.
+
+my @results;
+eval {
+	@results = $kmdb->mquery();
+};
+
+ok(!$@, "mquery works") or diag($@);
+
+if (!$@) {
+	my %allprincs;
+
+	for my $princ (@results) {
+		$allprincs{$princ->{principal}} = $princ;
+	}
+
+	compare_keytypes($allprincs{$uprinc}, [
+			{enctype=>18,kvno=>2},
+			{enctype=>16,kvno=>2},
+			{enctype=>23,kvno=>2}
+		], "user has correct key types in mquery");
+	compare_princ_to_attrs($allprincs{$uprinc},
+	    [qw/+requires_preauth -allow_svr/],
+	    "user has correct attributes in mquery");
+	delete $allprincs{$uprinc};
+
+	compare_keytypes($allprincs{$sprinc}, [
+			{enctype=>17,kvno=>3},
+			{enctype=>18,kvno=>2},
+			{enctype=>16,kvno=>2},
+			{enctype=>23,kvno=>2}
+		], "service has correct key types in mquery");
+	compare_princ_to_attrs($allprincs{$sprinc}, [],
+	    "service has correct attributes in mquery");
+	delete $allprincs{$sprinc};
+
+	ok(keys %allprincs == 0, "mquery returned no extra results");
+}
+
+testObjC("remove user", $kmdb, [undef], 'remove', 'user');
+testObjC("remove service", $kmdb, [undef], 'remove', 'service');
 
 exit(0);
