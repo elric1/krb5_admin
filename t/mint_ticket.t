@@ -8,8 +8,13 @@ use Krb5Admin::C;
 use strict;
 use warnings;
 
+my $ccfile = "./t/krb5cc.$$";
 $ENV{KRB5_CONFIG} = 'FILE:./t/krb5.conf';
-$ENV{KRB5CCNAME}  = "FILE:./t/krb5cc.$$";
+$ENV{KRB5CCNAME}  = "FILE:$ccfile";
+
+END {
+	unlink($ccfile);
+}
 
 my  $ctx   = Krb5Admin::C::krb5_init_context();
 our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb');
