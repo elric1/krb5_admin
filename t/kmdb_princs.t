@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 28;
+use Test::More tests => 34;
 
 use Krb5Admin::KerberosDB;
 
@@ -9,17 +9,25 @@ use Data::Dumper;
 use strict;
 use warnings;
 
-sub compare_keytypes {
+sub compare_keys {
 	my ($princ, $keys, $testname) = @_;
 	my %lhs;
 	my %rhs;
 
 	for my $k (@{$princ->{keys}}) {
-		$lhs{$k->{enctype} . ":" . $k->{kvno}} = 1;
+		if (exists($k->{key})) {
+			$lhs{$k->{enctype} . ":" . $k->{kvno}} = $k->{key};
+		} else {
+			$lhs{$k->{enctype} . ":" . $k->{kvno}} = 1;
+		}
 	}
 
 	for my $k (@{$keys}) {
-		$rhs{$k->{enctype} . ":" . $k->{kvno}} = 1;
+		if (exists($k->{key})) {
+			$rhs{$k->{enctype} . ":" . $k->{kvno}} = $k->{key};
+		} else {
+			$rhs{$k->{enctype} . ":" . $k->{kvno}} = 1;
+		}
 	}
 
 	is_deeply(\%lhs, \%rhs, $testname);
@@ -94,7 +102,7 @@ ok($result->{policy} eq 'default', qq{user policy is ``default''});
 ok($result->{principal} eq $uprinc, qq{query returned correct princ});
 compare_princ_to_attrs($result, [qw/+requires_preauth -allow_svr +needchange/],
     "user has correct attributes 1");
-compare_keytypes($result, [
+compare_keys($result, [
 		{enctype=>18,kvno=>1},
 		{enctype=>16,kvno=>1},
 		{enctype=>23,kvno=>1}
@@ -105,7 +113,7 @@ $result = $kmdb->query('service');
 ok($result->{policy} eq 'default', qq{service policy is ``default''});
 ok($result->{principal} eq $sprinc, qq{query returned correct princ});
 compare_princ_to_attrs($result, [], "service has correct attributes");
-compare_keytypes($result, [
+compare_keys($result, [
 		{enctype=>18,kvno=>2},
 		{enctype=>16,kvno=>2},
 		{enctype=>23,kvno=>2}
@@ -117,16 +125,27 @@ compare_keytypes($result, [
 testObjC("change", $kmdb, [undef], 'change', $sprinc, 3, [{enctype=>17,
     key=>'0123456789abcdef'}]);
 $result = $kmdb->query('service');
-compare_keytypes($result, [
+compare_keys($result, [
 		{enctype=>17,kvno=>3},
 		{enctype=>18,kvno=>2},
 		{enctype=>16,kvno=>2},
 		{enctype=>23,kvno=>2}
 	], "service has correct key types 2");
 
+testObjC("change", $kmdb, [undef], 'change', $sprinc, 4, keys => [{enctype=>17,
+    key=>'0123456789ABCDEF'}]);
+$result = $kmdb->query('service');
+compare_keys($result, [
+		{enctype=>17,kvno=>4},
+		{enctype=>17,kvno=>3},
+		{enctype=>18,kvno=>2},
+		{enctype=>16,kvno=>2},
+		{enctype=>23,kvno=>2}
+	], "service has correct key types 3");
+
 testObjC("change_passwd", $kmdb, ["${p}1"], 'change_passwd', $uprinc, "${p}1");
 $result = $kmdb->query('user');
-compare_keytypes($result, [
+compare_keys($result, [
 		{enctype=>18,kvno=>2},
 		{enctype=>16,kvno=>2},
 		{enctype=>23,kvno=>2}
@@ -164,7 +183,7 @@ if (!$@) {
 		$allprincs{$princ->{principal}} = $princ;
 	}
 
-	compare_keytypes($allprincs{$uprinc}, [
+	compare_keys($allprincs{$uprinc}, [
 			{enctype=>18,kvno=>2},
 			{enctype=>16,kvno=>2},
 			{enctype=>23,kvno=>2}
@@ -174,7 +193,8 @@ if (!$@) {
 	    "user has correct attributes in mquery");
 	delete $allprincs{$uprinc};
 
-	compare_keytypes($allprincs{$sprinc}, [
+	compare_keys($allprincs{$sprinc}, [
+			{enctype=>17,kvno=>4},
 			{enctype=>17,kvno=>3},
 			{enctype=>18,kvno=>2},
 			{enctype=>16,kvno=>2},
@@ -189,5 +209,39 @@ if (!$@) {
 
 testObjC("remove user", $kmdb, [undef], 'remove', 'user');
 testObjC("remove service", $kmdb, [undef], 'remove', 'service');
+
+#
+# Let's try to test the new ECDH key negotiation for create.
+
+my $gend;
+eval {
+	my @etypes = (16, 17, 18, 23);
+
+	$gend = $kmdb->genkeys('ecdh', 1, @etypes);
+
+	$kmdb->create('ecdh', public => $gend->{public}, enctypes => \@etypes);
+};
+
+ok(!$@, "genkeys/create did not toss an exception") or diag(Dumper($@));
+
+$result->{keys} = [$kmdb->fetch('ecdh')];
+compare_keys($result, $gend->{keys}, "ecdh after create keys are the same");
+
+#
+# And ECDH for change...
+
+eval {
+	my @etypes = (17, 18);
+
+	$gend = $kmdb->genkeys('ecdh', 2, @etypes);
+
+	$kmdb->change('ecdh', 2, public => $gend->{public},
+	    enctypes => \@etypes);
+};
+
+ok(!$@, "genkeys/change did not toss an exception");
+
+$result->{keys} = [$kmdb->fetch('ecdh')];
+compare_keys($result, $gend->{keys}, "ecdh after change keys are the same");
 
 exit(0);

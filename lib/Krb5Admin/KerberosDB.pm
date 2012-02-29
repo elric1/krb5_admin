@@ -314,9 +314,15 @@ sub new {
 	$self->{client}	= "LOCAL_MODIFICATION"	if          $self->{local};
 	$self->{debug}	= 0			if !defined($self->{debug});
 
+	$self->{allow_fetch}		= $args{allow_fetch};
 	$self->{xrealm_bootstrap}	= $args{xrealm_bootstrap};
 	$self->{win_xrealm_bootstrap}	= $args{win_xrealm_bootstrap};
 	$self->{prestash_xrealm}	= $args{prestash_xrealm};
+
+	if (!defined($self->{allow_fetch})) {
+		$self->{allow_fetch} = 0;
+		$self->{allow_fetch} = 1	if $self->{local};
+	}
 
 	bless($self, $class);
 }
@@ -391,14 +397,65 @@ sub drop_db {
 
 sub master { undef; }
 
+sub generate_ecdh_key1 {
+	my ($self) = @_;
+	my $ctx = $self->{ctx};
+
+	my ($secret, $public) = @{Krb5Admin::C::curve25519_pass1($ctx)};
+
+	$self->{curve25519KerberosDBsecret} = $secret;
+	return $public;
+}
+
+sub generate_ecdh_key2 {
+	my ($self, $hispublic) = @_;
+	my $ctx = $self->{ctx};
+
+	my $mysecret = $self->{curve25519KerberosDBsecret};
+
+	die [503, "Must call genkey first"]	if !defined($mysecret);
+
+	my $ret = Krb5Admin::C::curve25519_pass2($ctx, $mysecret, $hispublic);
+
+	return $ret;
+}
+
 sub create {
-	my ($self, $name) = @_;
+	my ($self, $name, %opts) = @_;
 	my $ctx  = $self->{ctx};
 	my $hndl = $self->{hndl};
 
 	require_scalar("create <princ>", 1, $name);
 	$self->check_acl('create', $name);
-	Krb5Admin::C::krb5_createkey($ctx, $hndl, $name);
+
+	#
+	# If we are not provided with a public key, we simply create a
+	# principal with a random key.  This can be used when knowledge
+	# of the key is not required, e.g. creating a TGS key for a realm
+	# which the KDC serves.
+
+	if (!exists($opts{public})) {
+		Krb5Admin::C::krb5_createkey($ctx, $hndl, $name);
+		syslog('info', "%s", $self->{client} . " created $name");
+		return undef;
+	}
+
+	#
+	# Now, for the more interesting ECDH negotiation of new keys:
+
+	if (!defined($opts{public}) || ref($opts{public}) ne '') {
+		die [503, "create must be provided with a scalar public key"];
+	}
+
+	if (!defined($opts{enctypes})) {
+		die [503, "must provide enctypes"];
+	}
+
+	my $passwd = $self->generate_ecdh_key2($opts{public});
+
+	Krb5Admin::C::krb5_createprinc($ctx, $hndl, {principal => $name},
+	    $opts{enctypes}, $passwd);
+
 	syslog('info', "%s", $self->{client} . " created $name");
 	return undef;
 }
@@ -451,18 +508,61 @@ sub fetch {
 
 	require_scalar("fetch <princ>", 1, $name);
 	$self->check_acl('fetch', $name);
+
+	if (!$self->{allow_fetch}) {
+		die [502, "Permission denied: fetch is administratively " .
+		    "prohibited"];
+	}
+
 	syslog('info', "%s", $self->{client} . " fetched $name");
 	Krb5Admin::C::krb5_getkey($ctx, $hndl, $name);
 }
 
 sub change {
-	my ($self, $name, $kvno, $keys) = @_;
+	my ($self, $name, $kvno, @args) = @_;
 	my $ctx  = $self->{ctx};
 	my $hndl = $self->{hndl};
 
 	require_scalar("change <princ>", 1, $name);
 	$self->check_acl('change', $name);
-	Krb5Admin::C::krb5_setkey($ctx, $hndl, $name, $kvno, $keys);
+
+	my %args;
+	if (@args == 1) {
+		# XXXrcd: legacy usage.
+		%args = (keys => $args[0]);
+	} else {
+		%args = @args;
+	}
+
+	if (exists($args{keys}) && ! $self->{allow_fetch}) {
+		die [502, "Permission denied: keys may not be specified"];
+	}
+
+	if (!exists($args{keys}) && !exists($args{public})) {
+		die [503, "change: must provide either keys or public."];
+	}
+
+	if (exists($args{keys}) &&
+	    (exists($args{public})|| exists($args{enctypes}))) {
+		die [503, 'change: supplying keys mutually exclusive with ' .
+		    'public or enctypes'];
+	}
+
+	if (exists($args{keys})) {
+		Krb5Admin::C::krb5_setkey($ctx, $hndl, $name, $kvno,
+		    $args{keys});
+		return undef;
+	}
+
+	if (!defined($args{enctypes})) {
+		die [503, "must provide enctypes"];
+	}
+
+	my $passwd = $self->generate_ecdh_key2($args{public});
+
+	Krb5Admin::C::krb5_setpass($ctx, $hndl, $name, $kvno, $args{enctypes},
+	    $passwd);
+
 	return undef;
 }
 

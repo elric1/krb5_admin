@@ -17,6 +17,43 @@ sub new {
 	bless(\%self, $isa);
 }
 
+sub genkeys {
+	my ($self, $princ, $kvno, @etypes) = @_;
+	my $ctx = $self->{ctx};
+
+	my ($secret, $public) = @{Krb5Admin::C::curve25519_pass1($ctx)};
+
+	#
+	# In a ``normal'' usage, $self->generate_ecdh_key1() will be
+	# an RPC to the KDC from which we obtain the ECDH public key.
+
+	my $hispublic = $self->generate_ecdh_key1();
+
+	#
+	# We then use the curve25519_pass2() to generate the keys which we
+	# will share with the KDC:
+
+	my $passwd = Krb5Admin::C::curve25519_pass2($ctx, $secret, $hispublic);
+
+	#
+	# our curve25519 algorithm just computes a passwd.  We now need to
+	# change it into a set of keys which is part of our expected return
+	# value.
+
+	my @keys;
+	for my $etype (@etypes) {
+		my $key = Krb5Admin::C::krb5_string_to_key($ctx, $etype,
+		    $passwd, $princ);
+
+		$key->{princ} = $princ;
+		$key->{kvno}  = $kvno;
+
+		push(@keys, $key);
+	}
+
+	return {keys => \@keys, public => $public};
+}
+
 1;
 
 __END__
@@ -56,11 +93,58 @@ is simply ignored.
 
 Will ensure that the master DB is being modified.
 
-=item $kmdb->create(PRINCIPAL)
+=item $kmdb->genkeys()
 
-Creates a principal suitable for use as a service principal.  The
-principal will be assigned a random key rather than a password and
-no attributes will be set.
+Generates keys to be installed in a local keytab.  The resultant
+keys can then be instantiated in the Kerberos DB with a call to
+either create() or change().  genkeys() returns a hash reference
+containing two values: keys and publickey.  keys is used to write
+the keytab and publickey must be passed to the call to create() or
+change().  The calling pattern is as follows:
+
+	my $princ = <the principal>;
+	my $kvno  = <the next kvno>;
+	my @etypes = (17, 18);
+
+	eval {
+		my $gend = $kmdb->genkeys($princ, $kvno, @etypes);
+
+		for my $key (@{$gend->{keys}}) {
+			Krb5Admin::C::write_kt($ctx, $kt, $key);
+		}
+
+		$kmdb->change($princ, $kvno,
+		    public => $gend->{public}, enctypes => \@etypes);
+	};
+	if ($@) {
+		# handle the errors...
+	}
+
+approximately.
+
+Internally, genkeys() uses ECDH in the form of curve25519 to
+negotiate a shared secret with the code that writes to the Kerberos
+database as it may be running in a different process on a different
+machine.  Only the ECDH public keys are communicated to generate
+the keys on both sides.
+
+It is important to note that we write the generated keys into our
+keytab before we call $kmdb->change().  If we do not do things in
+this order, the KDC may be vending tickets for the new keys before
+our Kerberos servers are able to decrypt them which will cause
+connexions to fail.  This can become especially problematic if the
+current host crashes before writing keys to the keytab as we do
+not want the KDC to ever vend tickets for keys we do not have.
+The second part of this issue also affects $kmdb->create().
+
+=item $kmdb->create(PRINCIPAL, [%ARGS])
+
+Creates a principal suitable for use as a service principal.  If
+%ARGS is empty, the keys will be selected randomly and enctypes
+will be set to the defaults.  If %ARGS contains ``public''---the
+public key returned from $kmdb->genkeys(), it will be used to
+recreate the keys returned from $kmdb->genkeys.  In this case,
+$ARGS{enctype} must also be provided and is an array ref of enctypes.
 
 =item $kmdb->create_user(PRINCIPAL[, PASSWD])
 
@@ -73,9 +157,9 @@ will in either case be returned from the method call.
 
 =item $kmdb->list([GLOB])
 
-Lists the principals in the Kerberos DB.  If supplied, the GLOB will
-be applied before the list is returned.  The return will be an array
-reference.
+Lists the principals in the Kerberos DB.  If supplied, the GLOB
+will be applied before the list is returned.  The return will be
+an array reference.
 
 =item $kmdb->fetch(PRINCIPAL)
 
@@ -83,9 +167,14 @@ Will fetch the keys associated with PRINCIPAL.  The return value is
 a list of hash references containing the following keys: enctype,
 timestamp, princ, key, kvno.
 
-=item $kmdb->change(PRINCIPAL, KVNO, KEYS)
+=item $kmdb->change(PRINCIPAL, KVNO, %ARGS)
 
-TBD.
+Will change the keys of PRINCIPAL.  If KVNO is defined and greater
+than one then change() will throw an exception if the new keys will
+not have KVNO as their kvno.  %ARGS can contain either ``keys'' in
+which case they will be used directly as the keys or ``public''
+and ``enctype'' in which case the keys will be generated as described
+in genkeys().
 
 =item $kmdb->change_passwd(PRINCIPAL, PASSWD, OPT)
 

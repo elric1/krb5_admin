@@ -86,7 +86,12 @@ if ($ENV{KRB5TYPE} eq 'mit') {
 	$args{test} = { TESTS => 't/curve25519.t t/getkdc.t t/getrealm.t'};
 }
 
-my @manpages = qw{ man/krb5_admin.1 man/krb5_admind.8 man/krb5_prestash.1 };
+my @manpages = qw{
+		man/krb5_admin.1
+		man/krb5_admind.8
+		man/krb5_admind.conf.5
+		man/krb5_prestash.1
+	};
 
 if ($ExtUtils::MakeMaker::VERSION >= 6.3002) {
 	$args{LICENSE} = 'mit';

@@ -49,6 +49,7 @@ openlog('krb5_admind', 'pid', 'auth');
 our $acl_file;
 our $config = KRB5_ADMIND_CONFIG;
 our $dbname;
+our $allow_fetch;
 our %xrealm_bootstrap;
 our %win_xrealm_bootstrap;
 our %prestash_xrealm;
@@ -75,6 +76,7 @@ sub mk_kmdb {
 	my %kmdb_args = (
 		client			=> $args{CREDS},
 		addr			=> $args{REMOTE_IP},
+		allow_fetch		=> $allow_fetch,
 		xrealm_bootstrap	=> \%xrealm_bootstrap,
 		win_xrealm_bootstrap	=> \%win_xrealm_bootstrap,
 		prestash_xrealm		=> \%prestash_xrealm,
@@ -98,6 +100,7 @@ my @rw_cmds = qw/	master
 			change
 			enable
 			disable
+			generate_ecdh_key1
 			remove 
 			create_host
 			remove_host

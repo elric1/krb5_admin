@@ -86,6 +86,7 @@ eval mk_scalar_methods(undef, qw{
 	create_user
 	disable
 	enable
+	generate_ecdh_key1
 	insert_hostmap
 	insert_ticket
 	master
