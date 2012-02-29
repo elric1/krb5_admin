@@ -1,0 +1,79 @@
+.\"
+.\"
+.\" Blame: Roland Dowdeswell <elric@imrryr.org>
+.Dd October 5, 2009
+.Os
+.Dt KRB5_ADMIND.CONF 5
+.Sh NAME
+.Nm krb5_admind.conf
+.Nd configuration file for
+.Xr krb5_admind 8
+.Sh SYNOPSIS
+.Nm
+.Sh DESCRIPTION
+.Nm
+is the configuration file for
+.Xr krb5_admind 8 .
+The syntax is a Perl snippet which is evaluated and is expected to
+set the following variables:
+.Bl -tag -width %win_xrealm_bootstrapx
+.It Ar $allow_fetch
+is a boolean value which indicates whether
+.Xr krb5_admind 8
+is willing to allow clients to directly fetch keys from the Kerberos
+database.
+Setting this to true may be necessary at some sites but is generally
+discouraged as it reduces certain security guarantees.
+Also see
+.Xr krb5_keytab 8 Ns 's
+configuration variable
+.Ar $use_fetch .
+This value defaults to false.
+.It Ar %xrealm_bootstrap
+is a hash which has keys that are Kerberos realms with values that are
+an array ref of Kerberos realms.
+If a host authenticates to
+.Xr krb5_admind 8
+with a host principal in the key's realm then it will be authenticated
+to retrieve Kerberos host principals with a matching hostname in any of
+the realms listed in the value.
+E.g.
+.Bd -literal
+	%xrealm_bootstrap = (
+		'REALM1'  => ['REALM2', 'REALM3'],
+	);
+.Ed
+.Pp
+means that
+.Ar host/foo@REALM1
+can retrieve keys for
+.Ar host/foo@REALM2
+and
+.Ar host/foo@REALM3 .
+.It Ar %win_xrealm_bootstrap
+is a hash that maps a Windows principal to a list of host principals which
+it may retrieve.
+The Windows principal's components must be lower case.
+This hash can be used when migrating from using Windows Active Directory
+to provide Kerberos for UNIX hosts to a strictly UNIX KDC framework.
+.It Ar %prestash_xrealm
+is a hash that maps a principal's realm to a list of realms on which the
+principal is allowed to be prestashed.
+E.g.
+.Bd -literal
+	%prestash_xrealm = (
+		'REALM1' => ['REALM2', 'REALM3'],
+	);
+.Ed
+.Pp
+means that principals in REALM1 may be prestashed on hosts that are in
+REALM2 or REALM3.
+.El
+.Pp
+Syntax errors will terminate parsing causing all subsequent configuration
+to be ignored and so it is critical that they not be present.
+.Sh SEE ALSO
+.Xr krb5_admind 8 .
+.Sh AUTHORS
+.Nm
+was written by Roland C. Dowdeswell.
