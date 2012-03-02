@@ -17,6 +17,23 @@ sub new {
 	bless(\%self, $isa);
 }
 
+sub genkeys_from_passwd {
+	my ($ctx, $princ, $kvno, $passwd, @etypes) = @_;
+	my @keys;
+
+	for my $etype (@etypes) {
+		my $key = Krb5Admin::C::krb5_string_to_key($ctx, $etype,
+		    $passwd, $princ);
+
+		$key->{princ} = $princ;
+		$key->{kvno}  = $kvno;
+
+		push(@keys, $key);
+	}
+
+	return @keys;
+}
+
 sub genkeys {
 	my ($self, $princ, $kvno, @etypes) = @_;
 	my $ctx = $self->{ctx};
@@ -40,18 +57,26 @@ sub genkeys {
 	# change it into a set of keys which is part of our expected return
 	# value.
 
-	my @keys;
-	for my $etype (@etypes) {
-		my $key = Krb5Admin::C::krb5_string_to_key($ctx, $etype,
-		    $passwd, $princ);
+	my @keys = genkeys_from_passwd($ctx, $princ, $kvno, $passwd, @etypes);
 
-		$key->{princ} = $princ;
-		$key->{kvno}  = $kvno;
+	return {sharedsecret => $passwd, keys => \@keys, public => $public};
+}
 
-		push(@keys, $key);
-	}
+sub regenkeys {
+	my ($self, $gend, $princ) = @_;
+	my $ctx = $self->{ctx};
 
-	return {keys => \@keys, public => $public};
+	my $passwd = $gend->{sharedsecret};
+	my $kvno   = $gend->{keys}->[0]->{kvno};
+	my @etypes = map { $_->{enctype} } @{$gend->{keys}};
+
+	my @keys = genkeys_from_passwd($ctx, $princ, $kvno, $passwd, @etypes);
+
+	return {
+		sharedsecret	=> $gend->{sharedsecret},
+		public		=> $gend->{public},
+		keys		=> \@keys,
+	};
 }
 
 1;
@@ -136,6 +161,13 @@ connexions to fail.  This can become especially problematic if the
 current host crashes before writing keys to the keytab as we do
 not want the KDC to ever vend tickets for keys we do not have.
 The second part of this issue also affects $kmdb->create().
+
+=item $kmdb->regenkeys(GEND, PRINCIPAL)
+
+Will regenerate keys returned from $kmdb->genkeys() using a
+different principal PRINCIPAL.  Other than passing in GEND
+which must the the result of a call to $kmdb->genkeys(), it's
+usage and return are the same as $kmdb->genkeys().
 
 =item $kmdb->create(PRINCIPAL, [%ARGS])
 
