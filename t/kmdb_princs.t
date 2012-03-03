@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 34;
+use Test::More tests => 39;
 
 use Krb5Admin::KerberosDB;
 
@@ -238,10 +238,52 @@ eval {
 	$kmdb->change('ecdh', 2, public => $gend->{public},
 	    enctypes => \@etypes);
 };
-
-ok(!$@, "genkeys/change did not toss an exception");
+ok(!$@, "genkeys/change did not toss an exception") or diag($@);
 
 $result->{keys} = [$kmdb->fetch('ecdh')];
 compare_keys($result, $gend->{keys}, "ecdh after change keys are the same");
+
+#
+# Now we should try to create a bootstrap id:
+
+my $binding;
+eval {
+	$gend = $kmdb->genkeys('bootstrap', 1, 18);
+	$binding = $kmdb->create_bootstrap_id(public => $gend->{public},
+	    enctypes => [18]);
+	$gend = $kmdb->regenkeys($binding, $gend);
+};
+ok(!$@, "genkeys/create_bootstrap_id did not toss an exception") or diag($@);
+
+$result->{keys} = [$kmdb->fetch($binding)];
+compare_keys($result, $gend->{keys}, "$binding\'s keys after " .
+    "create_bootstrap_id are the same");
+
+my $host = 'boundhost.test.realm';
+eval {
+	$kmdb->create_host($host, realm => 'TEST.REALM');
+	$kmdb->bind_host($host, $binding);
+};
+ok(!$@, "bind_host did not toss an exception") or diag($@);
+
+my $hostprinc = "host/$host\@TEST.REALM";
+eval {
+	my $kmdb = Krb5Admin::KerberosDB->new(
+	    client	=> $binding,
+	    dbname	=> 'db:t/test-hdb',
+	    acl_file	=> 't/krb5_admin.acl',
+	    sqlite	=> 't/sqlite.db',
+	);
+
+	$gend = $kmdb->genkeys("host/$host\@TEST.REALM", 1, 17, 18);
+	$kmdb->bootstrap_host_key($host, public => $gend->{public},
+	    enctypes => [17, 18]);
+};
+ok(!$@, "genkeys/bootstrap_host_key did not toss an exception")
+    or diag(Dumper($@));
+
+$result->{keys} = [$kmdb->fetch($hostprinc)];
+compare_keys($result, $gend->{keys}, "$hostprinc\'s keys after " .
+    "bootstrap_host_key() are the same");
 
 exit(0);

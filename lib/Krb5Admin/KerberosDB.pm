@@ -352,7 +352,8 @@ sub init_db {
 		CREATE TABLE hosts (
 			name		VARCHAR NOT NULL PRIMARY KEY,
 			realm		VARCHAR NOT NULL,
-			ip_addr		VARCHAR
+			ip_addr		VARCHAR,
+			bootbinding	VARCHAR
 		)
 	});
 
@@ -421,12 +422,20 @@ sub generate_ecdh_key2 {
 }
 
 sub create {
-	my ($self, $name, %opts) = @_;
+	my ($self, $name, @args) = @_;
 	my $ctx  = $self->{ctx};
 	my $hndl = $self->{hndl};
 
 	require_scalar("create <princ>", 1, $name);
 	$self->check_acl('create', $name);
+
+	return $self->internal_create($name, @args);
+}
+
+sub internal_create {
+	my ($self, $name, %args) = @_;
+	my $ctx  = $self->{ctx};
+	my $hndl = $self->{hndl};
 
 	#
 	# If we are not provided with a public key, we simply create a
@@ -434,7 +443,7 @@ sub create {
 	# of the key is not required, e.g. creating a TGS key for a realm
 	# which the KDC serves.
 
-	if (!exists($opts{public})) {
+	if (!exists($args{public})) {
 		Krb5Admin::C::krb5_createkey($ctx, $hndl, $name);
 		syslog('info', "%s", $self->{client} . " created $name");
 		return undef;
@@ -443,18 +452,18 @@ sub create {
 	#
 	# Now, for the more interesting ECDH negotiation of new keys:
 
-	if (!defined($opts{public}) || ref($opts{public}) ne '') {
+	if (!defined($args{public}) || ref($args{public}) ne '') {
 		die [503, "create must be provided with a scalar public key"];
 	}
 
-	if (!defined($opts{enctypes})) {
+	if (!defined($args{enctypes})) {
 		die [503, "must provide enctypes"];
 	}
 
-	my $passwd = $self->generate_ecdh_key2($opts{public});
+	my $passwd = $self->generate_ecdh_key2($args{public});
 
 	Krb5Admin::C::krb5_createprinc($ctx, $hndl, {principal => $name},
-	    $opts{enctypes}, $passwd);
+	    $args{enctypes}, $passwd);
 
 	syslog('info', "%s", $self->{client} . " created $name");
 	return undef;
@@ -477,6 +486,189 @@ sub create_user {
 		}, [], $passwd);
 	syslog('info', "%s", $self->{client} . " created $name");
 	$ret;
+}
+
+sub create_bootstrap_id {
+	my ($self, %args) = @_;
+	my $ctx = $self->{ctx};
+	my $hndl = $self->{hndl};
+	my $princ;
+	my $realm;
+
+	if (!defined($args{public}) || !defined($args{enctypes})) {
+		die [503, "Must provide public key and enctypes"];
+	}
+
+	if (ref($args{enctypes}) ne 'ARRAY') {
+		die [503, "enctypes must be an ARRAY ref of encryption types"];
+	}
+
+	#
+	# We expect that the ACLs on create_bootstrap_id will limit it to
+	# be used by WELLKNOWN/ANONYMOUS@REALM.
+
+	$self->check_acl('create_bootstrap_id');
+
+	#
+	# XXXrcd: For now, we require that enctypes are aes256-cts (18) only.
+	#         We require that the client specify enctypes so that we can
+	#         apply a more interesting policy on this in the future.  We
+	#         will review this soon---we should probably allow any
+	#         ``secure'' cipher and we may need a more interesting way
+	#         to let a client know that one of the provided enctypes is
+	#         unacceptable.  Maybe we should return a list of enctypes
+	#         that we accepted.  If we do this, we should do the same
+	#         from create/change.  We can do this without affecting the
+	#         API as they current have returns that are basically ignored.
+	#         If we do this, we must also do it for bootstrap_host_key().
+
+	if (@{$args{enctypes}} != 1 || $args{enctypes}->[0] ne '18') {
+		die [503, "create_tmpid: enctypes must only contain " .
+		    "aes256-cts"];
+	}
+
+	#
+	# XXXrcd: is it necessary for me to deal with the realm?  Not sure...
+	#         We could likely just pass back a principal with the KDC's
+	#         default realm.  After all, this is not the realm in which
+	#         the final host principal will reside...  Maybe we should
+	#         not let the client specify this at all...
+
+#	if (defined($args{realm}) && ref($args{realm}) eq '') {
+#		$realm = $args{realm};
+#	}
+
+	my $passwd = $self->generate_ecdh_key2($args{public});
+
+	while (!defined($princ)) {
+		my $tmpname;
+
+		#
+		# We construct bootstrap ids by generating a random
+		# key and converting it into text.  We do this by taking
+		# a 32 byte aes256-cts key and applying a few transforms
+		# to make the characters more likely to be boring.
+		# We then discard all of the interesting characters and
+		# take the first 16 remaining characters.  If we fail,
+		# we restart the loop.  Empirically, this does not happen
+		# terribly often.  This should give us 16 characters chosen
+		# with roughly even odds from a character set of 62 which
+		# comes out to about (2^5)^16 = 2^80 possibilities. This
+		# should be enough to avoid most collisions.
+
+		#
+		# XXXrcd: as noted below, we may have a race condition between
+		#         the erasure of keys and another client requesting a
+		#         bootstrap key.  For now, we ignore this but we may
+		#         want to take care of it appropriately later.  OTOH,
+		#         we will always need to have a background process
+		#         which cleans up the Kerberos database periodically
+		#         and maybe this is sufficient.
+
+		my $rnd = Krb5Admin::C::krb5_make_a_key($ctx, 18)->{key};
+
+		$rnd =~ s/([^A-Za-z0-9])/sprintf("%c", ord($1)      & 0x7f)/ego;
+		$rnd =~ s/([^A-Za-z0-9])/sprintf("%c", ord($1) + 65 & 0x7f)/ego;
+		$rnd =~ s/([^A-Za-z0-9])//go;
+		$rnd =~ s/^(.{16}).*$/$1/o;
+
+		next	if length($rnd) < 16;
+
+		$tmpname  = 'bootstrap';
+		$tmpname .= '/' . $rnd;
+		$tmpname .= '@' . $realm	if defined($realm);
+
+		$tmpname = unparse_princ([Krb5Admin::C::krb5_parse_name($ctx,
+		    $tmpname)]);
+
+		#
+		# XXXrcd: maybe we should use a passwd policy that rejects all
+		#         passwd change requests?
+
+		eval {
+			Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
+					principal  => $tmpname,
+					policy     => 'default',
+					attributes => REQUIRES_PRE_AUTH |
+						      DISALLOW_POSTDATED |
+						      DISALLOW_FORWARDABLE |
+						      DISALLOW_PROXIABLE,
+				}, $args{enctypes}, $passwd)
+		};
+
+		if (!$@) {
+			$princ = $tmpname;
+		}
+
+		#
+		# XXXrcd: we should likely have a look at the error message
+		#         that is returned to ensure that it makes sense
+		#         rather than just blindly continuing.  Maybe, I
+		#         should simply write this part in C as it's a little
+		#         easier for my to DTRT in that case---I could lock
+		#         the DB and all that...  In fact, it is quite unlikely
+		#         that we'll have a collision so it should be the
+		#         unusual case.
+	}
+
+	return $princ;
+}
+
+sub bootstrap_host_key {
+	my ($self, $host, %args) = @_;
+	my $ctx  = $self->{ctx};
+	my $hndl = $self->{hndl};
+	my $stmt;
+	my $sth;
+
+	my $binding = $self->{client};
+
+	# XXXrcd: sanity checks?
+
+	require_scalar("bootstrap_host_key <host> public=>key " .
+	    "enctypes=>etypes", 1, $host);
+
+	$stmt = "SELECT realm FROM hosts WHERE name = ? AND " .
+	    "bootbinding = ?";
+	$sth = $self->_sql_command($stmt, $host, $binding);
+
+	my $realm = $sth->fetchrow_arrayref();
+	if (!$realm) {
+		die [502, "Permission denied: you are not bound to $host"];
+	}
+	$realm = $realm->[0];
+
+	#
+	# XXXrcd: any more ACLs?  Fix how we determine the realm.
+
+	$self->internal_create('host/' . $host . '@' . $realm, %args);
+
+	#
+	# XXXrcd: and then delete the mapping from the host entry in the
+	#         kmdb and if there are no more entries, then delete the
+	#         bootstrap key from the Kerberos database.
+
+	$stmt = "UPDATE hosts SET bootbinding = NULL WHERE name = ?";
+	$self->_sql_command($stmt, $host);
+	$self->{dbh}->commit();
+
+	#
+	# We now check to see if the binding is no longer being used and
+	# if it is not then we remove the krb5 principal.  XXXrcd: maybe
+	# this will cause a race condition, though, as another principal
+	# may very well get this binding after we delete the principal..
+	# Will this cause a problem?  Yes, it's a problem.  We should
+	# change the code for selecting a binding id to use an incrementing
+	# counter instead of a random number, perhaps...
+
+	$stmt = "SELECT COUNT(name) FROM hosts WHERE bootbinding = ?";
+	$sth = $self->_sql_command($stmt, $binding);
+
+	if ($sth->fetch()->[0] == 0) {
+		Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $binding);
+	}
+
+	return undef;
 }
 
 sub listpols {
@@ -762,8 +954,8 @@ sub _sql_command {
 our %field_desc = (
 	hosts		=> {
 		pkey		=> 'name',
-		uniq		=> [qw/name ip_addr/],
-		fields		=> [qw/name realm ip_addr/],
+		uniq		=> [qw/name ip_addr bootbinding/],
+		fields		=> [qw/name realm ip_addr bootbinding/],
 		wontgrow	=> 0,
 	},
 	hostmap		=> {
@@ -908,6 +1100,19 @@ sub query_host {
 	my ($self, %query) = @_;
 
 	return $self->generic_query('hosts', %query);
+}
+
+sub bind_host {
+	my ($self, $host, $binding) = @_;
+
+	$self->check_acl('bind_host', $host, $binding);
+
+	my $stmt = "UPDATE hosts SET bootbinding = ? WHERE name = ?";
+	$self->_sql_command($stmt, $binding, $host);
+
+	$self->{dbh}->commit();
+
+	# XXXrcd: we must check if we successfully bound the host.
 }
 
 sub remove_host {

@@ -53,17 +53,17 @@ my $proid4 = 'proid4@TEST.REALM';
 testObjC("Create a host", $kmdb, [undef], 'create_host', 'foo.test.realm',
 	ip_addr => '1.1.1.1', realm => 'TEST.REALM');
 testObjC("Query the host", $kmdb,
-	[{realm => 'TEST.REALM', ip_addr => '1.1.1.1'}],
+	[{realm => 'TEST.REALM', ip_addr => '1.1.1.1', bootbinding => undef}],
 	'query_host', name => 'foo.test.realm');
 testObjC("Create a host", $kmdb, [undef], 'create_host', 'bar.test.realm',
 	ip_addr => '2.2.2.2', realm => 'TEST.REALM');
 testObjC("Query the host", $kmdb,
-	[{ip_addr => '2.2.2.2', realm => 'TEST.REALM'}],
+	[{ip_addr => '2.2.2.2', realm => 'TEST.REALM', bootbinding => undef}],
 	'query_host', name => 'bar.test.realm');
 testObjC("Create a host", $kmdb, [undef], 'create_host', 'baz.test.realm',
 	ip_addr => '3.3.3.3', realm => 'TEST.REALM');
 testObjC("Query the host", $kmdb,
-	[{realm => 'TEST.REALM', ip_addr => '3.3.3.3'}],
+	[{realm => 'TEST.REALM', ip_addr => '3.3.3.3', bootbinding => undef}],
 	'query_host', name => 'baz.test.realm');
 
 #
@@ -73,7 +73,7 @@ testObjC("Query the host", $kmdb,
 testObjC("Create a host", $kmdb, [undef], 'create_host', 'logical.test.realm',
 	ip_addr => '3.3.3.3', realm => 'TEST.REALM');
 testObjC("Query the logical host", $kmdb,
-	[{ip_addr => '3.3.3.3', realm => 'TEST.REALM'}],
+	[{ip_addr => '3.3.3.3', realm => 'TEST.REALM', bootbinding => undef}],
 	'query_host', name => 'logical.test.realm');
 
 #
