@@ -251,7 +251,7 @@ eval {
 	$gend = $kmdb->genkeys('bootstrap', 1, 18);
 	$binding = $kmdb->create_bootstrap_id(public => $gend->{public},
 	    enctypes => [18]);
-	$gend = $kmdb->regenkeys($binding, $gend);
+	$gend = $kmdb->regenkeys($gend, $binding);
 };
 ok(!$@, "genkeys/create_bootstrap_id did not toss an exception") or diag($@);
 
