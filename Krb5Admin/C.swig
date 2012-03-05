@@ -569,11 +569,13 @@ done:
 }
 
 %typemap(in) (int, krb5_key_salt_tuple *) {
+	krb5_error_code		  ret;
 	int			  n_ks_tuple = 0;
 	krb5_key_salt_tuple	 *ks_tuple = NULL;
 	int			  i;
 	AV			 *av;
 	SV			**sv;
+	char			  errstr[2048];
 
 	if (!SvROK($input) || SvTYPE(SvRV($input)) != SVt_PVAV)
 		croak("Argument $argnum is not an array ref.");
@@ -584,13 +586,29 @@ done:
 		ks_tuple = calloc(n_ks_tuple, sizeof(*ks_tuple));
 
 	for (i=0; i < n_ks_tuple; i++) {
+		char	*str;
+
 		sv = av_fetch(av, i, 0);
-		ks_tuple[i].ks_enctype = SvIV(*sv);
+		str = SvPV_nolen(*sv);
+		ks_tuple[i].ks_enctype = atoi(str);
+
+		if (!ks_tuple[i].ks_enctype) {
+			ret = STRING_TO_ENCTYPE(str, &ks_tuple[i].ks_enctype);
+			if (ret) {
+				snprintf(errstr, sizeof(errstr),
+				    "bad enctype %s", str);
+				break;
+			}
+		}
+
 		ks_tuple[i].ks_salttype = SALTTYPE_NORMAL;
 	}
 
 	$1 = n_ks_tuple;
 	$2 = ks_tuple;
+
+	if (ret)
+		croak("%s", errstr);
 }
 %typemap(freearg) (int, krb5_key_salt_tuple *) {
 	free($2);
