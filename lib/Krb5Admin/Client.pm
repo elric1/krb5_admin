@@ -79,9 +79,11 @@ eval mk_array_methods(undef, qw{
 });
 
 eval mk_scalar_methods(undef, qw{
+	bootstrap_host_key
 	change
 	change_passwd
 	create
+	create_bootstrap_id
 	create_host
 	create_user
 	disable
