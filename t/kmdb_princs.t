@@ -276,8 +276,8 @@ eval {
 	);
 
 	$gend = $kmdb->genkeys("host/$host\@TEST.REALM", 1, 17, 18);
-	$kmdb->bootstrap_host_key($host, public => $gend->{public},
-	    enctypes => [17, 18]);
+	$kmdb->bootstrap_host_key("host/$host\@TEST.REALM", 1,
+	    public => $gend->{public}, enctypes => [17, 18]);
 };
 ok(!$@, "genkeys/bootstrap_host_key did not toss an exception")
     or diag(Dumper($@));

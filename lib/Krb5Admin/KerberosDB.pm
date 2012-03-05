@@ -429,11 +429,11 @@ sub create {
 	require_scalar("create <princ>", 1, $name);
 	$self->check_acl('create', $name);
 
-	return $self->internal_create($name, @args);
+	return $self->internal_create($name, 1, @args);
 }
 
 sub internal_create {
-	my ($self, $name, %args) = @_;
+	my ($self, $name, $kvno, %args) = @_;
 	my $ctx  = $self->{ctx};
 	my $hndl = $self->{hndl};
 
@@ -462,8 +462,13 @@ sub internal_create {
 
 	my $passwd = $self->generate_ecdh_key2($args{public});
 
-	Krb5Admin::C::krb5_createprinc($ctx, $hndl, {principal => $name},
-	    $args{enctypes}, $passwd);
+	if ($kvno == 1) {
+		Krb5Admin::C::krb5_createprinc($ctx, $hndl,
+		    {principal => $name}, $args{enctypes}, $passwd);
+	} else {
+		Krb5Admin::C::krb5_setpass($ctx, $hndl, $name, $kvno,
+		    $args{enctypes}, $passwd);
+	}
 
 	syslog('info', "%s", $self->{client} . " created $name");
 	return undef;
@@ -615,7 +620,7 @@ sub create_bootstrap_id {
 }
 
 sub bootstrap_host_key {
-	my ($self, $host, %args) = @_;
+	my ($self, $princ, $kvno, %args) = @_;
 	my $ctx  = $self->{ctx};
 	my $hndl = $self->{hndl};
 	my $stmt;
@@ -625,23 +630,29 @@ sub bootstrap_host_key {
 
 	# XXXrcd: sanity checks?
 
-	require_scalar("bootstrap_host_key <host> public=>key " .
-	    "enctypes=>etypes", 1, $host);
+	require_scalar("bootstrap_host_key <princ> <kvno> public=>key " .
+	    "enctypes=>etypes", 1, $princ);
+	require_scalar("bootstrap_host_key <princ> <kvno> public=>key " .
+	    "enctypes=>etypes", 2, $kvno);
 
-	$stmt = "SELECT realm FROM hosts WHERE name = ? AND " .
+	my ($realm, $h, $host) = Krb5Admin::C::krb5_parse_name($ctx, $princ);
+
+	if ($h ne 'host') {
+		die "bootstrap_host_key may only be used on host principals.";
+	}
+
+	$stmt = "SELECT COUNT(*) FROM hosts WHERE realm = ? AND name = ? AND " .
 	    "bootbinding = ?";
-	$sth = $self->_sql_command($stmt, $host, $binding);
+	$sth = $self->_sql_command($stmt, $realm, $host, $binding);
 
-	my $realm = $sth->fetchrow_arrayref();
-	if (!$realm) {
+	if ($sth->fetchrow_arrayref()->[0] != 1) {
 		die [502, "Permission denied: you are not bound to $host"];
 	}
-	$realm = $realm->[0];
 
 	#
 	# XXXrcd: any more ACLs?  Fix how we determine the realm.
 
-	$self->internal_create('host/' . $host . '@' . $realm, %args);
+	$self->internal_create($princ, $kvno, %args);
 
 	#
 	# XXXrcd: and then delete the mapping from the host entry in the
