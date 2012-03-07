@@ -569,7 +569,7 @@ done:
 }
 
 %typemap(in) (int, krb5_key_salt_tuple *) {
-	krb5_error_code		  ret;
+	krb5_error_code		  ret = 0;
 	int			  n_ks_tuple = 0;
 	krb5_key_salt_tuple	 *ks_tuple = NULL;
 	int			  i;
