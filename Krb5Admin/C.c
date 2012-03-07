@@ -967,7 +967,7 @@ kinit_common(krb5_context ctx, char *realm, char *princstr, char *ktname,
 	int			 cred_allocated = 0;
 	char			 croakstr[2048] = "";
 
-	if (!realm && !princ)
+	if (!realm && !princstr)
 		croak("Either realm or princ must be defined");
 
 	if (ktname)
@@ -997,6 +997,8 @@ kinit_common(krb5_context ctx, char *realm, char *princstr, char *ktname,
 	krb5_get_init_creds_opt_set_tkt_life(opt, 15 * 60);
 
 	K5BAIL(krb5_init_creds_init(ctx, princ, NULL, NULL, 0, opt, &ictx));
+	if (kt)
+		K5BAIL(krb5_init_creds_set_keytab(ctx, ictx, kt));
 	K5BAIL(krb5_init_creds_get(ctx, ictx));
 	K5BAIL(krb5_init_creds_store(ctx, ictx, ccache));
 
