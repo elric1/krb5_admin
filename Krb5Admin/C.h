@@ -90,6 +90,8 @@
 
 /* And finally the function prototypes */
 
+void	  kinit_kt(krb5_context, char *, char *, char *);
+void	  kinit_anonymous(krb5_context, char *, char *, char *);
 key	  krb5_getkey(krb5_context, kadm5_handle, char *);
 void	  krb5_createkey(krb5_context, kadm5_handle, char *);
 key	  read_kt(krb5_context, char *);

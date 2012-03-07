@@ -16,8 +16,6 @@ use Krb5Admin::C;
 use strict;
 use warnings;
 
-our $KINIT    = '@@KINIT@@';
-
 sub new {
 	my ($proto, $princ, $opts, @servers) = @_;
 	my $class = ref($proto) || $proto;
@@ -54,8 +52,8 @@ sub new {
 		$pec = Kharon::Engine::Client::Knc->new(protocols => [$ahr]);
 	}
 
-	if (defined($princ) && system($KINIT, "-l", "10m", "-k", $princ)) {
-		die "can't use host principal?";
+	if (defined($princ)) {
+		Krb5Admin::C::kinit_kt($ctx, $princ, undef, undef);
 	}
 
 	$pec->SetServerDefaults({KncService=>'krb5_admin', PeerPort=>$port});

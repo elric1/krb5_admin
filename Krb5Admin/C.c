@@ -954,6 +954,86 @@ done:
 	return hostlist;
 }
 
+static void
+kinit_common(krb5_context ctx, char *realm, char *princstr, char *ktname,
+	     char *ccname)
+{
+	krb5_error_code		 ret;
+	krb5_get_init_creds_opt	*opt = NULL;
+	krb5_init_creds_context	 ictx = NULL;
+	krb5_keytab		 kt = NULL;
+	krb5_ccache		 ccache = NULL;
+	krb5_principal		 princ = NULL;
+	int			 cred_allocated = 0;
+	char			 croakstr[2048] = "";
+
+	if (!realm && !princ)
+		croak("Either realm or princ must be defined");
+
+	if (ktname)
+		K5BAIL(krb5_kt_resolve(ctx, ktname, &kt));
+        else
+		K5BAIL(krb5_kt_default(ctx, &kt));
+
+	if (ccname)
+		K5BAIL(krb5_cc_resolve(ctx, ccname, &ccache));
+	else
+		K5BAIL(krb5_cc_default(ctx, &ccache));
+
+	K5BAIL(krb5_get_init_creds_opt_alloc(ctx, &opt));
+
+	if (princstr) {
+		K5BAIL(krb5_parse_name(ctx, princstr, &princ));
+	} else {
+		/* XXXrcd: this may need more options, well, let's try it. */
+		krb5_get_init_creds_opt_set_anonymous(opt, 1);
+		K5BAIL(krb5_make_principal(ctx, &princ, realm,
+		    KRB5_WELLKNOWN_NAME, KRB5_ANON_NAME, NULL));
+		krb5_principal_set_type(ctx, princ, KRB5_NT_WELLKNOWN);
+		K5BAIL(krb5_get_init_creds_opt_set_pkinit(ctx, opt, princ,
+		    NULL, NULL, NULL, NULL, 4, NULL, NULL, NULL));
+	}
+
+	krb5_get_init_creds_opt_set_tkt_life(opt, 15 * 60);
+
+	K5BAIL(krb5_init_creds_init(ctx, princ, NULL, NULL, 0, opt, &ictx));
+	K5BAIL(krb5_init_creds_get(ctx, ictx));
+	K5BAIL(krb5_init_creds_store(ctx, ictx, ccache));
+
+done:
+	if (ictx)
+		krb5_init_creds_free(ctx, ictx);
+
+	if (opt)
+		krb5_get_init_creds_opt_free(ctx, opt);
+
+	if (kt)
+		krb5_kt_close(ctx, kt);
+
+	if (ccache)
+		krb5_cc_close(ctx, ccache);
+
+	if (princ)
+		krb5_free_principal(ctx, princ);
+
+	if (ret)
+		croak("%s", croakstr);
+}
+
+void
+kinit_kt(krb5_context ctx, char *princstr, char *ktname, char *ccname)
+{
+
+	kinit_common(ctx, NULL, princstr, ktname, ccname);
+}
+
+void
+kinit_anonymous(krb5_context ctx, char *realm, char *ktname, char *ccname)
+{
+
+	kinit_common(ctx, realm, NULL, ktname, ccname);
+}
+
 #ifndef HAVE_HEIMDAL	/* XXXrcd: this needs to be implemented */
 char **
 krb5_list_pols(krb5_context ctx, kadm5_handle hndl, char *exp)
