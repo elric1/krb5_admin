@@ -77,6 +77,7 @@ eval mk_array_methods(undef, qw{
 });
 
 eval mk_scalar_methods(undef, qw{
+	bind_host
 	bootstrap_host_key
 	change
 	change_passwd

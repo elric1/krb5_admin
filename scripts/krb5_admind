@@ -95,6 +95,7 @@ my $pes = Kharon::Engine::Server->new(protocols => [$ahr], logger => $logger);
 $pes->Connect();
 
 my @rw_cmds = qw/	master
+			bind_host
 			bootstrap_host_key
 			create
 			create_bootstrap_id
