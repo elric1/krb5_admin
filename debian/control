@@ -1,7 +1,7 @@
 Source: libkrb5admin-perl
 Section: perl
 Priority: optional
-Build-Depends: debhelper (>= 7), perl, swig
+Build-Depends: debhelper (>= 7), perl, swig, sqlite3
 Maintainer: elric <elric@imrryr.org>
 Standards-Version: 3.8.3
 Homepage: http://oskt.secure-endpoints.com/krb5_admin
