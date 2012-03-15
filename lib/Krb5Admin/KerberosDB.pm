@@ -532,16 +532,22 @@ sub create_bootstrap_id {
 		    "aes256-cts"];
 	}
 
-	#
-	# XXXrcd: is it necessary for me to deal with the realm?  Not sure...
-	#         We could likely just pass back a principal with the KDC's
-	#         default realm.  After all, this is not the realm in which
-	#         the final host principal will reside...  Maybe we should
-	#         not let the client specify this at all...
+	if (defined($args{realm}) && ref($args{realm}) eq '') {
+		$realm = $args{realm};
 
-#	if (defined($args{realm}) && ref($args{realm}) eq '') {
-#		$realm = $args{realm};
-#	}
+		eval {
+			Krb5Admin::C::krb5_query_princ($ctx, $hndl,
+			    unparse_princ([$realm, "krbtgt", $realm]));
+		};
+
+		if ($@) {
+			die [502, "KDC does not support realm $realm"];
+		}
+	}
+
+	if (!defined($realm)) {
+		die [503, "Must supply realm"];
+	}
 
 	my $passwd = $self->generate_ecdh_key2($args{public});
 
