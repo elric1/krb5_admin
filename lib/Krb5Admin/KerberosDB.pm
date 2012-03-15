@@ -1115,11 +1115,20 @@ sub query_host {
 
 sub bind_host {
 	my ($self, $host, $binding) = @_;
+	my $ctx = $self->{ctx};
+
+	require_scalar("bind_host <host> <binding>", 1, $host);
+	require_fqprinc($ctx, "bind_host <host> <binding>", 1, $binding);
 
 	$self->check_acl('bind_host', $host, $binding);
 
 	my $stmt = "UPDATE hosts SET bootbinding = ? WHERE name = ?";
-	$self->_sql_command($stmt, $binding, $host);
+	my $sth  = $self->_sql_command($stmt, $binding, $host);
+
+	if ($sth->rows != 1) {
+		$self->{dbh}->rollback();
+		die [500, "Host $host does not exist."];
+	}
 
 	$self->{dbh}->commit();
 
