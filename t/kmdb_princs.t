@@ -1,7 +1,8 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 39;
+use Test::More tests => 44;
 
+use Krb5Admin::C;
 use Krb5Admin::KerberosDB;
 
 use Data::Dumper;
@@ -213,6 +214,14 @@ testObjC("remove service", $kmdb, [undef], 'remove', 'service');
 #
 # Let's try to test the new ECDH key negotiation for create.
 
+eval {
+	my $ctx  = Krb5Admin::C::krb5_init_context();
+	my $hndl = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb');
+	Krb5Admin::C::krb5_createkey($ctx, $hndl,
+	    'krbtgt/TEST.REALM@TEST.REALM');
+};
+ok(!$@, 'created TGS key') or diag(Dumper($@));
+
 my $gend;
 eval {
 	my @etypes = (16, 17, 18, 23);
@@ -224,7 +233,13 @@ eval {
 
 ok(!$@, "genkeys/create did not toss an exception") or diag(Dumper($@));
 
-$result->{keys} = [$kmdb->fetch('ecdh')];
+$result = {};
+eval {
+	$result->{keys} = [$kmdb->fetch('ecdh')];
+};
+
+ok(!$@, "able to fetch ecdh keys") or diag(Dumper($@));
+
 compare_keys($result, $gend->{keys}, "ecdh after create keys are the same");
 
 #
@@ -240,7 +255,11 @@ eval {
 };
 ok(!$@, "genkeys/change did not toss an exception") or diag($@);
 
-$result->{keys} = [$kmdb->fetch('ecdh')];
+$result = {};
+eval {
+	$result->{keys} = [$kmdb->fetch('ecdh')];
+};
+ok(!$@, "able to fetch ecdh keys") or diag(Dumper($@));
 compare_keys($result, $gend->{keys}, "ecdh after change keys are the same");
 
 #
@@ -250,12 +269,17 @@ my $binding;
 eval {
 	$gend = $kmdb->genkeys('bootstrap', 1, 18);
 	$binding = $kmdb->create_bootstrap_id(public => $gend->{public},
-	    enctypes => [18]);
+	    enctypes => [18], realm => 'TEST.REALM');
 	$gend = $kmdb->regenkeys($gend, $binding);
 };
-ok(!$@, "genkeys/create_bootstrap_id did not toss an exception") or diag($@);
+ok(!$@, "genkeys/create_bootstrap_id did not toss an exception")
+    or diag(Dumper($@));
 
-$result->{keys} = [$kmdb->fetch($binding)];
+$result = {};
+eval {
+	$result->{keys} = [$kmdb->fetch($binding)];
+};
+ok(!$@, "able to fetch binding keys") or diag(Dumper($@));
 compare_keys($result, $gend->{keys}, "$binding\'s keys after " .
     "create_bootstrap_id are the same");
 
@@ -264,7 +288,7 @@ eval {
 	$kmdb->create_host($host, realm => 'TEST.REALM');
 	$kmdb->bind_host($host, $binding);
 };
-ok(!$@, "bind_host did not toss an exception") or diag($@);
+ok(!$@, "bind_host did not toss an exception") or diag(Dumper($@));
 
 my $hostprinc = "host/$host\@TEST.REALM";
 eval {
@@ -282,7 +306,11 @@ eval {
 ok(!$@, "genkeys/bootstrap_host_key did not toss an exception")
     or diag(Dumper($@));
 
-$result->{keys} = [$kmdb->fetch($hostprinc)];
+$result = {};
+eval {
+	$result->{keys} = [$kmdb->fetch($hostprinc)];
+};
+ok(!$@, "able to fetch host keys") or diag(Dumper($@));
 compare_keys($result, $gend->{keys}, "$hostprinc\'s keys after " .
     "bootstrap_host_key() are the same");
 

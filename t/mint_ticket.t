@@ -29,6 +29,12 @@ my $ret;
 eval {
 	Krb5Admin::C::krb5_createkey($ctx, $hndl,
 	    'krbtgt/TEST.REALM@TEST.REALM');
+};
+
+# it's okay if this has failed: it just means that we've already got
+# a TGS key.
+
+eval {
 	$ret = Krb5Admin::C::mint_ticket($ctx, $hndl, 'user', 3600, 7200);
 	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl,
 	    'krbtgt/TEST.REALM@TEST.REALM');
