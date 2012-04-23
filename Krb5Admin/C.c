@@ -1145,6 +1145,8 @@ done:
 
 #ifdef HAVE_HEIMDAL
 
+#undef warn		/* Conflict between Perl and <err.h> via <hdb.h> */
+#undef vwarn		/* Conflict between Perl and <err.h> via <hdb.h> */
 #ifdef HEIMDAL_INCLUDES_IN_KRB5
 #include <krb5/hdb.h>
 #include <krb5/hdb_err.h>
@@ -1154,6 +1156,8 @@ done:
 #include <hdb_err.h>
 #include <der.h>
 #endif
+#define warn Perl_warn	/* Conflict between Perl and <err.h> via <hdb.h> */
+#define vwarn Perl_vwarn/* Conflict between Perl and <err.h> via <hdb.h> */
 
 #undef ALLOC
 #define ALLOC(X) do {					\
