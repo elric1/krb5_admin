@@ -93,6 +93,7 @@ eval mk_scalar_methods(undef, qw{
 	master
 	query
 	remove
+	remove_host
 	remove_hostmap
 	remove_ticket
 });
