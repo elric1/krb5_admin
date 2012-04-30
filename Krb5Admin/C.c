@@ -1165,9 +1165,6 @@ done:
 	if (opt)
 		krb5_get_init_creds_opt_free(ctx, opt);
 
-	if (kt)
-		krb5_kt_close(ctx, kt);
-
 	if (c_in_use)
 		K5BAIL(krb5_kt_end_seq_get(ctx, kt, &c));
 
@@ -1185,6 +1182,9 @@ done:
 
 	if (tmpkt)
 		krb5_kt_close(ctx, tmpkt);
+
+	if (kt)
+		krb5_kt_close(ctx, kt);
 
 	if (ccache)
 		krb5_cc_close(ctx, ccache);
