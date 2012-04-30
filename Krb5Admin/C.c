@@ -1166,7 +1166,7 @@ done:
 		krb5_get_init_creds_opt_free(ctx, opt);
 
 	if (c_in_use)
-		K5BAIL(krb5_kt_end_seq_get(ctx, kt, &c));
+		krb5_kt_end_seq_get(ctx, kt, &c);
 
 	if (e_in_use)
 		krb5_kt_free_entry(ctx, &e);
