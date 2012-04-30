@@ -1153,16 +1153,40 @@ kinit_kt(krb5_context ctx, char *princstr, char *ktname, char *ccname)
 		tmpkt = NULL;
 		if (!ret)
 			break;
+
+		/* We store the error message the first time as it's useful */
+
+		if (!croakstr[0]) {
+#ifdef HAVE_HEIMDAL
+			const char	*tmp;
+
+			tmp = krb5_get_error_message(ctx, ret);
+			if (tmp) {
+				snprintf(croakstr, sizeof(croakstr),
+				    "%s: %s", "kinit_kt", tmp);
+				krb5_free_error_message(ctx, tmp);
+			} else {
+				snprintf(croakstr, sizeof(croakstr),
+				    "%s: unknown error", "kinit_kt");
+			}
+#else
+			snprintf(croakstr, sizeof(croakstr), "%s: %s",
+			    "kinit_kt", error_message(ret));
+#endif
+		}
+
 		krb5_init_creds_free(ctx, ictx);
 		ictx = NULL;
 	}
 
 	if (ret) {
-		snprintf(croakstr, sizeof(croakstr),
-		    "Failed to kinit from keytab");
+		if (!croakstr[0])
+			snprintf(croakstr, sizeof(croakstr),
+			    "Failed to kinit from keytab");
 		goto done;
 	}
 
+success:
 	K5BAIL(krb5_init_creds_store(ctx, ictx, ccache));
 
 done:
