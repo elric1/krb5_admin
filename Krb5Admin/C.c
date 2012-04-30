@@ -954,26 +954,16 @@ done:
 	return hostlist;
 }
 
-static void
-kinit_common(krb5_context ctx, char *realm, char *princstr, char *ktname,
-	     char *ccname)
+void
+kinit_anonymous(krb5_context ctx, char *realm, char *ccname)
 {
 	krb5_error_code		 ret;
 	krb5_get_init_creds_opt	*opt = NULL;
 	krb5_init_creds_context	 ictx = NULL;
-	krb5_keytab		 kt = NULL;
 	krb5_ccache		 ccache = NULL;
 	krb5_principal		 princ = NULL;
 	int			 cred_allocated = 0;
 	char			 croakstr[2048] = "";
-
-	if (!realm && !princstr)
-		croak("Either realm or princ must be defined");
-
-	if (ktname)
-		K5BAIL(krb5_kt_resolve(ctx, ktname, &kt));
-        else
-		K5BAIL(krb5_kt_default(ctx, &kt));
 
 	if (ccname)
 		K5BAIL(krb5_cc_resolve(ctx, ccname, &ccache));
@@ -982,23 +972,16 @@ kinit_common(krb5_context ctx, char *realm, char *princstr, char *ktname,
 
 	K5BAIL(krb5_get_init_creds_opt_alloc(ctx, &opt));
 
-	if (princstr) {
-		K5BAIL(krb5_parse_name(ctx, princstr, &princ));
-	} else {
-		/* XXXrcd: this may need more options, well, let's try it. */
-		krb5_get_init_creds_opt_set_anonymous(opt, 1);
-		K5BAIL(krb5_make_principal(ctx, &princ, realm,
-		    KRB5_WELLKNOWN_NAME, KRB5_ANON_NAME, NULL));
-		krb5_principal_set_type(ctx, princ, KRB5_NT_WELLKNOWN);
-		K5BAIL(krb5_get_init_creds_opt_set_pkinit(ctx, opt, princ,
-		    NULL, NULL, NULL, NULL, 4, NULL, NULL, NULL));
-	}
+	krb5_get_init_creds_opt_set_anonymous(opt, 1);
+	K5BAIL(krb5_make_principal(ctx, &princ, realm,
+	    KRB5_WELLKNOWN_NAME, KRB5_ANON_NAME, NULL));
+	krb5_principal_set_type(ctx, princ, KRB5_NT_WELLKNOWN);
+	K5BAIL(krb5_get_init_creds_opt_set_pkinit(ctx, opt, princ,
+	    NULL, NULL, NULL, NULL, 4, NULL, NULL, NULL));
 
 	krb5_get_init_creds_opt_set_tkt_life(opt, 15 * 60);
 
 	K5BAIL(krb5_init_creds_init(ctx, princ, NULL, NULL, 0, opt, &ictx));
-	if (kt)
-		K5BAIL(krb5_init_creds_set_keytab(ctx, ictx, kt));
 	K5BAIL(krb5_init_creds_get(ctx, ictx));
 	K5BAIL(krb5_init_creds_store(ctx, ictx, ccache));
 
@@ -1008,9 +991,6 @@ done:
 
 	if (opt)
 		krb5_get_init_creds_opt_free(ctx, opt);
-
-	if (kt)
-		krb5_kt_close(ctx, kt);
 
 	if (ccache)
 		krb5_cc_close(ctx, ccache);
@@ -1022,18 +1002,198 @@ done:
 		croak("%s", croakstr);
 }
 
+struct kts {
+	int		 kvno;
+	krb5_keytab	 kt;
+	struct kts	*next;
+};
+
 void
 kinit_kt(krb5_context ctx, char *princstr, char *ktname, char *ccname)
 {
+	krb5_error_code		 ret;
+	krb5_get_init_creds_opt	*opt = NULL;
+	krb5_init_creds_context	 ictx = NULL;
+	krb5_keytab_entry	 e;
+	int			 e_in_use = 0;
+	krb5_kt_cursor		 c;
+	int			 c_in_use = 0;
+	krb5_keytab		 kt = NULL;
+	krb5_keytab		 tmpkt = NULL;
+	krb5_ccache		 ccache = NULL;
+	krb5_principal		 princ = NULL;
+	struct kts		*kts = NULL;
+	struct kts		*next_one = NULL;
+	int			 kvno = -1;
+	int			 max_kvno = -1;
+	int			 min_kvno = -1;
+	char			 croakstr[2048] = "";
+	char			*rndktpart = NULL;
+	char			 tmp[256];
 
-	kinit_common(ctx, NULL, princstr, ktname, ccname);
-}
+	/*
+	 * rndktpart isn't a passwd but rather a random string we use in
+	 * naming the memory keytabs to avoid collisions.  This is why we
+	 * make it so long.
+	 */
 
-void
-kinit_anonymous(krb5_context ctx, char *realm, char *ktname, char *ccname)
-{
+	rndktpart = random_passwd(ctx, 25);
 
-	kinit_common(ctx, realm, NULL, ktname, ccname);
+	if (ktname)
+		K5BAIL(krb5_kt_resolve(ctx, ktname, &kt));
+        else
+		K5BAIL(krb5_kt_default(ctx, &kt));
+
+	if (ccname)
+		K5BAIL(krb5_cc_resolve(ctx, ccname, &ccache));
+	else
+		K5BAIL(krb5_cc_default(ctx, &ccache));
+
+	K5BAIL(krb5_parse_name(ctx, princstr, &princ));
+
+	/*
+	 * Unlike the builtin functions, we try to make quite sure that
+	 * we get a TGT even if there are invalid keys in the keytab.
+	 * To do this, we will try all of the keys that match the principal
+	 * in reverse kvno order.  We build a set of MEMORY: keytabs from
+	 * our original keytab and then try each of them to obtain creds.
+	 * Heimdal's semantics are that MEMORY: keytabs are cleaned up when
+	 * the last reference is closed.  We thus maintain a stack of open
+	 * keytabs so that we can close them later.  At the moment, MIT
+	 * emulates Heimdal's behaviour.
+	 *
+	 * XXXrcd: should we also deal with FILE: keytabs so that this code
+	 *         will work on older MIT krb5 versions?  Maybe...
+	 */
+
+	K5BAIL(krb5_kt_start_seq_get(ctx, kt, &c));
+	c_in_use = 1;
+
+	while (!(ret = krb5_kt_next_entry(ctx, kt, &e, &c))) {
+		struct kts	*this;
+
+		if (!krb5_principal_compare(ctx, e.principal, princ)) {
+			krb5_kt_free_entry(ctx, &e);
+			continue;
+		}
+
+		e_in_use = 1;
+
+		/*
+		 * this_one should either be the current kt or the last one
+		 * after this loop.
+		 *
+		 * XXXrcd: this inner loop makes our algorithm O(n^2) which
+		 *         should likely be fixed at some point...  This
+		 *         shouldn't prove to be an issue in most situations
+		 *         as keytabs should not be allowed to grow arbitrarily
+		 *         large.  That said, they probably do in the wild...
+		 *         Dealing with this will involve choosing a data
+		 *         structure which is a better fit for the algorithm.
+		 */
+
+		for (this = kts; this && this->next; this = this->next)
+			if (this->kvno == e.vno)
+				break;
+
+		if (min_kvno == -1 || e.vno < min_kvno)
+			min_kvno = e.vno;
+
+		if (max_kvno == -1 || e.vno > max_kvno)
+			max_kvno = e.vno;
+
+		if (!this || this->kvno != e.vno) {
+			next_one = malloc(sizeof(*next_one));
+			if (!next_one) {
+				snprintf(croakstr, sizeof(croakstr),
+				    "malloc failed!");
+				ret = 1;
+				goto done;
+			}
+			snprintf(tmp, sizeof(tmp), "MEMORY:%x.%s", e.vno,
+			    rndktpart);
+			K5BAIL(krb5_kt_resolve(ctx, tmp, &next_one->kt));
+			next_one->kvno = e.vno;
+			if (this)
+				this->next = next_one;
+			this = next_one;
+			next_one = NULL;
+		}
+
+		K5BAIL(krb5_kt_add_entry(ctx, this->kt, &e));
+		krb5_kt_free_entry(ctx, &e);
+		e_in_use = 0;
+	}
+
+	if (ret != KRB5_KT_END) {
+		/* XXXrcd: do some sort of error here... or not?? */
+	}
+
+	K5BAIL(krb5_get_init_creds_opt_alloc(ctx, &opt));
+	krb5_get_init_creds_opt_set_tkt_life(opt, 15 * 60);
+
+	for (kvno = max_kvno; kvno >= min_kvno; kvno--) {
+		snprintf(tmp, sizeof(tmp), "MEMORY:%x.%s", kvno, rndktpart);
+		K5BAIL(krb5_kt_resolve(ctx, tmp, &tmpkt));
+		K5BAIL(krb5_init_creds_init(ctx, princ, NULL, NULL, 0, opt,
+		    &ictx));
+		K5BAIL(krb5_init_creds_set_keytab(ctx, ictx, tmpkt));
+		ret = krb5_init_creds_get(ctx, ictx);
+		krb5_kt_close(ctx, tmpkt);
+		tmpkt = NULL;
+		if (!ret)
+			break;
+		krb5_init_creds_free(ctx, ictx);
+		ictx = NULL;
+	}
+
+	if (ret) {
+		snprintf(croakstr, sizeof(croakstr),
+		    "Failed to kinit from keytab");
+		goto done;
+	}
+
+	K5BAIL(krb5_init_creds_store(ctx, ictx, ccache));
+
+done:
+	free(rndktpart);
+	free(next_one);
+
+	if (ictx)
+		krb5_init_creds_free(ctx, ictx);
+
+	if (opt)
+		krb5_get_init_creds_opt_free(ctx, opt);
+
+	if (kt)
+		krb5_kt_close(ctx, kt);
+
+	if (c_in_use)
+		K5BAIL(krb5_kt_end_seq_get(ctx, kt, &c));
+
+	if (e_in_use)
+		krb5_kt_free_entry(ctx, &e);
+
+	for (; kts;) {
+		struct kts	*tmp_kts;
+
+		tmp_kts = kts;
+		kts = kts->next;
+		krb5_kt_close(ctx, tmp_kts->kt);
+		free(tmp_kts);
+	}
+
+	if (tmpkt)
+		krb5_kt_close(ctx, tmpkt);
+
+	if (ccache)
+		krb5_cc_close(ctx, ccache);
+
+	if (princ)
+		krb5_free_principal(ctx, princ);
+
+	if (ret)
+		croak("%s", croakstr);
 }
 
 #ifndef HAVE_HEIMDAL	/* XXXrcd: this needs to be implemented */
