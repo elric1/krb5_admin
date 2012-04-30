@@ -1186,7 +1186,6 @@ kinit_kt(krb5_context ctx, char *princstr, char *ktname, char *ccname)
 		goto done;
 	}
 
-success:
 	K5BAIL(krb5_init_creds_store(ctx, ictx, ccache));
 
 done:
