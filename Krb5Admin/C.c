@@ -118,6 +118,16 @@ done:
 	return dprinc;
 }
 
+/*
+ * random_passwd() will return a random string which is designed to
+ * be a passwd in most circumstances.  We choose characters from a
+ * subset that is easy to recognise in most fonts, i.e. we avoid zero
+ * and capital O because many fonts do not adequately distinguish them.
+ * The return value is a char * which has been malloc(3)ed, it is the
+ * caller's responsibility to free it.  random_passwd() can croak()
+ * and so should be called only at the beginning of functions.
+ */
+
 #define HUMAN_PASSWD_SIZE	10
 #define PROID_PASSWD_SIZE	15
 char c_num[]	= "2345679";
