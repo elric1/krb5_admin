@@ -211,6 +211,15 @@ sub check_acl {
 		    grep { $_ eq $pprinc[2] } host_list($self->{hostname}) : 1;
 
 		#
+		# We first allow hosts to change their own keys:
+
+		if ($host_ok == 1 && @sprinc == 3 && @pprinc == 3 &&
+		    $sprinc[0] eq $pprinc[0] && $sprinc[1] eq $pprinc[1] &&
+		    $sprinc[2] eq $pprinc[2]) {
+			return;
+		}
+
+		#
 		# We check to see if we are doing an xrealm bootstrap, we
 		# do this by generating a list of principals that we will
 		# accept first and then seeing if our client is one of them.
