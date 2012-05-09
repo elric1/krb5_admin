@@ -1139,6 +1139,13 @@ kinit_kt(krb5_context ctx, char *princstr, char *ktname, char *ccname)
 		/* XXXrcd: do some sort of error here... or not?? */
 	}
 
+	if (max_kvno == -1 || min_kvno == -1) {
+		snprintf(croakstr, sizeof(croakstr), "Failed to find key "
+		    "for %s in keytab.", princstr);
+		ret = 1;
+		goto done;
+	}
+
 	K5BAIL(krb5_get_init_creds_opt_alloc(ctx, &opt));
 	krb5_get_init_creds_opt_set_tkt_life(opt, 15 * 60);
 
