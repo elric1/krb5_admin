@@ -226,7 +226,7 @@ my $gend;
 eval {
 	my @etypes = (16, 17, 18, 23);
 
-	$gend = $kmdb->genkeys('ecdh', 1, @etypes);
+	$gend = $kmdb->genkeys('create', 'ecdh', 1, @etypes);
 
 	$kmdb->create('ecdh', public => $gend->{public}, enctypes => \@etypes);
 };
@@ -248,7 +248,7 @@ compare_keys($result, $gend->{keys}, "ecdh after create keys are the same");
 eval {
 	my @etypes = (17, 18);
 
-	$gend = $kmdb->genkeys('ecdh', 2, @etypes);
+	$gend = $kmdb->genkeys('change', 'ecdh', 2, @etypes);
 
 	$kmdb->change('ecdh', 2, public => $gend->{public},
 	    enctypes => \@etypes);
@@ -267,7 +267,7 @@ compare_keys($result, $gend->{keys}, "ecdh after change keys are the same");
 
 my $binding;
 eval {
-	$gend = $kmdb->genkeys('bootstrap', 1, 18);
+	$gend = $kmdb->genkeys('create_bootstrap_id', 'bootstrap', 1, 18);
 	$binding = $kmdb->create_bootstrap_id(public => $gend->{public},
 	    enctypes => [18], realm => 'TEST.REALM');
 	$gend = $kmdb->regenkeys($gend, $binding);
@@ -299,7 +299,8 @@ eval {
 	    sqlite	=> 't/sqlite.db',
 	);
 
-	$gend = $kmdb->genkeys("host/$host\@TEST.REALM", 1, 17, 18);
+	$gend = $kmdb->genkeys('bootstrap_host_key', "host/$host\@TEST.REALM",
+	    1, 17, 18);
 	$kmdb->bootstrap_host_key("host/$host\@TEST.REALM", 1,
 	    public => $gend->{public}, enctypes => [17, 18]);
 };

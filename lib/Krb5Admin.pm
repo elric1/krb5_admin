@@ -35,7 +35,7 @@ sub genkeys_from_passwd {
 }
 
 sub genkeys {
-	my ($self, $princ, $kvno, @etypes) = @_;
+	my ($self, $operation, $princ, $kvno, @etypes) = @_;
 	my $ctx = $self->{ctx};
 
 	my ($secret, $public) = @{Krb5Admin::C::curve25519_pass1($ctx)};
@@ -44,7 +44,7 @@ sub genkeys {
 	# In a ``normal'' usage, $self->generate_ecdh_key1() will be
 	# an RPC to the KDC from which we obtain the ECDH public key.
 
-	my $hispublic = $self->generate_ecdh_key1();
+	my $hispublic = $self->generate_ecdh_key1($operation, $princ);
 
 	#
 	# We then use the curve25519_pass2() to generate the keys which we

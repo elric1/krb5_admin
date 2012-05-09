@@ -184,6 +184,28 @@ sub check_acl {
 		@pprinc = Krb5Admin::C::krb5_parse_name($ctx, $predicate[0]);
 	}
 
+	if ($verb eq 'bootstrap_host_key') {
+		if (@pprinc != 3 || $pprinc[1] ne 'host') {
+			die [502, "Permission denied: bootstrap_host_key " .
+			    "may only be used on host principals."];
+		}
+
+		my ($realm, $h, $host) = @pprinc;
+
+		my $stmt = qq{
+			SELECT COUNT(*) FROM hosts
+			WHERE realm = ? AND name = ? AND bootbinding = ?
+		};
+		my $sth = $self->_sql_command($stmt, $realm, $host, $subject);
+
+		if ($sth->fetchrow_arrayref()->[0] != 1) {
+			die [502, "Permission denied: you are not bound to " .
+			    "$host"];
+		}
+
+		return;
+	}
+
 	#
 	# The remaining logic is for krb5_keytab and is only to be used
 	# for ``create'', ``fetch'', or ``change'':
@@ -407,9 +429,32 @@ sub drop_db {
 
 sub master { undef; }
 
+#
+# If generate_ecdh_key1() is provided with $operation and $name then it
+# will perform ACL checks based on those.  Otherwise it will simply return
+# a key.  The ACLs will be rechecked later by the method that actually
+# performs the work---this check is merely a shorthand to catch ACL errors
+# earlier in the process and as such it is not necessary to use it...
+
+my @gek_operations = qw(change create create_bootstrap_id bootstrap_host_key);
+
 sub generate_ecdh_key1 {
-	my ($self) = @_;
+	my ($self, $operation, $name, @args) = @_;
 	my $ctx = $self->{ctx};
+
+	if (defined($operation) || defined($name)) {
+		if (!defined($operation) || !defined($name)) {
+			die [503, "If arg1 or arg2 are defined then both " .
+			    "must be defined."];
+		}
+
+		if ((grep { $operation eq $_ } @gek_operations) < 1) {
+			die [503, "arg1 must be one of: " .
+			    join(', ', @gek_operations)];
+		}
+
+		$self->check_acl($operation, $name);
+	}
 
 	my ($secret, $public) = @{Krb5Admin::C::curve25519_pass1($ctx)};
 
@@ -645,24 +690,18 @@ sub bootstrap_host_key {
 
 	# XXXrcd: sanity checks?
 
-	require_scalar("bootstrap_host_key <princ> <kvno> public=>key " .
+	require_fqprinc($ctx, "bootstrap_host_key <princ> <kvno> public=>key " .
 	    "enctypes=>etypes", 1, $princ);
 	require_scalar("bootstrap_host_key <princ> <kvno> public=>key " .
 	    "enctypes=>etypes", 2, $kvno);
 
+	#
+	# We expect that the call to check_acl() will query the SQL DB
+	# to check that the host was bound to the correct principal.
+
+	$self->check_acl('bootstrap_host_key', $princ);
+
 	my ($realm, $h, $host) = Krb5Admin::C::krb5_parse_name($ctx, $princ);
-
-	if ($h ne 'host') {
-		die "bootstrap_host_key may only be used on host principals.";
-	}
-
-	$stmt = "SELECT COUNT(*) FROM hosts WHERE realm = ? AND name = ? AND " .
-	    "bootbinding = ?";
-	$sth = $self->_sql_command($stmt, $realm, $host, $binding);
-
-	if ($sth->fetchrow_arrayref()->[0] != 1) {
-		die [502, "Permission denied: you are not bound to $host"];
-	}
 
 	#
 	# XXXrcd: any more ACLs?  Fix how we determine the realm.
