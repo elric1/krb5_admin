@@ -17,6 +17,9 @@ use Krb5Admin::C;
 use strict;
 use warnings;
 
+my $nprocs = 10;
+my $nprincs = 50;
+
 use constant {
 	DISALLOW_POSTDATED      => 0x00000001,
 	DISALLOW_FORWARDABLE    => 0x00000002,
@@ -90,10 +93,15 @@ undef $hndl;
 
 my %kids;
 
-for my $i (1..20) {
-	my $kid = start_kid(\&kid_logic, "concurrency.$i", 100);
+my %princs;
+
+for my $i (1..$nprocs) {
+	my $kid = start_kid(\&kid_logic, "concurrency.$i", $nprincs);
 
 	$kids{$kid} = 1;
+	for my $j (1..$nprincs) {
+		$princs{"concurrency.$i.$j" . '@TEST.REALM'} = 1;
+	}
 }
 
 while (keys %kids > 0) {
@@ -113,8 +121,24 @@ $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb');
 
 my $results = Krb5Admin::C::krb5_list_princs($ctx, $hndl, "concurrency." . "*");
 
-diag(Dumper($results));
-diag("list has " . @$results . "\n");
+for my $result (@$results) {
+	delete $princs{$result};
+}
+
+if (keys %princs > 0) {
+	diag("Missing principals:\n\n");
+}
+for my $princ (keys %princs) {
+	eval {
+		Krb5Admin::C::krb5_query_princ($ctx, $hndl, $princ);
+	};
+	if ($@) {
+		diag("Missing: $princ\n");
+	} else {
+		diag("Missing: $princ only from list_princs\n");
+	}
+}
+diag("list has " . @$results . "/" . ($nprocs*$nprincs) . "\n");
 
 ok(1);
 
