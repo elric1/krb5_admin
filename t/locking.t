@@ -10,14 +10,12 @@
 
 use Test::More tests => 1;
 
-use Data::Dumper;
-
 use Krb5Admin::C;
 
 use strict;
 use warnings;
 
-my $nprocs = 10;
+my $nprocs = 20;
 my $nprincs = 50;
 
 use constant {
@@ -53,7 +51,6 @@ sub kid_logic {
 	our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb');
 
 	for my $i (1..$max) {
-diag("create $prefix.$i\n");
 		Krb5Admin::C::krb5_createkey($ctx, $hndl, "$prefix.$i");
 #		Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
 #			principal	=> "$prefix.$i",
@@ -106,14 +103,11 @@ for my $i (1..$nprocs) {
 
 while (keys %kids > 0) {
 	my $pid = wait();
-
-diag("$pid exited, remaining kids = " . (keys %kids));
-
 	delete $kids{$pid};
 }
 
 #
-# Now, we expect to have created concurrency.(0..20).(0..5000), so let's find
+# Now, we expect to have created concurrency.(0..20).(0..50), so let's find
 # out...
 
 $ctx   = Krb5Admin::C::krb5_init_context();
