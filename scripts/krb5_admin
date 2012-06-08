@@ -109,6 +109,18 @@ sub fmtexpi {
 	return fmtintv($in);
 }
 
+sub format_create_user {
+	my ($out, $ret) = @_;
+
+	print "Created user with passwd '$ret'\n";
+}
+
+sub format_change_passwd {
+	my ($out, $ret) = @_;
+
+	print "Changed passwd to '$ret'\n";
+}
+
 sub format_mquery {
 	my ($out, @rets) = @_;
 
@@ -214,6 +226,8 @@ our %cmds = (
 );
 
 our %formats = (
+	'create_user'	=> \&format_create_user,
+	'change_passwd'	=> \&format_change_passwd,
 	'query'		=> \&format_query,
 	'mquery'	=> \&format_mquery,
 	'list'		=> \&format_list,
