@@ -32,7 +32,7 @@ sub compare_kdcs_to_expected {
 	return 1;
 }
 
-$ENV{KRB5_CONFIG} = 'FILE:./t/krb5.conf';
+$ENV{KRB5_CONFIG} = './t/krb5.conf';
 
 my  $ctx   = Krb5Admin::C::krb5_init_context();
 our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, undef);

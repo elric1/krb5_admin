@@ -10,7 +10,7 @@ use Krb5Admin::C;
 use strict;
 use warnings;
 
-$ENV{KRB5_CONFIG} = 'FILE:./t/krb5.conf';
+$ENV{KRB5_CONFIG} = './t/krb5.conf';
 
 my ($ctx, $alice, $bob, $shared1, $shared2);
 

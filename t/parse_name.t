@@ -8,7 +8,7 @@ use Krb5Admin::C;
 use strict;
 use warnings;
 
-$ENV{KRB5_CONFIG} = 'FILE:./t/krb5.conf';
+$ENV{KRB5_CONFIG} = './t/krb5.conf';
 
 my $ret;
 my $ctx = Krb5Admin::C::krb5_init_context();

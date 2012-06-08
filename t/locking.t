@@ -81,7 +81,7 @@ sub start_kid {
 	exit 0;
 }
 
-$ENV{KRB5_CONFIG} = 'FILE:./t/krb5.conf';
+$ENV{KRB5_CONFIG} = './t/krb5.conf';
 
 my $ctx   = Krb5Admin::C::krb5_init_context();
 my $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb');

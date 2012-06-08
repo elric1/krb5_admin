@@ -57,7 +57,7 @@ sub testObjC {
 	}
 }
 
-$ENV{'KRB5_CONFIG'} = 't/krb5.conf';
+$ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
 my $sprinc = 'service@TEST.REALM';
 my $uprinc = 'user@TEST.REALM';

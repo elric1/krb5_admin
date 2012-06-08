@@ -9,7 +9,7 @@ use strict;
 use warnings;
 
 my $ccfile = "./t/krb5cc.$$";
-$ENV{KRB5_CONFIG} = 'FILE:./t/krb5.conf';
+$ENV{KRB5_CONFIG} = './t/krb5.conf';
 $ENV{KRB5CCNAME}  = "FILE:$ccfile";
 
 END {
