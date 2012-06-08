@@ -482,7 +482,6 @@ krb5_createkey(krb5_context ctx, kadm5_handle hndl, char *in)
 	size_t			 i;
 	char			 croakstr[2048] = "";
 	char			 dummybuf[256];
-//	int			 locked = 0;
 
 	memset((char *) &params, 0, sizeof(params));	
 	memset(dummybuf, 0x0, sizeof(dummybuf));
@@ -494,9 +493,6 @@ krb5_createkey(krb5_context ctx, kadm5_handle hndl, char *in)
 		dummybuf[i] = 32 + (i % 80);
 
 	dummybuf[i] = '\0';
-
-//	K5BAIL(kadm5_lock(hndl));
-//	locked = 1;
 
 	dprinc.principal = princ;
 	dprinc.attributes = KRB5_KDB_DISALLOW_ALL_TIX;
@@ -520,32 +516,15 @@ krb5_createkey(krb5_context ctx, kadm5_handle hndl, char *in)
 	K5BAIL(kadm5_randkey_principal_3(hndl, dprinc.principal, 0,
 	    4, enctypes, NULL, NULL));
 #else
-#if 0
 	K5BAIL(kadm5_randkey_principal_3(hndl, dprinc.principal, 0,
 	    0, 0, NULL, NULL));
-#else
-#if 0
-	ret = kadm5_randkey_principal_3(hndl, dprinc.principal, 0,
-	    0, 0, NULL, NULL);
-	if (ret) {
-		snprintf(croakstr, sizeof(croakstr), "randkey of %s failed %d",
-		    in, ret);
-		goto done;
-	}
-#endif
-#endif
 #endif
 
-#if 0	/* XXXrcd: this ain't s'pozed to be #if'ed out */
 	dprinc.attributes &= ~KRB5_KDB_DISALLOW_ALL_TIX;
 	K5BAIL(kadm5_modify_principal(hndl, &dprinc, KADM5_ATTRIBUTES));
-#endif
 
 done:
 	/* XXXrcd: free up used data structures! */
-
-//	if (locked)
-//		kadm5_unlock(hndl);
 
 	if (princ)
 		krb5_free_principal(ctx, princ);
