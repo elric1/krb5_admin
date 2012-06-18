@@ -157,7 +157,11 @@ sub format_query {
 	    fmtintv($ret->{max_renewable_life}));
 	qout($out, "Current kvno:", $ret->{kvno});
 	printf $out ("$QUERY_FMT ", "Attributes:");
-	printvar($out, undef, $ret->{attributes});
+	if (@{$ret->{attributes}} > 0) {
+		printvar($out, undef, $ret->{attributes});
+	} else {
+		print $out "\n";
+	}
 
 	print $out "Number of keys: " . scalar(@{$ret->{keys}}) . "\n";
 	for my $k (sort { $a->{kvno} <=> $b->{kvno} } @{$ret->{keys}}) {
