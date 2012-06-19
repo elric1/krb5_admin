@@ -4,12 +4,11 @@
 
 package Krb5Admin::Client;
 
-use base qw/Krb5Admin/;
+use base qw(Krb5Admin Kharon::Class::Client);
 
 use Kharon::Protocol::ArrayHash;
 use Kharon::Engine::Client;
 use Kharon::Engine::Client::Knc;
-use Kharon::utils qw/mk_methods mk_array_methods mk_scalar_methods/;
 
 use Krb5Admin::C;
 
@@ -64,39 +63,6 @@ sub new {
 
 	bless($self, $class);
 }
-
-eval mk_array_methods(undef, qw{
-	fetch
-	fetch_tickets
-	list
-	listpols
-	mquery
-	query_ticket
-	query_host
-	query_hostmap
-});
-
-eval mk_scalar_methods(undef, qw{
-	bind_host
-	bootstrap_host_key
-	change
-	change_passwd
-	create
-	create_bootstrap_id
-	create_host
-	create_user
-	disable
-	enable
-	generate_ecdh_key1
-	insert_hostmap
-	insert_ticket
-	master
-	query
-	remove
-	remove_host
-	remove_hostmap
-	remove_ticket
-});
 
 1;
 

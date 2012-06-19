@@ -8,6 +8,50 @@ use Krb5Admin::C;
 use strict;
 use warnings;
 
+our @KHARON_RW_SC_EXPORT = qw/	bind_host
+				bootstrap_host_key
+				change
+				change_passwd
+				create
+				create_bootstrap_id
+				create_host
+				create_user
+				disable
+				enable
+				generate_ecdh_key1
+				insert_hostmap
+				insert_ticket
+				master
+				remove 
+				remove_host
+				remove_hostmap
+				remove_ticket
+			     /;
+
+our @KHARON_RO_SC_EXPORT = qw/	query	/;
+
+our @KHARON_RO_AC_EXPORT = qw/	fetch
+				fetch_tickets
+				list
+				listpols
+				mquery
+				query_host
+				query_hostmap
+				query_ticket
+			     /;
+
+sub KHARON_MASTER {
+	my $fh = IO::File->new('/etc/krb5/master', 'r');
+	if (!defined($fh)) {
+		die "Can't open /etc/krb5/master: $!\n";
+	}
+
+	my $master = <$fh>;
+	chomp($master);
+
+	return $master;
+}
+
 sub new {
 	my ($isa, %args) = @_;
 	my %self;

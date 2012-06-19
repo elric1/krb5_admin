@@ -20,23 +20,6 @@ use constant {
 	KRB5_ADMIND_CONFIG	=> '/etc/krb5/krb5_admind.conf',
 };
 
-my $master;
-
-sub who_is_master {
-	my $fh = IO::File->new('/etc/krb5/master', 'r');
-	if (!defined($fh)) {
-		print STDERR "Can't open /etc/krb5/master: $!\n";
-		$fh = IO::File->new('master', 'r') or
-		    die "can't open ./master: $!";
-	}
-
-	my $master = <$fh>;
-	chomp($master);
-	$master;
-}
-
-sub am_i_master { hostname() eq $master }
-
 sub usage {
 
 	print STDERR "Usage: krb5_admind [-M] [-a acl_file] [-d dbname] " .
@@ -50,6 +33,7 @@ our $acl_file;
 our $config = KRB5_ADMIND_CONFIG;
 our $dbname;
 our $allow_fetch;
+our $master;
 our %xrealm_bootstrap;
 our %win_xrealm_bootstrap;
 our %prestash_xrealm;
@@ -59,7 +43,6 @@ getopts('MPa:c:d:m:', \%opts) or usage();
 
 $master   = hostname()		if  defined($opts{M});
 $master   = $opts{m}		if !defined($master);
-$master   = who_is_master()	if !defined($master);
 $acl_file = $opts{a}		if  defined($opts{a});
 $dbname   = $opts{d}		if  defined($opts{d});
 $config   = $opts{c}		if  defined($opts{c});
@@ -94,42 +77,8 @@ my $ahr = Kharon::Protocol::ArrayHash->new(banner => { version => '2.0' } );
 my $pes = Kharon::Engine::Server->new(protocols => [$ahr], logger => $logger);
 $pes->Connect();
 
-my @rw_cmds = qw/	master
-			bind_host
-			bootstrap_host_key
-			create
-			create_bootstrap_id
-			create_user
-			change
-			change_passwd
-			enable
-			disable
-			generate_ecdh_key1
-			remove 
-			create_host
-			remove_host
-			insert_hostmap
-			remove_hostmap
-			insert_ticket
-			remove_ticket
-		/;
-my @ro_cmds = qw/	list
-			listpols
-			fetch
-			mquery
-			query
-			query_ticket
-			fetch_tickets
-			query_hostmap
-			query_host
-		/;
-
 my %args;
-$args{cmds}	= [@rw_cmds, @ro_cmds];
-if (!am_i_master()) {
-	$args{next_server} = { PeerAddr => $master };
-	$args{refercmds} = [@rw_cmds];
-}
+$args{master} = $master		if defined($master);
 
 if ($opts{P}) {
 	$args{object}	= \&mk_kmdb;
