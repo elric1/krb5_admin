@@ -26,6 +26,7 @@ our @KHARON_RW_SC_EXPORT = qw/	bind_host
 				remove_host
 				remove_hostmap
 				remove_ticket
+				reset_passwd
 			     /;
 
 our @KHARON_RO_SC_EXPORT = qw/	query	/;

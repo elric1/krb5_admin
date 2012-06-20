@@ -232,6 +232,7 @@ our %cmds = (
 our %formats = (
 	'create_user'	=> \&format_create_user,
 	'change_passwd'	=> \&format_change_passwd,
+	'reset_passwd'	=> \&format_change_passwd,
 	'query'		=> \&format_query,
 	'mquery'	=> \&format_mquery,
 	'list'		=> \&format_list,

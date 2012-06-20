@@ -71,6 +71,14 @@ will disable the principal
 .Ar princ
 by adding the attribute
 .Fl allow_tix .
+.It Ar create_user Ar princ
+will create a principal with a random temporary password which is printed
+to stdout. The password must be reset by the user via
+.Xr kpasswd 1 .
+.It Ar reset_password Ar princ
+will reset the password of a principal to a random temporary password
+which is printed to stdout. The password must be reset by the user via
+.Xr kpasswd 1 .
 .El
 .Pp
 Commands that operate on policies:
@@ -78,6 +86,19 @@ Commands that operate on policies:
 .It Ar listpols Op Ar glob
 will list the policies that match
 .Ar glob .
+.El
+.Pp
+Commands that operate on hosts:
+.Pp
+.Bl -ohang -offset ind
+.It create_host Ar name No realm Ar REALM Op No bootbinding Ar principal
+Create a host in the krb5_admin database with the given realm name and
+bootbinding. The realm is used for prestashed ticket access control and the
+optional bootbinding principal is used to bind an ephemeral principal to a
+host principal in the same realm.
+.It bind_host Ar name Ar principal
+Bind an existing host to the given ephemeral principal, this
+entitles the host to negotiate its initial keys.
 .El
 .Sh SEE ALSO
 .Xr knc 1 ,

@@ -853,6 +853,20 @@ sub change_passwd {
 	return $passwd;
 }
 
+sub reset_passwd {
+	my ($self, $name) = @_;
+	my $ctx = $self->{ctx};
+	my $hndl = $self->{hndl};
+
+	require_scalar("reset_passwd <princ>", 1, $name);
+
+	$self->check_acl('reset_passwd', $name);
+	my $passwd = Krb5Admin::C::krb5_randpass($ctx, $hndl, $name, []);
+	$self->internal_modify($name, {attributes => [ '+needchange' ]});
+
+	return $passwd;
+}
+
 sub modify {
 	my ($self, $name, $mods) = @_;
 
