@@ -14,6 +14,8 @@ use Krb5Admin::C;
 use Kharon::Entitlement::ACLFile;
 use Kharon::Entitlement::Equals;
 
+use Kharon::dbutils qw/sql_command generic_query/;
+
 use strict;
 use warnings;
 
@@ -124,6 +126,7 @@ sub check_acl {
 	my ($self, $verb, @predicate) = @_;
 	my $subject = $self->{client};
 	my $acl = $self->{acl};
+	my $dbh = $self->{dbh};
 	my $denied;
 
 	#
@@ -196,7 +199,8 @@ sub check_acl {
 			SELECT COUNT(*) FROM hosts
 			WHERE realm = ? AND name = ? AND bootbinding = ?
 		};
-		my $sth = $self->_sql_command($stmt, $realm, $host, $subject);
+		my $sth = sql_command($dbh, $stmt, $realm, $host,
+		    $subject);
 
 		if ($sth->fetchrow_arrayref()->[0] != 1) {
 			die [502, "Permission denied: you are not bound to " .
@@ -683,6 +687,7 @@ sub bootstrap_host_key {
 	my ($self, $princ, $kvno, %args) = @_;
 	my $ctx  = $self->{ctx};
 	my $hndl = $self->{hndl};
+	my $dbh  = $self->{dbh};
 	my $stmt;
 	my $sth;
 
@@ -714,8 +719,8 @@ sub bootstrap_host_key {
 	#         bootstrap key from the Kerberos database.
 
 	$stmt = "UPDATE hosts SET bootbinding = NULL WHERE name = ?";
-	$self->_sql_command($stmt, $host);
-	$self->{dbh}->commit();
+	sql_command($dbh, $stmt, $host);
+	$dbh->commit();
 
 	#
 	# We now check to see if the binding is no longer being used and
@@ -727,7 +732,7 @@ sub bootstrap_host_key {
 	# counter instead of a random number, perhaps...
 
 	$stmt = "SELECT COUNT(name) FROM hosts WHERE bootbinding = ?";
-	$sth = $self->_sql_command($stmt, $binding);
+	$sth = sql_command($dbh, $stmt, $binding);
 
 	if ($sth->fetch()->[0] == 0) {
 		Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $binding);
@@ -1006,30 +1011,6 @@ sub remove {
 	return undef;
 }
 
-sub _sql_command {
-	my ($self, $stmt, @values) = @_;
-	my $dbh = $self->{dbh};
-
-	print STDERR "SQL: $stmt\n"	if $self->{debug};
-
-	my $sth;
-	eval {
-		$sth = $dbh->prepare($stmt);
-
-		if (!$sth) {
-			die [510, "SQL ERROR: ".$dbh->errstr.", ".$dbh->err];
-		}
-
-		$sth->execute(@values);
-	};
-
-	if ($@) {
-		print STDERR "Rollback...\n"	if $self->{debug};
-		$dbh->rollback();
-		die $@;
-	}
-	return $sth;
-}
 our %field_desc = (
 	hosts		=> {
 		pkey		=> 'name',
@@ -1045,108 +1026,9 @@ our %field_desc = (
 	},
 );
 
-sub generic_query {
-	my ($self, $table, %query) = @_;
-
-	#
-	# XXXrcd: validation should be done.
-
-	my @where;
-	my @bindv;
-
-	my $key_field = $field_desc{$table}->{fields}->[0];
-	my %fields = map { $_ => 1 } @{$field_desc{$table}->{fields}};
-
-	my %tmpquery = %query;
-	for my $field (keys %fields) {
-		next if !exists($query{$field});
-
-		push(@where, "$field = ?");
-		push(@bindv, $query{$field});
-		delete $fields{$field};
-		delete $tmpquery{$field};
-	}
-
-	if (scalar(keys %tmpquery) > 0) {
-		die [500, "Fields: " . join(',', keys %tmpquery) .
-		    " do not exit in $table table"];
-	}
-
-	my $where = join( ' AND ', @where );
-	$where = "WHERE $where" if length($where) > 0;
-
-	my $fields;
-	if (scalar(keys %fields) > 0) {
-		my %tmp_fields = %fields;
-
-		$tmp_fields{$key_field} = 1;
-		$fields = join(',', keys %tmp_fields);
-	} else {
-		$fields = "COUNT($key_field)";
-	}
-
-	my $stmt = "SELECT $fields FROM $table $where";
-
-	my $sth = $self->_sql_command($stmt, @bindv);
-
-	#
-	# We now reformat the result to be comprised of the simplest
-	# data structure we can imagine that represents the query
-	# results:
-
-	if (scalar(keys %fields) == 0) {
-		return $sth->fetch()->[0];
-	}
-
-	my $results = $sth->fetchall_arrayref({});
-
-	my $ret;
-	if (scalar(keys %fields) == 1 && $field_desc{$table}->{wontgrow}) {
-		$fields = join('', keys %fields);
-		for my $result (@$results) {
-			push(@$ret, $result->{$fields});
-		}
-
-		return $ret;
-	}
-
-	my $is_uniq = grep {$key_field eq $_} @{$field_desc{$table}->{uniq}};
-
-	my $single_result = 0;
-	if (scalar(keys %fields) == 2 && $field_desc{$table}->{wontgrow}) {
-		$single_result = 1;
-	}
-
-	for my $result (@$results) {
-		my $key = $result->{$key_field};
-
-		delete $result->{$key_field};
-
-		if ($single_result) {
-			my $result_key = join('', keys %$result);
-			$result = $result->{$result_key};
-		}
-
-		if ($is_uniq) {
-			$ret->{$key} = $result;
-		} else {
-			push(@{$ret->{$key}}, $result);
-		}
-	}
-
-	if ($is_uniq && grep {$key_field eq $_} (keys %query)) {
-		#
-		# this should mean that we get only a single
-		# element in our resultant hashref.
-
-		return $ret->{$query{$key_field}};
-	}
-
-	return $ret;
-}
-
 sub create_host {
 	my ($self, $host, %args) = @_;
+	my $dbh = $self->{dbh};
 
 	require_scalar("create_host <host> [args]", 1, $host);
 
@@ -1170,20 +1052,23 @@ sub create_host {
 	my $stmt = "INSERT INTO hosts(" . join(',', @args) . ")" .
 		   "VALUES (" . join(',', map {"?"} @args) . ")";
 
-	$self->_sql_command($stmt, @vals);
-	$self->{dbh}->commit();
+	sql_command($dbh, $stmt, @vals);
+	$dbh->commit();
 	return undef;
 }
 
 sub query_host {
 	my ($self, %query) = @_;
+	my $dbh = $self->{dbh};
 
-	return $self->generic_query('hosts', %query);
+	return generic_query($dbh, \%field_desc, 'hosts', [keys %query],
+	    %query);
 }
 
 sub bind_host {
 	my ($self, $host, $binding) = @_;
 	my $ctx = $self->{ctx};
+	my $dbh = $self->{dbh};
 
 	require_scalar("bind_host <host> <binding>", 1, $host);
 	require_fqprinc($ctx, "bind_host <host> <binding>", 1, $binding);
@@ -1191,20 +1076,21 @@ sub bind_host {
 	$self->check_acl('bind_host', $host, $binding);
 
 	my $stmt = "UPDATE hosts SET bootbinding = ? WHERE name = ?";
-	my $sth  = $self->_sql_command($stmt, $binding, $host);
+	my $sth  = sql_command($dbh, $stmt, $binding, $host);
 
 	if ($sth->rows != 1) {
-		$self->{dbh}->rollback();
+		$dbh->rollback();
 		die [500, "Host $host does not exist."];
 	}
 
-	$self->{dbh}->commit();
+	$dbh->commit();
 
 	# XXXrcd: we must check if we successfully bound the host.
 }
 
 sub remove_host {
 	my ($self, @hosts) = @_;
+	my $dbh = $self->{dbh};
 
 	require_scalar("remove_host <host> [<host> ...]", 1, $hosts[0]);
 
@@ -1219,20 +1105,21 @@ sub remove_host {
 	while (@hosts) {
 		my @curhosts = splice(@hosts, 0, 500);
 
-		$self->_sql_command("DELETE FROM hosts WHERE "
+		sql_command($dbh, "DELETE FROM hosts WHERE "
 		    . join(' OR ', map {"name=?"} @curhosts), @curhosts);
 
 		#
 		# XXXrcd: error handling and all that.
 	}
 
-	$self->{dbh}->commit();
+	$dbh->commit();
 
 	return;
 }
 
 sub insert_hostmap {
 	my ($self, @hosts) = @_;
+	my $dbh = $self->{dbh};
 
 	require_scalar("insert_hostmap <logical> <physical>", 1, $hosts[0]);
 	require_scalar("insert_hostmap <logical> <physical>", 2, $hosts[1]);
@@ -1243,27 +1130,30 @@ sub insert_hostmap {
 
 	my $stmt = "INSERT INTO hostmap (logical, physical) VALUES (?, ?)";
 
-	$self->_sql_command($stmt, @hosts);
+	sql_command($dbh, $stmt, @hosts);
 
-	$self->{dbh}->commit();
+	$dbh->commit();
 
 	return undef;
 }
 
 sub query_hostmap {
 	my ($self, $host) = @_;
+	my $dbh = $self->{dbh};
 
 	$self->check_acl('query_hostmap', $host);
 
 	if (defined($host)) {
-		return $self->generic_query('hostmap', logical => $host);
+		return generic_query($dbh, \%field_desc, 'hostmap',
+		    [qw/logical/], logical => $host);
 	}
 
-	return $self->generic_query('hostmap');
+	return generic_query($dbh, \%field_desc, 'hostmap', []);
 }
 
 sub remove_hostmap {
 	my ($self, @hosts) = @_;
+	my $dbh = $self->{dbh};
 
 	require_scalar("remove_hostmap <logical> <physical>", 1, $hosts[0]);
 	require_scalar("remove_hostmap <logical> <physical>", 2, $hosts[1]);
@@ -1274,9 +1164,9 @@ sub remove_hostmap {
 
 	my $stmt = "DELETE FROM hostmap WHERE logical = ? AND physical = ?";
 
-	$self->_sql_command($stmt, @hosts);
+	sql_command($dbh, $stmt, @hosts);
 
-	$self->{dbh}->commit();
+	$dbh->commit();
 
 	return;
 }
@@ -1331,6 +1221,7 @@ sub _check_hosts {
 sub insert_ticket {
 	my ($self, $princ, @hosts) = @_;
 	my $ctx = $self->{ctx};
+	my $dbh = $self->{dbh};
 	my $usage = "insert_ticket <princ> <host> [<host> ...]";
 
 	require_fqprinc($ctx, $usage, 1, $princ);
@@ -1364,13 +1255,13 @@ sub insert_ticket {
 			INSERT INTO prestashed (principal, host) VALUES (?, ?)
 		};
 
-		my ($sth, $str) = $self->_sql_command($stmt, $princ, $host);
+		my ($sth, $str) = sql_command($dbh, $stmt, $princ, $host);
 
 #		if (!$sth || ($str =~ /unique/)) {
 #			die [500, 'tickets already configured for prestash'];
 #		}
 
-		($sth, $str) = $self->_sql_command(
+		($sth, $str) = sql_command($dbh,
 			"SELECT count(principal) FROM prestashed" .
 			" WHERE host = ?", $host);
 
@@ -1381,13 +1272,14 @@ sub insert_ticket {
 			if ($count > MAX_TIX_PER_HOST);
 	}
 
-	$self->{dbh}->commit();
+	$dbh->commit();
 
 	return undef;
 }
 
 sub query_ticket {
 	my ($self, %query) = @_;
+	my $dbh = $self->{dbh};
 
 	#
 	# XXXrcd: validation should be done.
@@ -1439,7 +1331,7 @@ sub query_ticket {
 
 	my $stmt = "SELECT $fields FROM $from $where";
 
-	my $sth = $self->_sql_command($stmt, @bindv);
+	my $sth = sql_command($dbh, $stmt, @bindv);
 
 	#
 	# We now reformat the result to be comprised of the simplest
@@ -1531,6 +1423,7 @@ sub remove_ticket {
 	my ($self, $princ, @hosts) = @_;
 	my $usage = "remove_ticket <princ> <host> [<host> ...]";
 	my $ctx = $self->{ctx};
+	my $dbh = $self->{dbh};
 
 	require_fqprinc($ctx, $usage, 1, $princ);
 	require_scalar("remove_ticket <princ> <host> [<host> ...]", 2,
@@ -1548,7 +1441,7 @@ sub remove_ticket {
 	while (@hosts) {
 		my @curhosts = splice(@hosts, 0, 500);
 
-		$self->_sql_command(qq{
+		sql_command($dbh, qq{
 			DELETE FROM prestashed WHERE principal = ? AND (
 		    } . join(' OR ', map {"host=?"} @curhosts) . qq{
 			)
@@ -1558,7 +1451,7 @@ sub remove_ticket {
 		# XXXrcd: error handling and all that.
 	}
 
-	$self->{dbh}->commit();
+	$dbh->commit();
 
 	return undef;
 }
