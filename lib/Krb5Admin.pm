@@ -22,6 +22,7 @@ our @KHARON_RW_SC_EXPORT = qw/	bind_host
 				insert_hostmap
 				insert_ticket
 				master
+				modify_host
 				remove 
 				remove_host
 				remove_hostmap
