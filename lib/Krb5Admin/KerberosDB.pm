@@ -350,7 +350,6 @@ sub new {
 	$self->{local}	= 0			if !defined($self->{local});
 	$self->{client}	= "LOCAL_MODIFICATION"	if          $self->{local};
 	$self->{debug}	= 0			if !defined($self->{debug});
-$self->{debug} = 1;
 
 	$self->{allow_fetch}		= $args{allow_fetch};
 	$self->{xrealm_bootstrap}	= $args{xrealm_bootstrap};
