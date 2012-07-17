@@ -93,6 +93,14 @@ done:
 	return hndl;
 }
 
+void
+my_free_ctx(krb5_context *ctx)
+{
+
+	krb5_free_context(*ctx);
+	free(ctx);
+}
+
 kadm5_principal_ent_rec
 krb5_query_princ(krb5_context ctx, kadm5_handle hndl, char *in)
 {
