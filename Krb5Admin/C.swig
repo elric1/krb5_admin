@@ -68,8 +68,8 @@
 
 %}
 
-%typemap(in,numinputs=0) krb5_context *(krb5_context tmp) {
-	$1 = &tmp;
+%typemap(in,numinputs=0) krb5_context * {
+	$1 = calloc(sizeof(krb5_context), 1);
 }
 %typemap(argout) krb5_context * {
 	$result = SWIG_NewPointerObj($1, SWIGTYPE_p_krb5_context,
