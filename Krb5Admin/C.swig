@@ -697,5 +697,11 @@ done:
 	argvi++;
 }
 
+%perlcode %{
+
+package _p_krb5_context; sub DESTROY {Krb5Admin::C::krb5_free_context(@_)}
+package _p_kadm5_handle; sub DESTROY {Krb5Admin::C::kadm5_destroy(@_)}
+
+%}
 
 %include C.h

@@ -117,6 +117,7 @@ krb5_keyblock		 get_kte(krb5_context, char *, char *);
 krb5_keyblock		 krb5_make_a_key(krb5_context, krb5_enctype);
 kadm5_principal_ent_rec	 krb5_query_princ(krb5_context, kadm5_handle, char *);
 kadm5_handle		 krb5_get_kadm5_hndl(krb5_context, char *);
+krb5_error_code		 kadm5_destroy(kadm5_handle);
 
 void	 krb5_modprinc(krb5_context, kadm5_handle, kadm5_principal_ent_rec,
 		       long);
@@ -127,6 +128,7 @@ char	*krb5_createprinc(krb5_context, kadm5_handle,
 void	 krb5_deleteprinc(krb5_context, kadm5_handle, char *);
 
 krb5_error_code	krb5_init_context(krb5_context *);
+void		krb5_free_context(krb5_context);
 krb5_error_code	krb5_parse_name(krb5_context, const char *, krb5_principal *);
 krb5_error_code krb5_string_to_key(krb5_context, krb5_enctype, const char *,
 				   krb5_principal, krb5_keyblock *OUTPUT);
