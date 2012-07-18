@@ -2,6 +2,8 @@
 
 use Test::More tests => 44;
 
+use Kharon::Entitlement::Object;
+
 use Krb5Admin::C;
 use Krb5Admin::KerberosDB;
 
@@ -292,12 +294,16 @@ ok(!$@, "bind_host did not toss an exception") or diag(Dumper($@));
 
 my $hostprinc = "host/$host\@TEST.REALM";
 eval {
+	my $acl  = Kharon::Entitlement::Object->new();
 	my $kmdb = Krb5Admin::KerberosDB->new(
+	    acl		=> $acl,
 	    client	=> $binding,
 	    dbname	=> 'db:t/test-hdb',
 	    acl_file	=> 't/krb5_admin.acl',
 	    sqlite	=> 't/sqlite.db',
 	);
+	$acl->set_creds($binding);
+	$acl->set_subobject($kmdb);
 
 	$gend = $kmdb->genkeys('bootstrap_host_key', "host/$host\@TEST.REALM",
 	    1, 17, 18);

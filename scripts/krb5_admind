@@ -8,7 +8,11 @@ use Sys::Hostname;
 use Sys::Syslog;
 
 use Kharon::Protocol::ArrayHash;
-use Kharon::Engine::Server;
+use Kharon::Engine::Server v0.3;
+use Kharon::Entitlement::ACLFile;
+use Kharon::Entitlement::Equals;
+use Kharon::Entitlement::Object;
+use Kharon::Entitlement::Or;
 
 use Krb5Admin::KerberosDB;
 use Krb5Admin::Log;
@@ -18,6 +22,7 @@ use warnings;
 
 use constant {
 	KRB5_ADMIND_CONFIG	=> '/etc/krb5/krb5_admind.conf',
+        ACL_FILE                => '/etc/krb5/krb5_admin.acl',
 };
 
 sub usage {
@@ -29,7 +34,7 @@ sub usage {
 
 openlog('krb5_admind', 'pid', 'auth');
 
-our $acl_file;
+our $acl_file = ACL_FILE;
 our $config = KRB5_ADMIND_CONFIG;
 our $dbname;
 our $allow_fetch;
@@ -53,29 +58,45 @@ if (-f $config || defined($opts{c})) {
 	die "Couldn't find $config\n"		if ! -f $config;
 }
 
+my $logger = Krb5Admin::Log->new();
+my $ahr = Kharon::Protocol::ArrayHash->new(banner => { version => '2.0' } );
+my $pes = Kharon::Engine::Server->new(protocols => [$ahr], logger => $logger);
+$pes->Connect();
+
 sub mk_kmdb {
 	my %args = @_;
+	my $ret;
+
+	my $acl     = Kharon::Entitlement::Or->new();
+	my $objacl  = Kharon::Entitlement::Object->new();
+	my $subacls = Kharon::Entitlement::Equals->new();
+	my $aclfile = Kharon::Entitlement::ACLFile->new(filename => $acl_file,
+	    subobject => $subacls);
+
+	$acl->set_creds($args{CREDS});
+	$acl->set_subobjects($aclfile, $objacl);
+
+	$pes->set_acl($acl);
 
 	my %kmdb_args = (
+		acl			=> $acl,
 		client			=> $args{CREDS},
 		addr			=> $args{REMOTE_IP},
 		allow_fetch		=> $allow_fetch,
 		xrealm_bootstrap	=> \%xrealm_bootstrap,
 		win_xrealm_bootstrap	=> \%win_xrealm_bootstrap,
 		prestash_xrealm		=> \%prestash_xrealm,
-		acl_file		=> $acl_file,
 		dbname			=> $dbname,
 	);
 	syslog('info', '%s connected from %s', $args{CREDS},
 	    $args{REMOTE_IP});
 
-	return Krb5Admin::KerberosDB->new(%kmdb_args);
-}
+	$ret = Krb5Admin::KerberosDB->new(%kmdb_args);
 
-my $logger = Krb5Admin::Log->new();
-my $ahr = Kharon::Protocol::ArrayHash->new(banner => { version => '2.0' } );
-my $pes = Kharon::Engine::Server->new(protocols => [$ahr], logger => $logger);
-$pes->Connect();
+	$objacl->set_subobject($ret);
+
+	return $ret;
+}
 
 my %args;
 $args{master} = $master		if defined($master);

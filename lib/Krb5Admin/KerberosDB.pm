@@ -38,7 +38,6 @@ use constant {
 	PWCHANGE_SERVICE	=> 0x00002000,
 	SUPPORT_DESMD5		=> 0x00004000,
 	NEW_PRINC		=> 0x00008000,
-	ACL_FILE		=> '/etc/krb5/krb5_admin.acl',
 	SQL_DB_FILE		=> '/var/kerberos/krb5_admin.db',
 	MAX_TIX_PER_HOST	=> 1024,
 };
@@ -119,17 +118,33 @@ sub unparse_princ {
 	return join('/', @comps) . '@' . $realm;
 }
 
-#
-# check_acl is expected to throw an exception with a reason if the access
-# is denied.  Otherwise it will simply return undef.  This function needs
-# to be seriously abstracted but this will take some level of effort.
+sub KHARON_SET_CREDS {
+	my ($self, @creds) = @_;
 
-sub check_acl {
+	if (@creds == 0) {
+		die "Must provide a credential to set_creds";
+	}
+
+	if (@creds > 1) {
+		die "Krb5Admin::KerberosDB does not support multiple " .
+		    "credentials";
+	}
+
+	$self->{client} = $creds[0];
+}
+
+#
+# KHARON_COMMON_ACL should return:
+#
+#	undef		no decision has been made.
+#	0		Permission denied, no reason given.
+#	1		Access allowed, no further ACLs are checked.
+#	a string	Permission denied, the string is the reason.
+
+sub KHARON_COMMON_ACL {
 	my ($self, $verb, @predicate) = @_;
 	my $subject = $self->{client};
 	my $acl = $self->{acl};
-	my $dbh = $self->{dbh};
-	my $denied;
 
 	#
 	# As a zeroth step, we prohibit everyone from accessing rules
@@ -142,89 +157,50 @@ sub check_acl {
 
 	if ($verb ne 'query' && $verb ne 'list' && defined($predicate[0]) &&
 	    $predicate[0] =~ m,^krbtgt/|^kadmin/|^afs(\@.*)?$,) {
-		die [502, "Modification of $predicate[0] prohibited."];
+		return "Modification of $predicate[0] prohibited.";
 	}
-
-	return if defined($self->{local}) && $self->{local};
-
-	#
-	# First we provide an Kharon file based entitlement system which
-	# precedes all of the special processing...
-
-	return if $acl->check($verb);
 
 	#
 	# We also need creds.  This is mainly for my use running this
 	# by hand, but be that as it may...
 
 	if (!defined($subject)) {
-		die [502, "Permission denied: not an authenticated user"];
+		return "Permission denied: not an authenticated user";
 	}
 
 	#
-	# More interesting sitebased rules can go here.  Only put rules
-	# here which would be difficult to encode using Kharon's entitlement
-	# framework.
+	# Now, we let the individual functions supply their own ACLs.
+	# Perhaps eventually, we'll get rid of most of this function...
 
+	return undef;
+}
+
+#
+# This function supplies the logic which we use to provide self-service
+# keytab management.  This is a default and it can be overridden.  The
+# function has the same arguments and return values as KHARON_COMMON_ACL.
+# This function will always return success or failure, though.  So, it
+# should be called last in the various other routines.
+
+sub acl_keytab {
+	my ($self, $verb, @predicate) = @_;
+	my $subject = $self->{client};
 	my $ctx = $self->{ctx};
+	my $denied;
+
 	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $subject);
-
-	if ($verb eq 'fetch_tickets') {
-		die [502, "Permission denied"]	if $sprinc[1] ne 'host';
-		die [502, "Permission denied"]	if $sprinc[2] ne $predicate[0];
-
-		# Now, we must also check to ensure that the client is
-		# in the correct realm for the host that we have in our DB.
-
-		my $host = $self->query_host(name=>$predicate[0]);
-		if (!defined($host) || $host->{realm} ne $sprinc[0]) {
-			die [502, "Permission denied"];
-		}
-		# The request is authorised.
-		return;
-	}
 
 	my @pprinc;
 	if (defined($predicate[0])) {
 		@pprinc = Krb5Admin::C::krb5_parse_name($ctx, $predicate[0]);
 	}
 
-	if ($verb eq 'bootstrap_host_key') {
-		if (@pprinc != 3 || $pprinc[1] ne 'host') {
-			die [502, "Permission denied: bootstrap_host_key " .
-			    "may only be used on host principals."];
-		}
-
-		my ($realm, $h, $host) = @pprinc;
-
-		my $stmt = qq{
-			SELECT COUNT(*) FROM hosts
-			WHERE realm = ? AND name = ? AND bootbinding = ?
-		};
-		my $sth = sql_command($dbh, $stmt, $realm, $host,
-		    $subject);
-
-		if ($sth->fetchrow_arrayref()->[0] != 1) {
-			die [502, "Permission denied: you are not bound to " .
-			    "$host"];
-		}
-
-		return;
-	}
-
-	#
-	# The remaining logic is for krb5_keytab and is only to be used
-	# for ``create'', ``fetch'', or ``change'':
 	#
 	# We allow host/foo@REALM to access <service>/foo@REALM for any
 	# <service>.
 
-	if ($verb ne 'fetch' && $verb ne 'create' && $verb ne 'change') {
-		die [502, "Permission denied"];
-	}
-
 	if (@pprinc != 3) {
-		die [502, "Permission denied"];
+		return "Keytab acls operate on 3 part principals.";
 	}
 
 	if ($pprinc[1] eq 'host') {
@@ -244,7 +220,7 @@ sub check_acl {
 		if ($host_ok == 1 && @sprinc == 3 && @pprinc == 3 &&
 		    $sprinc[0] eq $pprinc[0] && $sprinc[1] eq $pprinc[1] &&
 		    $sprinc[2] eq $pprinc[2]) {
-			return;
+			return 1;
 		}
 
 		#
@@ -276,7 +252,7 @@ sub check_acl {
 		}
 
 		my $up_pprinc = unparse_princ(\@pprinc);
-		return if $host_ok == 1 && grep {$_ eq $up_pprinc} @xbs;
+		return 1 if $host_ok == 1 && grep {$_ eq $up_pprinc} @xbs;
 
 		$denied = "not an admin user";
 		if (!$host_ok) {
@@ -288,7 +264,7 @@ sub check_acl {
 		}
 	} else {
 		if (@sprinc != 3) {
-			die [502, "Permission denied"];
+			return 0;
 		}
 
 		$denied = 'realm'	if $sprinc[0] ne $pprinc[0];
@@ -299,26 +275,37 @@ sub check_acl {
 	}
 
 	if (defined($denied)) {
-		syslog('err', "%s", $subject . " failed check_acl for " .
+		syslog('err', "%s", $subject . " failed ACL check for " .
 		    $predicate[0] . "[$denied]");
-		die [502, "Permission denied [$denied] for $subject"];
+		return "Permission denied [$denied] for $subject";
 	}
+
+	return 1;
 }
 
 sub new {
 	my ($proto, %args) = @_;
 	my $class = ref($proto) || $proto;
 
+	#
+	# First, we look for obsolete ACL usage and toss an exception
+	# if we find it.  We are trying to ensure that if someone upgrades
+	# krb5_admind without upgrading the libraries that we will fail to
+	# start and hence not provide a security exposure.
+
+	if ((!defined($args{acl}) || !$args{acl}->isa('Kharon::Entitlement')) &&
+	    (!defined($args{local}) || $args{local} != 1)) {
+		die "Obsolete usage";
+	}
+
 	my $self = $class->SUPER::new(%args);
 
 	#
 	# set defaults:
 
-	my $acl_file = ACL_FILE;
 	my $sqlite   = SQL_DB_FILE;
 	my $dbname;
 
-	$acl_file = $args{acl_file}	if defined($args{acl_file});
 	$dbname   = $args{dbname}	if defined($args{dbname});
 	$sqlite   = $args{sqlite}	if defined($args{sqlite});
 
@@ -330,11 +317,6 @@ sub new {
 	$dbh->do("PRAGMA journal_mode = WAL");
 	$dbh->{AutoCommit} = 0;
 
-	my $subacls = Kharon::Entitlement::Equals->new();
-	my $acl = Kharon::Entitlement::ACLFile->new(filename => $acl_file,
-	    subobject => $subacls);
-	$acl->set_creds($args{client});
-
 	my $ctx = $self->{ctx};
 
 	$self->{debug}	  = $args{debug};
@@ -344,7 +326,7 @@ sub new {
 	$self->{hostname} = reverse_the($args{addr});
 	$self->{ctx}	  = $ctx;
 	$self->{hndl}	  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, $dbname);
-	$self->{acl}	  = $acl;
+	$self->{acl}	  = $args{acl};
 	$self->{dbh}	  = $dbh;
 
 	$self->{local}	= 0			if !defined($self->{local});
@@ -371,6 +353,7 @@ sub DESTROY {
 		$self->{dbh}->disconnect();
 		undef($self->{dbh});
 	}
+	undef $self->{acl};
 }
 
 sub init_db {
@@ -455,9 +438,8 @@ sub master { undef; }
 
 my @gek_operations = qw(change create create_bootstrap_id bootstrap_host_key);
 
-sub generate_ecdh_key1 {
-	my ($self, $operation, $name, @args) = @_;
-	my $ctx = $self->{ctx};
+sub KHARON_ACL_generate_ecdh_key1 {
+	my ($self, $verb, $operation, $name, @args) = @_;
 
 	if (defined($operation) || defined($name)) {
 		if (!defined($operation) || !defined($name)) {
@@ -470,8 +452,15 @@ sub generate_ecdh_key1 {
 			    join(', ', @gek_operations)];
 		}
 
-		$self->check_acl($operation, $name);
+		return $self->{acl}->check($operation, $name);
 	}
+
+	return 1;
+}
+
+sub generate_ecdh_key1 {
+	my ($self, $operation, $name, @args) = @_;
+	my $ctx = $self->{ctx};
 
 	my ($secret, $public) = @{Krb5Admin::C::curve25519_pass1($ctx)};
 
@@ -493,13 +482,14 @@ sub generate_ecdh_key2 {
 	return $ret;
 }
 
+sub KHARON_ACL_create { acl_keytab(@_); }
+
 sub create {
 	my ($self, $name, @args) = @_;
 	my $ctx  = $self->{ctx};
 	my $hndl = $self->{hndl};
 
 	require_scalar("create <princ>", 1, $name);
-	$self->check_acl('create', $name);
 
 	return $self->internal_create($name, 1, @args);
 }
@@ -554,7 +544,6 @@ sub create_user {
 	require_scalar("create_user <princ>", 1, $name);
 	die "malformed name"	if $name =~ m,[^-A-Za-z0-9_/@.],;
 
-	$self->check_acl('create_user', $name);
 	my $ret = Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
 			principal	=> $name,
 			policy		=> 'default',
@@ -563,6 +552,21 @@ sub create_user {
 		}, [], $passwd);
 	syslog('info', "%s", $self->{client} . " created $name");
 	$ret;
+}
+
+#
+# We provide a default ACL for creating bootstrap ids.  As our code
+# will by default use pkinit to WELLKNOWN/ANONYMOUS@REALM to create
+# these ids, we limit the ACL to these anonymous principals.
+
+sub KHARON_ACL_create_bootstrap_id {
+	my ($self, %args) = @_;
+
+	if ($self->{client} eq 'WELLKNOWN/ANONYMOUS@' . $args{realm}) {
+		return 1;
+	}
+
+	return 0;
 }
 
 sub create_bootstrap_id {
@@ -579,12 +583,6 @@ sub create_bootstrap_id {
 	if (ref($args{enctypes}) ne 'ARRAY') {
 		die [503, "enctypes must be an ARRAY ref of encryption types"];
 	}
-
-	#
-	# We expect that the ACLs on create_bootstrap_id will limit it to
-	# be used by WELLKNOWN/ANONYMOUS@REALM.
-
-	$self->check_acl('create_bootstrap_id');
 
 	#
 	# XXXrcd: For now, we require that enctypes are aes256-cts (18) only.
@@ -697,6 +695,36 @@ sub create_bootstrap_id {
 	return $princ;
 }
 
+sub KHARON_ACL_bootstrap_host_key {
+	my ($self, $cmd, $princ, $kvno, %args)  = @_;
+	my $ctx     = $self->{ctx};
+	my $dbh     = $self->{dbh};
+	my $subject = $self->{client};
+
+	return "Invalid argument" if !defined($princ);
+
+	my @pprinc = Krb5Admin::C::krb5_parse_name($ctx, $princ);
+
+	if (@pprinc != 3 || $pprinc[1] ne 'host') {
+		return "Permission denied: bootstrap_host_key " .
+		    "may only be used on host principals.";
+	}
+
+	my ($realm, $h, $host) = @pprinc;
+
+	my $stmt = qq{
+		SELECT COUNT(*) FROM hosts
+		WHERE realm = ? AND name = ? AND bootbinding = ?
+	};
+	my $sth = sql_command($dbh, $stmt, $realm, $host, $subject);
+
+	if ($sth->fetchrow_arrayref()->[0] != 1) {
+		return "Permission denied: you are not bound to $host";
+	}
+
+	return 1;
+}
+
 sub bootstrap_host_key {
 	my ($self, $princ, $kvno, %args) = @_;
 	my $ctx  = $self->{ctx};
@@ -713,12 +741,6 @@ sub bootstrap_host_key {
 	    "enctypes=>etypes", 1, $princ);
 	require_scalar("bootstrap_host_key <princ> <kvno> public=>key " .
 	    "enctypes=>etypes", 2, $kvno);
-
-	#
-	# We expect that the call to check_acl() will query the SQL DB
-	# to check that the host was bound to the correct principal.
-
-	$self->check_acl('bootstrap_host_key', $princ);
 
 	my ($realm, $h, $host) = Krb5Admin::C::krb5_parse_name($ctx, $princ);
 
@@ -755,24 +777,36 @@ sub bootstrap_host_key {
 	return undef;
 }
 
+sub KHARON_ACL_listpols { return 1; }
+
 sub listpols {
 	my ($self, $exp) = @_;
 	my $ctx  = $self->{ctx};
 	my $hndl = $self->{hndl};
 
-	$self->check_acl('list', $exp);
 	my $ret = Krb5Admin::C::krb5_list_pols($ctx, $hndl, $exp);
 	@$ret;
 }
+
+sub KHARON_ACL_list { return 1; }
 
 sub list {
 	my ($self, $exp) = @_;
 	my $ctx  = $self->{ctx};
 	my $hndl = $self->{hndl};
 
-	$self->check_acl('list', $exp);
 	my $ret = Krb5Admin::C::krb5_list_princs($ctx, $hndl, $exp);
 	@$ret;
+}
+
+sub KHARON_ACL_fetch {
+	my ($self, @args) = @_;
+
+	if (!$self->{allow_fetch}) {
+		return "Permission denied: fetch is administratively " .
+		    "prohibited";
+	}
+	return $self->acl_keytab(@args);
 }
 
 sub fetch {
@@ -783,16 +817,12 @@ sub fetch {
 	my @ret;
 
 	require_scalar("fetch <princ>", 1, $name);
-	$self->check_acl('fetch', $name);
-
-	if (!$self->{allow_fetch}) {
-		die [502, "Permission denied: fetch is administratively " .
-		    "prohibited"];
-	}
 
 	syslog('info', "%s", $self->{client} . " fetched $name");
 	Krb5Admin::C::krb5_getkey($ctx, $hndl, $name);
 }
+
+sub KHARON_ACL_change { acl_keytab(@_); }
 
 sub change {
 	my ($self, $name, $kvno, @args) = @_;
@@ -800,7 +830,6 @@ sub change {
 	my $hndl = $self->{hndl};
 
 	require_scalar("change <princ>", 1, $name);
-	$self->check_acl('change', $name);
 
 	my %args;
 	if (@args == 1) {
@@ -855,8 +884,6 @@ sub change_passwd {
 		require_scalar("change_passwd <princ>", 3, $opt);
 	}
 
-	$self->check_acl('change_passwd', $name);
-
 	if (defined($passwd)) {
 		Krb5Admin::C::krb5_setpass($ctx, $hndl, $name, -1, [], $passwd);
 	} else {
@@ -879,7 +906,6 @@ sub reset_passwd {
 
 	require_scalar("reset_passwd <princ>", 1, $name);
 
-	$self->check_acl('reset_passwd', $name);
 	my $passwd = Krb5Admin::C::krb5_randpass($ctx, $hndl, $name, []);
 	$self->internal_modify($name, {attributes => [ '+needchange' ]});
 
@@ -891,7 +917,6 @@ sub modify {
 
 	require_scalar("modify <princ> {mods}", 1, $name);
 	require_hashref("modify <princ> {mods}", 2, $mods);
-	$self->check_acl('modify', $name);
 	die [501, "Function not implemented"];
 
 	$self->internal_modify($name, $mods);
@@ -930,10 +955,10 @@ sub internal_modify {
 	return undef;
 }
 
+sub KHARON_ACL_mquery { return 1; }
+
 sub mquery {
 	my ($self, @args) = @_;
-
-	$self->check_acl('mquery', @args);
 
 	@args = ('*')	if scalar(@args) == 0;	# empty args is a wildcard.
 
@@ -948,13 +973,14 @@ sub mquery {
 	@ret;
 }
 
+sub KHARON_ACL_query { return 1; }
+
 sub query {
 	my ($self, $name) = @_;
 	my $ctx  = $self->{ctx};
 	my $hndl = $self->{hndl};
 
 	require_scalar("query <princ>", 1, $name);
-	$self->check_acl('query', $name);
 	my $ret = Krb5Admin::C::krb5_query_princ($ctx, $hndl, $name);
 
 	#
@@ -983,7 +1009,6 @@ sub enable {
 	my $hndl = $self->{hndl};
 
 	require_scalar("enable <princ>", 1, $princ);
-	$self->check_acl('enable', $princ);
 	$self->internal_modify($princ, { attributes => ['+allow_tix'] });
 }
 
@@ -993,7 +1018,6 @@ sub disable {
 	my $hndl = $self->{hndl};
 
 	require_scalar("disable <princ>", 1, $princ);
-	$self->check_acl('disable', $princ);
 
 	#
 	# We fist also delete an associated admin principal if it exists,
@@ -1020,7 +1044,6 @@ sub remove {
 	my $hndl = $self->{hndl};
 
 	require_scalar("remove <princ>", 1, $name);
-	$self->check_acl('remove', $name);
 	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $name);
 	return undef;
 }
@@ -1046,10 +1069,6 @@ sub create_host {
 	my $dbh = $self->{dbh};
 
 	require_scalar("create_host <host> [args]", 1, $host);
-
-	# XXXrcd: more checking should be done.
-
-	$self->check_acl('create_host', $host, %args);
 
 	my %fields = map { $_ => 1 } @{$field_desc{hosts}->{fields}};
 
@@ -1077,8 +1096,6 @@ sub modify_host {
 	my $dbh = $self->{dbh};
 
 	require_scalar("modify_host <host> [args]", 1, $host);
-
-	$self->check_acl('modify_host', $host, %args);
 
 	internal_modify_host($self, $host, %args);
 	$dbh->commit();
@@ -1168,6 +1185,8 @@ sub internal_modify_host {
 	return undef;
 }
 
+sub KHARON_ACL_query_host { return 1; }
+
 sub query_host {
 	my ($self, %query) = @_;
 	my $dbh = $self->{dbh};
@@ -1183,8 +1202,6 @@ sub bind_host {
 
 	require_scalar("bind_host <host> <binding>", 1, $host);
 	require_fqprinc($ctx, "bind_host <host> <binding>", 1, $binding);
-
-	$self->check_acl('bind_host', $host, $binding);
 
 	my $stmt = "UPDATE hosts SET bootbinding = ? WHERE name = ?";
 	my $sth  = sql_command($dbh, $stmt, $binding, $host);
@@ -1211,8 +1228,6 @@ sub remove_host {
 		    $i++, $host);
 	}
 
-	$self->check_acl('remove_host', @hosts);
-
 	while (@hosts) {
 		my @curhosts = splice(@hosts, 0, 500);
 
@@ -1237,8 +1252,6 @@ sub insert_hostmap {
 
 	@hosts = map { lc($_) } @hosts;
 
-	$self->check_acl('insert_hostmap', @hosts);
-
 	my $stmt = "INSERT INTO hostmap (logical, physical) VALUES (?, ?)";
 
 	sql_command($dbh, $stmt, @hosts);
@@ -1248,11 +1261,11 @@ sub insert_hostmap {
 	return undef;
 }
 
+sub KHARON_ACL_query_hostmap { return 1; }
+
 sub query_hostmap {
 	my ($self, $host) = @_;
 	my $dbh = $self->{dbh};
-
-	$self->check_acl('query_hostmap', $host);
 
 	if (defined($host)) {
 		return generic_query($dbh, \%field_desc, 'hostmap',
@@ -1271,8 +1284,6 @@ sub remove_hostmap {
 
 	@hosts = map { lc($_) } @hosts;
 
-	$self->check_acl('remove_hostmap', @hosts);
-
 	my $stmt = "DELETE FROM hostmap WHERE logical = ? AND physical = ?";
 
 	sql_command($dbh, $stmt, @hosts);
@@ -1281,6 +1292,10 @@ sub remove_hostmap {
 
 	return;
 }
+
+#
+# XXXrcd: These three are actually ACLs!
+#         They should be migrated to the ACL code.
 
 sub _deny_xrealm {
 	my ($pname, $prealm, $hname, $hrealm) = @_;
@@ -1347,8 +1362,6 @@ sub insert_ticket {
 	# The ACL-check is host-insensitive, the caller just needs to
 	# own the principal.
 
-	$self->check_acl('insert_ticket', $princ);
-
 	#
 	# If no host realm list is explicitly configured for the given
 	# principal's realm, the principal's realm must match the realm
@@ -1387,6 +1400,8 @@ sub insert_ticket {
 
 	return undef;
 }
+
+sub KHARON_ACL_query_ticket { return 1; }
 
 sub query_ticket {
 	my ($self, %query) = @_;
@@ -1500,6 +1515,26 @@ sub query_ticket {
 	return [keys %ret];
 }
 
+sub KHARON_ACL_fetch_tickets {
+	my ($self, $cmd, @predicate) = @_;
+	my $ctx = $self->{ctx};
+
+	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $self->{client});
+
+	return 0	if $sprinc[1] ne 'host';
+	return 0	if $sprinc[2] ne $predicate[0];
+
+	# Now, we must also check to ensure that the client is
+	# in the correct realm for the host that we have in our DB.
+
+	my $host = $self->query_host(name=>$predicate[0]);
+	if (!defined($host) || $host->{realm} ne $sprinc[0]) {
+		return 0;
+	}
+	# The request is authorised.
+	return 1;
+}
+
 sub fetch_tickets {
 	my ($self, $realm, $host) = @_;
 	my $ctx = $self->{ctx};
@@ -1517,8 +1552,6 @@ sub fetch_tickets {
 			$host = $sprinc[2];
 		}
 	}
-
-	$self->check_acl('fetch_tickets', $host);
 
 	my $tix = $self->query_ticket(host => $host, realm => $realm,
 	    expand => 1);
@@ -1546,8 +1579,6 @@ sub remove_ticket {
 		require_scalar("remove_ticket <princ> <host> [<host> ...]",
 		    $i++, $host);
 	}
-
-	$self->check_acl('remove_ticket', $princ, @hosts);
 
 	while (@hosts) {
 		my @curhosts = splice(@hosts, 0, 500);
