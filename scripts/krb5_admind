@@ -39,6 +39,7 @@ our $config = KRB5_ADMIND_CONFIG;
 our $dbname;
 our $allow_fetch;
 our $master;
+our $kmdb_class;
 our %xrealm_bootstrap;
 our %win_xrealm_bootstrap;
 our %prestash_xrealm;
@@ -57,6 +58,8 @@ if (-f $config || defined($opts{c})) {
 	die "Couldn't parse $config: $@\n"	if $@;
 	die "Couldn't find $config\n"		if ! -f $config;
 }
+
+$kmdb_class = 'Krb5Admin::KerberosDB' if !defined($kmdb_class);
 
 my $logger = Krb5Admin::Log->new();
 my $ahr = Kharon::Protocol::ArrayHash->new(banner => { version => '2.0' } );
@@ -91,7 +94,7 @@ sub mk_kmdb {
 	syslog('info', '%s connected from %s', $args{CREDS},
 	    $args{REMOTE_IP});
 
-	$ret = Krb5Admin::KerberosDB->new(%kmdb_args);
+	$ret = $kmdb_class->new(%kmdb_args);
 
 	$objacl->set_subobject($ret);
 
