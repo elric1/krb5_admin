@@ -277,7 +277,8 @@ sub acl_keytab {
 	if (defined($denied)) {
 		syslog('err', "%s", $subject . " failed ACL check for " .
 		    $predicate[0] . "[$denied]");
-		return "Permission denied [$denied] for $subject";
+#		return "Permission denied [$denied] for $subject";
+		return undef;
 	}
 
 	return 1;
@@ -354,6 +355,12 @@ sub DESTROY {
 		undef($self->{dbh});
 	}
 	undef $self->{acl};
+}
+
+sub get_dbh {
+	my ($self) = @_;
+
+	return $self->{dbh};
 }
 
 sub init_db {
@@ -566,7 +573,7 @@ sub KHARON_ACL_create_bootstrap_id {
 		return 1;
 	}
 
-	return 0;
+	return undef;
 }
 
 sub create_bootstrap_id {
@@ -722,7 +729,7 @@ sub KHARON_ACL_bootstrap_host_key {
 		return "Permission denied: you are not bound to $host";
 	}
 
-	return 1;
+	return undef;
 }
 
 sub bootstrap_host_key {

@@ -12,7 +12,8 @@ use Kharon::Engine::Server v0.3;
 use Kharon::Entitlement::ACLFile;
 use Kharon::Entitlement::Equals;
 use Kharon::Entitlement::Object;
-use Kharon::Entitlement::Or;
+use Kharon::Entitlement::Stack;
+use Kharon::Entitlement::SimpleSQL;
 
 use Krb5Admin::KerberosDB;
 use Krb5Admin::Log;
@@ -70,14 +71,15 @@ sub mk_kmdb {
 	my %args = @_;
 	my $ret;
 
-	my $acl     = Kharon::Entitlement::Or->new();
+	my $acl     = Kharon::Entitlement::Stack->new();
 	my $objacl  = Kharon::Entitlement::Object->new();
+	my $sqlacl  = Kharon::Entitlement::SimpleSQL->new();
 	my $subacls = Kharon::Entitlement::Equals->new();
 	my $aclfile = Kharon::Entitlement::ACLFile->new(filename => $acl_file,
 	    subobject => $subacls);
 
 	$acl->set_creds($args{CREDS});
-	$acl->set_subobjects($aclfile, $objacl);
+	$acl->set_subobjects($objacl, $sqlacl, $aclfile);
 
 	$pes->set_acl($acl);
 
@@ -97,6 +99,7 @@ sub mk_kmdb {
 	$ret = $kmdb_class->new(%kmdb_args);
 
 	$objacl->set_subobject($ret);
+	$sqlacl->set_dbh($ret->get_dbh());
 
 	return $ret;
 }
