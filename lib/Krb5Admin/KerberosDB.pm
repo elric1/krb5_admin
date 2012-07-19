@@ -16,8 +16,6 @@ use Kharon::Entitlement::Equals;
 
 use Kharon::dbutils qw/sql_command generic_query/;
 
-use Kharon::dbutils qw/sql_command generic_query/;
-
 use strict;
 use warnings;
 
