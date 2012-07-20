@@ -26,6 +26,8 @@ sub testObjC {
 	}
 }
 
+$ENV{'KRB5_CONFIG'} = './t/krb5.conf';
+
 my $kmdb;
 
 $kmdb = Krb5Admin::KerberosDB->new(
