@@ -699,8 +699,8 @@ done:
 
 %perlcode %{
 
-package _p_krb5_context; sub DESTROY {Krb5Admin::C::my_free_ctx(@_)}
-package _p_kadm5_handle; sub DESTROY {Krb5Admin::C::kadm5_destroy(@_)}
+# package _p_krb5_context; sub DESTROY {Krb5Admin::C::my_free_ctx(@_)}
+# package _p_kadm5_handle; sub DESTROY {Krb5Admin::C::kadm5_destroy(@_)}
 
 %}
 
