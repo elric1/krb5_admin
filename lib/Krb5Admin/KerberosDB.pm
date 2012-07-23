@@ -14,7 +14,7 @@ use Krb5Admin::C;
 use Kharon::Entitlement::ACLFile;
 use Kharon::Entitlement::Equals;
 
-use Kharon::dbutils qw/sql_command generic_query/;
+use Kharon::dbutils qw/sql_command generic_query generic_modify/;
 
 use strict;
 use warnings;
@@ -1102,90 +1102,8 @@ sub modify_host {
 
 	require_scalar("modify_host <host> [args]", 1, $host);
 
-	internal_modify_host($self, $host, %args);
+	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
 	$dbh->commit();
-
-	return undef;
-}
-
-sub internal_modify_host {
-	my ($self, $host, %args) = @_;
-	my $dbh = $self->{dbh};
-
-	#
-	# XXXrcd: validate %args
-
-	my @setv;
-	my @bindv;
-
-	my $set_label = 0;
-	my @add_label;
-	my @del_label;
-
-	for my $arg (keys %args) {
-		if ($arg eq 'label') {
-			if (ref($args{$arg}) ne 'ARRAY') {
-				die [503, "label takes an array ref"];
-			}
-			if (@add_label) {
-				die [503, "Can't both set label and add label"];
-			}
-			$set_label = 1;
-			push(@add_label, @{$args{$arg}});
-			next;
-		}
-
-		if ($arg eq 'add_label') {
-			if (ref($args{$arg}) ne 'ARRAY') {
-				die [503, "add_label takes an array ref"];
-			}
-			push(@add_label, @{$args{$arg}});
-			next;
-		}
-
-		if ($arg eq 'del_label') {
-			if (ref($args{$arg}) ne 'ARRAY') {
-				die [503, "del_label takes an array ref"];
-			}
-			push(@del_label, @{$args{$arg}});
-			next;
-		}
-
-		if (!grep { $_ eq $arg } (@{$field_desc{hosts}->{fields}})) {
-			die [503, "Unrecognised field: $arg"];
-		}
-
-		push(@setv, "$arg = ?");
-		push(@bindv, $args{$arg});
-	}
-
-	if (@add_label || @del_label) {
-		die [503, "Can't both add/del label and set label"];
-	}
-
-	if (@setv) {
-		my $stmt = "UPDATE hosts SET " . join(',', @setv) .
-		    " WHERE name = ?";
-		sql_command($dbh, $stmt, @bindv, $host);
-	}
-
-	if ($set_label) {
-		my $stmt = "DELETE FROM host_labels WHERE host = ?";
-		sql_command($dbh, $stmt, $host);
-	}
-
-	for my $label (@add_label) {
-		my $stmt = "INSERT INTO host_labels(host, label) VALUES (?, ?)";
-		sql_command($dbh, $stmt, $host, $label);
-	}
-
-	if (@del_label) {
-		my $stmt = qq{
-				DELETE FROM host_labels
-				WHERE host = ? AND ( } .
-		    join(' OR ', map { "label = ?" } (@del_label)) . ")";
-		sql_command($dbh, $stmt, $host, @del_label);
-	}
 
 	return undef;
 }
