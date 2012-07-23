@@ -1063,9 +1063,10 @@ sub remove {
 sub KHARON_ACL_sacls_query	{ return 1; }
 sub KHARON_ACL_sacls_ {}
 
-sub sacls_query	{ $_[0]->{sacls}->  query(@_[1..$#_]) }
-sub sacls_add	{ $_[0]->{sacls}->    add(@_[1..$#_]) }
-sub sacls_del	{ $_[0]->{sacls}->    del(@_[1..$#_]) }
+sub sacls_init_db	{ $_[0]->{sacls}->init_db(@_[1..$#_]) }
+sub sacls_query		{ $_[0]->{sacls}->  query(@_[1..$#_]) }
+sub sacls_add		{ $_[0]->{sacls}->    add(@_[1..$#_]) }
+sub sacls_del		{ $_[0]->{sacls}->    del(@_[1..$#_]) }
 
 #
 # Define the SQL-based host and prestashed ticket interfaces:
