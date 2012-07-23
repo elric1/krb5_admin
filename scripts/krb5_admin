@@ -2,6 +2,8 @@
 
 use Getopt::Std;
 
+use Kharon::Entitlement::SimpleSQL;
+
 use Krb5Admin::KerberosDB;
 use Krb5Admin::Client;
 use Krb5Admin::CLI;
@@ -50,7 +52,11 @@ my $cli = Krb5Admin::CLI->new(appname => 'krb5_admin');
 my $kmdb;
 eval {
 	if (exists($opts{'l'})) {
-		$kmdb = Krb5Admin::KerberosDB->new(local=>1, dbname=>$dbname);
+		my $sqlacl  = Kharon::Entitlement::SimpleSQL->new(
+		    table => 'krb5_admin_simple_acls');
+		$kmdb = Krb5Admin::KerberosDB->new(local=>1, dbname=>$dbname,
+		    sacls=>$sqlacl);
+		$sqlacl->set_dbh($kmdb->get_dbh());
 	} else {
 		my %args;
 		$args{realm} = $realm	if defined($realm);

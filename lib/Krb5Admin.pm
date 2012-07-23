@@ -28,6 +28,8 @@ our @KHARON_RW_SC_EXPORT = qw/	bind_host
 				remove_hostmap
 				remove_ticket
 				reset_passwd
+				sacls_add
+				sacls_del
 			     /;
 
 our @KHARON_RO_SC_EXPORT = qw/	query	/;
@@ -40,6 +42,7 @@ our @KHARON_RO_AC_EXPORT = qw/	fetch
 				query_host
 				query_hostmap
 				query_ticket
+				sacls_query
 			     /;
 
 sub KHARON_MASTER {

@@ -326,6 +326,7 @@ sub new {
 	$self->{ctx}	  = $ctx;
 	$self->{hndl}	  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, $dbname);
 	$self->{acl}	  = $args{acl};
+	$self->{sacls}	  = $args{sacls};
 	$self->{dbh}	  = $dbh;
 
 	$self->{local}	= 0			if !defined($self->{local});
@@ -364,8 +365,11 @@ sub get_dbh {
 sub init_db {
 	my ($self) = @_;
 	my $dbh = $self->{dbh};
+	my $sacls = $self->{sacls};
 
 	Krb5Admin::C::init_kdb($self->{ctx}, $self->{hndl});
+
+	$sacls->init_db()	if defined($sacls);
 
 	$dbh->{AutoCommit} = 1;
 
@@ -1052,6 +1056,19 @@ sub remove {
 	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $name);
 	return undef;
 }
+
+#
+# Export the Kharon::Entitlement::SimpleSQL interface:
+
+sub KHARON_ACL_sacls_query	{ return 1; }
+sub KHARON_ACL_sacls_ {}
+
+sub sacls_query	{ $_[0]->{sacls}->  query(@_[1..$#_]) }
+sub sacls_add	{ $_[0]->{sacls}->    add(@_[1..$#_]) }
+sub sacls_del	{ $_[0]->{sacls}->    del(@_[1..$#_]) }
+
+#
+# Define the SQL-based host and prestashed ticket interfaces:
 
 our %field_desc = (
 	hosts		=> {
