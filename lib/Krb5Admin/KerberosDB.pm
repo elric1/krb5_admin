@@ -1061,7 +1061,8 @@ sub remove {
 # Export the Kharon::Entitlement::SimpleSQL interface:
 
 sub KHARON_ACL_sacls_query	{ return 1; }
-sub KHARON_ACL_sacls_ {}
+sub KHARON_ACL_sacls_add	{ $_[0]->{sacls}->check1($_[2]) }
+sub KHARON_ACL_sacls_del	{ $_[0]->{sacls}->check1($_[2]) }
 
 sub sacls_init_db	{ $_[0]->{sacls}->init_db(@_[1..$#_]) }
 sub sacls_query		{ $_[0]->{sacls}->  query(@_[1..$#_]) }
