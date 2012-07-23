@@ -569,7 +569,7 @@ sub create_user {
 # these ids, we limit the ACL to these anonymous principals.
 
 sub KHARON_ACL_create_bootstrap_id {
-	my ($self, %args) = @_;
+	my ($self, $verb, %args) = @_;
 
 	if ($self->{client} eq 'WELLKNOWN/ANONYMOUS@' . $args{realm}) {
 		return 1;
@@ -809,13 +809,13 @@ sub list {
 }
 
 sub KHARON_ACL_fetch {
-	my ($self, @args) = @_;
+	my ($self) = @_;
 
 	if (!$self->{allow_fetch}) {
 		return "Permission denied: fetch is administratively " .
 		    "prohibited";
 	}
-	return $self->acl_keytab(@args);
+	acl_keytab(@_);
 }
 
 sub fetch {
@@ -1060,14 +1060,22 @@ sub remove {
 #
 # Export the Kharon::Entitlement::SimpleSQL interface:
 
-sub KHARON_ACL_sacls_query	{ return 1; }
-sub KHARON_ACL_sacls_add	{ $_[0]->{sacls}->check1($_[2]) }
-sub KHARON_ACL_sacls_del	{ $_[0]->{sacls}->check1($_[2]) }
+sub KHARON_ACL_sacls_add {
+	my ($self, $verb, $acl_verb) = @_;
+	$self->{sacls}->check1($acl_verb);
+}
 
-sub sacls_init_db	{ $_[0]->{sacls}->init_db(@_[1..$#_]) }
-sub sacls_query		{ $_[0]->{sacls}->  query(@_[1..$#_]) }
-sub sacls_add		{ $_[0]->{sacls}->    add(@_[1..$#_]) }
-sub sacls_del		{ $_[0]->{sacls}->    del(@_[1..$#_]) }
+sub KHARON_ACL_sacls_del {
+	my ($self, $verb, $acl_verb) = @_;
+	$self->{sacls}->check1($acl_verb);
+}
+
+sub KHARON_ACL_sacls_query	{ return 1; }
+
+sub sacls_add		{ my $self = shift(@_); $self->{sacls}->add(@_) }
+sub sacls_del		{ my $self = shift(@_); $self->{sacls}->del(@_) }
+sub sacls_query		{ my $self = shift(@_); $self->{sacls}->query(@_) }
+sub sacls_init_db	{ my $self = shift(@_); $self->{sacls}->init_db(@_) }
 
 #
 # Define the SQL-based host and prestashed ticket interfaces:
