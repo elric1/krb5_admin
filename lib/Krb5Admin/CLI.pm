@@ -57,7 +57,7 @@ EOM
 }
 
 sub FORMAT_create_user {
-	my ($self, $ret) = @_;
+	my ($self, $cmd, $args, $ret) = @_;
 
 	$self->print("Created user with passwd '$ret'\n");
 	return 0;
