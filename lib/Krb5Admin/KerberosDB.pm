@@ -1067,12 +1067,12 @@ sub KHARON_ACL_sacls_add {
 	my ($self, $verb, $acl_verb, $acl_princ) = @_;
 
 	# Avoid some accidents. Delegation to "ALL" requires "local" privs.
-	if ($acl_princ ne "ALL") {
-		$self->{sacls}->check1($acl_verb);
-	}
+	return undef if ($acl_princ eq "ALL");
+
+	$self->{sacls}->check1($acl_verb);
 }
 
-sub KHARON_ACL_sacls_del { KHARON_ACL_sacls_add(@_); }
+sub KHARON_ACL_sacls_del	{ KHARON_ACL_sacls_add(@_); }
 
 sub KHARON_ACL_sacls_query	{ return 1; }
 
