@@ -435,6 +435,8 @@ sub drop_db {
 	$dbh->{AutoCommit} = 0;
 }
 
+sub KHARON_ACL_master { return 1; }
+
 sub master { undef; }
 
 #
