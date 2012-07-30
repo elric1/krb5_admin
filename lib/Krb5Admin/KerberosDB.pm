@@ -1154,7 +1154,8 @@ sub bind_host {
 	my $dbh = $self->{dbh};
 
 	require_scalar("bind_host <host> <binding>", 1, $host);
-	require_fqprinc($ctx, "bind_host <host> <binding>", 1, $binding);
+	require_fqprinc($ctx, "bind_host <host> <binding>", 1, $binding)
+		if defined($binding);
 
 	my $stmt = "UPDATE hosts SET bootbinding = ? WHERE name = ?";
 	my $sth  = sql_command($dbh, $stmt, $binding, $host);
