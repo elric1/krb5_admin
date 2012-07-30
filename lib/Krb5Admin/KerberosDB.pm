@@ -448,10 +448,10 @@ sub master { undef; }
 my @gek_operations = qw(change create create_bootstrap_id bootstrap_host_key);
 
 sub KHARON_ACL_generate_ecdh_key1 {
-	my ($self, $verb, $operation, $name, @args) = @_;
+	my ($self, $verb, $operation, @args) = @_;
 
-	if (defined($operation) || defined($name)) {
-		if (!defined($operation) || !defined($name)) {
+	if (defined($operation) || @args > 0) {
+		if (!defined($operation) || !defined($args[0])) {
 			die [503, "If arg1 or arg2 are defined then both " .
 			    "must be defined."];
 		}
@@ -461,7 +461,7 @@ sub KHARON_ACL_generate_ecdh_key1 {
 			    join(', ', @gek_operations)];
 		}
 
-		return $self->{acl}->check($operation, $name);
+		return $self->{acl}->check($operation, @args);
 	}
 
 	return 1;
@@ -569,9 +569,11 @@ sub create_user {
 # these ids, we limit the ACL to these anonymous principals.
 
 sub KHARON_ACL_create_bootstrap_id {
-	my ($self, $verb, %args) = @_;
+	my ($self, $verb) = @_;
 
-	if ($self->{client} eq 'WELLKNOWN/ANONYMOUS@' . $args{realm}) {
+	my @pp = Krb5Admin::C::krb5_parse_name($self->{ctx}, $self->{client});
+
+	if (@pp == 3 && $pp[1] eq 'WELLKNOWN' && $pp[2] eq 'ANONYMOUS') {
 		return 1;
 	}
 
