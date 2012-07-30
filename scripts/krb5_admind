@@ -69,20 +69,30 @@ $pes->Connect();
 
 sub mk_kmdb {
 	my %args = @_;
+	my @acls = ();
 
 	my $acl     = Kharon::Entitlement::Stack->new();
+
 	my $objacl  = Kharon::Entitlement::Object->new();
+	push(@acls, $objacl);
+
 	my $sqlacl  = Kharon::Entitlement::SimpleSQL->new(
 	    table => 'krb5_admin_simple_acls');
-	my $subacls = Kharon::Entitlement::Equals->new();
-	my $aclfile = Kharon::Entitlement::ACLFile->new(filename => $acl_file,
-	    subobject => $subacls);
-
 	$sqlacl->set_del_check(sub { $acl->check($_[0]); });
+	push(@acls, $sqlacl);
 
+	# When the ACL file is not present, don't bother with file ACL checks
+	#
+	if (-f $acl_file) {
+		my $subacls = Kharon::Entitlement::Equals->new();
+		my $aclfile = Kharon::Entitlement::ACLFile->new(
+					filename => $acl_file,
+					subobject => $subacls);
+		push(@acls, $aclfile);
+	}
+
+	$acl->set_subobjects(@acls);
 	$acl->set_creds($args{CREDS});
-	$acl->set_subobjects($objacl, $sqlacl, $aclfile);
-
 	$pes->set_acl($acl);
 
 	my %kmdb_args = (
