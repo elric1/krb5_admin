@@ -69,7 +69,6 @@ $pes->Connect();
 
 sub mk_kmdb {
 	my %args = @_;
-	my $ret;
 
 	my $acl     = Kharon::Entitlement::Stack->new();
 	my $objacl  = Kharon::Entitlement::Object->new();
@@ -100,7 +99,7 @@ sub mk_kmdb {
 	syslog('info', '%s connected from %s', $args{CREDS},
 	    $args{REMOTE_IP});
 
-	$ret = $kmdb_class->new(%kmdb_args);
+	my $ret = $kmdb_class->new(%kmdb_args);
 
 	$objacl->set_subobject($ret);
 	$sqlacl->set_dbh($ret->get_dbh());
