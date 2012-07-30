@@ -79,6 +79,8 @@ sub mk_kmdb {
 	my $aclfile = Kharon::Entitlement::ACLFile->new(filename => $acl_file,
 	    subobject => $subacls);
 
+	$sqlacl->set_del_check(sub { $acl->check($_[0]); });
+
 	$acl->set_creds($args{CREDS});
 	$acl->set_subobjects($objacl, $sqlacl, $aclfile);
 
