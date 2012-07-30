@@ -71,6 +71,28 @@ sub FORMAT_change_passwd {
 	return 0;
 }
 
+sub FORMAT_query_host {
+	my ($self, $cmd, $args, @rets) = @_;
+	for my $r (@rets) {
+		while (my ($h, $hinfo) = each %$r) {
+			$self->printf("%s:\t%s\n", "name", $h);
+			while (my ($a, $v) = each %$hinfo) {
+				next if ! defined($v);
+				if (! ref($v)) {
+					$self->printf("%s:\t%s\n", $a, $v);
+					next;
+				}
+				for my $e (@$v) {
+					$self->printf("%s:\t%s\n", $a, $e);
+				}
+			}
+		}
+		$self->print("\n");
+	}
+
+	return 0;
+}
+
 sub FORMAT_mquery {
 	my ($self, $cmd, $args, @rets) = @_;
 
