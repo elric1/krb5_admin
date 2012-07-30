@@ -142,7 +142,6 @@ sub KHARON_SET_CREDS {
 sub KHARON_COMMON_ACL {
 	my ($self, $verb, @predicate) = @_;
 	my $subject = $self->{client};
-	my $acl = $self->{acl};
 
 	#
 	# As a zeroth step, we prohibit everyone from accessing rules
