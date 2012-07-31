@@ -18,6 +18,18 @@ our %enctypes = (
 	0x01    => 'des-cbc-crc',
 );
 
+our %host_hmap = (
+	realm		=> undef,
+	ip_addr		=> undef,
+	label		=> [],
+);
+
+sub KHARON_HASHIFY_COMMANDS {
+	return {
+		modify_host	=> [1, \%host_hmap],
+		create_host	=> [1, \%host_hmap],
+	};
+}
 
 sub CMD_help {
 	my ($self) = @_;
