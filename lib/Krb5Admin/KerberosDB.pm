@@ -1454,21 +1454,26 @@ sub query_ticket {
 }
 
 sub KHARON_ACL_fetch_tickets {
-	my ($self, $cmd, @predicate) = @_;
+	my ($self, $cmd, $realm, $host) = @_;
 	my $ctx = $self->{ctx};
 
 	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $self->{client});
 
-	return 0	if $sprinc[1] ne 'host';
-	return 0	if $sprinc[2] ne $predicate[0];
+	return if (@sprinc != 3 || $sprinc[0] ne $realm);
+	return if $sprinc[1] ne 'host';
+
+	if (!defined($host)) {
+		$host = $sprinc[2];
+	} else {
+		return if $sprinc[2] ne $host;
+	}
 
 	# Now, we must also check to ensure that the client is
 	# in the correct realm for the host that we have in our DB.
 
-	my $host = $self->query_host(name=>$predicate[0]);
-	if (!defined($host) || $host->{realm} ne $sprinc[0]) {
-		return 0;
-	}
+	$host = $self->query_host(name=>$host);
+	return if (!defined($host) || $host->{realm} ne $realm);
+
 	# The request is authorised.
 	return 1;
 }
@@ -1482,14 +1487,22 @@ sub fetch_tickets {
 		$host = hostname();
 	}
 
+	#
+	# If the hostname is not explicitly specified, it may be implied
+	# via the subject principal. XXX: This logic must match the ACL!
+
 	if (!defined($host)) {
 		my @sprinc = Krb5Admin::C::krb5_parse_name($ctx,
 		    $self->{client});
 
-		if ($sprinc[1] eq 'host') {
+		if (@sprinc == 3
+		    && $sprinc[0] eq $realm
+		    && $sprinc[1] eq 'host') {
 			$host = $sprinc[2];
 		}
 	}
+
+	if (! defined($host)) { die "fetch_tickets: no hostname specified\n"; }
 
 	my $tix = $self->query_ticket(host => $host, realm => $realm,
 	    expand => 1);
