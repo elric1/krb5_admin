@@ -194,91 +194,74 @@ sub acl_keytab {
 
 	#
 	# We allow host/foo@REALM to access <service>/foo@REALM for any
-	# <service>.
+	# <service>. If the requested principal is not name/instance,
+	# defer to the coarse grained ACLs, for example "create" is also
+	# used to create application user principals.
 
-	if (@pprinc != 3) {
-		return "Keytab acls operate on 3 part principals.";
-	}
+	return if (@pprinc != 3);
 
-	if ($pprinc[1] eq 'host') {
+	# These instances are not to be treated as hosts
+	return if ($pprinc[2] eq "admin" || $pprinc[2] eq "root");
 
-		#
-		# If Krb5Admin::Utils::reverse_the is defined then we
-		# will have $self->{hostname} and we'll use it to validate
-		# that the request is coming from a properly mapped host.
-		# Otherwise, we ignore it.
-
-		my $host_ok = defined($self->{hostname}) ?
-		    grep { $_ eq $pprinc[2] } host_list($self->{hostname}) : 1;
-
-		#
-		# We first allow hosts to change their own keys:
-
-		if ($host_ok == 1 && @sprinc == 3 && @pprinc == 3 &&
-		    $sprinc[0] eq $pprinc[0] && $sprinc[1] eq $pprinc[1] &&
-		    $sprinc[2] eq $pprinc[2]) {
-			return 1;
-		}
-
-		#
-		# We check to see if we are doing an xrealm bootstrap, we
-		# do this by generating a list of principals that we will
-		# accept first and then seeing if our client is one of them.
-
-		my @xbs = ();
-		if (@sprinc == 3 && $sprinc[1] eq 'host' &&
-		    ref($self->{xrealm_bootstrap}) eq 'HASH' &&
-		    ref($self->{xrealm_bootstrap}->{$sprinc[0]}) eq 'ARRAY') {
-			@xbs = @{$self->{xrealm_bootstrap}->{$sprinc[0]}};
-			@xbs = map { unparse_princ([$_, @sprinc[1,2]]) } @xbs;
-		}
-
-		#
-		# Windows principals are case insensitive, so we canonicalize
-		# the non-realm part of the principal name to lower-case,
-		# and expect the lookup keys in win_xrealm_bootstrap to be
-		# likewise lower case.
-
-		my $up_sprinc =
-		    unparse_princ([$sprinc[0],
-				   map {lc $_} @sprinc[1..$#sprinc]]);
-		my $win_xrealm_bootstrap = $self->{win_xrealm_bootstrap};
-		if (ref($win_xrealm_bootstrap) eq 'HASH' &&
-		    ref($win_xrealm_bootstrap->{$up_sprinc}) eq 'ARRAY') {
-			push(@xbs, @{$win_xrealm_bootstrap->{$up_sprinc}});
-		}
-
-		my $up_pprinc = unparse_princ(\@pprinc);
-		return 1 if $host_ok == 1 && grep {$_ eq $up_pprinc} @xbs;
-
-		$denied = "not an admin user";
-		if (!$host_ok) {
-			$denied  = "host does not match IP address";
-			$denied .= " [" . $self->{hostname} . " not in " .
-
-			$denied .= join(',', host_list($self->{hostname}));
-			$denied .= "]";
-		}
-	} else {
-		if (@sprinc != 3) {
-			return 0;
-		}
-
-		$denied = 'realm'	if $sprinc[0] ne $pprinc[0];
-		$denied = 'host'	if $sprinc[1] ne 'host';
-		$denied = 'instance'	if $sprinc[2] ne $pprinc[2];
-		$denied = 'no admin'	if $pprinc[2] eq 'admin';
-		$denied = 'no root'	if $pprinc[2] eq 'root';
-	}
-
-	if (defined($denied)) {
-		syslog('err', "%s", $subject . " failed ACL check for " .
-		    $predicate[0] . "[$denied]");
-#		return "Permission denied [$denied] for $subject";
+	if ($pprinc[1] ne "host") {
+		# OK if subject is the host principal in the same realm
+		return 1 if (@sprinc == 3
+			     && $pprinc[0] eq $sprinc[0]
+			     && $sprinc[1] eq "host"
+			     && $sprinc[2] eq $pprinc[2]);
 		return undef;
 	}
 
-	return 1;
+	#
+	# If Krb5Admin::Utils::reverse_the is defined then we
+	# will have $self->{hostname} and we'll use it to validate
+	# that the request is coming from a properly mapped host.
+	# Otherwise, we ignore it.
+
+	my $host_ok = defined($self->{hostname}) ?
+	    grep { $_ eq $pprinc[2] } host_list($self->{hostname}) : 1;
+
+	#
+	# We first allow hosts to change their own keys:
+
+	if ($host_ok == 1 && @sprinc == 3 && @pprinc == 3 &&
+	    $sprinc[0] eq $pprinc[0] && $sprinc[1] eq $pprinc[1] &&
+	    $sprinc[2] eq $pprinc[2]) {
+		return 1;
+	}
+
+	#
+	# We check to see if we are doing an xrealm bootstrap, we
+	# do this by generating a list of principals that we will
+	# accept first and then seeing if our client is one of them.
+
+	my @xbs = ();
+	if (@sprinc == 3 && $sprinc[1] eq 'host' &&
+	    ref($self->{xrealm_bootstrap}) eq 'HASH' &&
+	    ref($self->{xrealm_bootstrap}->{$sprinc[0]}) eq 'ARRAY') {
+		@xbs = @{$self->{xrealm_bootstrap}->{$sprinc[0]}};
+		@xbs = map { unparse_princ([$_, @sprinc[1,2]]) } @xbs;
+	}
+
+	#
+	# Windows principals are case insensitive, so we canonicalize
+	# the non-realm part of the principal name to lower-case,
+	# and expect the lookup keys in win_xrealm_bootstrap to be
+	# likewise lower case.
+
+	my $up_sprinc =
+	    unparse_princ([$sprinc[0],
+			   map {lc $_} @sprinc[1..$#sprinc]]);
+	my $win_xrealm_bootstrap = $self->{win_xrealm_bootstrap};
+	if (ref($win_xrealm_bootstrap) eq 'HASH' &&
+	    ref($win_xrealm_bootstrap->{$up_sprinc}) eq 'ARRAY') {
+		push(@xbs, @{$win_xrealm_bootstrap->{$up_sprinc}});
+	}
+
+	my $up_pprinc = unparse_princ(\@pprinc);
+	return 1 if $host_ok == 1 && grep {$_ eq $up_pprinc} @xbs;
+
+	return undef;
 }
 
 sub new {
