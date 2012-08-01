@@ -3,8 +3,10 @@
 use Test::More tests => 44;
 
 use Kharon::Entitlement::Object;
+use Kharon::Entitlement::SimpleSQL;
 
 use Krb5Admin::C;
+use Krb5Admin::ForkClient;
 use Krb5Admin::KerberosDB;
 
 use Data::Dumper;
@@ -61,24 +63,42 @@ sub testObjC {
 
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
-my $sprinc = 'service@TEST.REALM';
+my $creds  = 'host/host1.test.realm@TEST.REALM';
+my $sprinc = 'service/host1.test.realm@TEST.REALM';
 my $uprinc = 'user@TEST.REALM';
 
 my $kmdb;
 
+my $sqlacl  = Kharon::Entitlement::SimpleSQL->new(
+    table => 'krb5_admin_simple_acls');
+
 $kmdb = Krb5Admin::KerberosDB->new(
     local	=> 1,
-    client	=> 'host/hostA.test.realm@TEST.REALM',
+    client	=> $creds,
     dbname	=> 'db:t/test-hdb',
-    acl_file	=> 't/krb5_admin.acl',
     sqlite	=> 't/sqlite.db',
+    sacls	=> $sqlacl,
 );
+
+$sqlacl->set_dbh($kmdb->get_dbh());
 
 #
 # XXXrcd: This is destructive!
 
 $kmdb->drop_db();
 $kmdb->init_db();
+$kmdb->sacls_add('bind_host', $creds);
+$kmdb->sacls_add('change', $creds);
+$kmdb->sacls_add('change_passwd', $creds);
+$kmdb->sacls_add('create', $creds);
+$kmdb->sacls_add('create_bootstrap_id', $creds);
+$kmdb->sacls_add('create_host', $creds);
+$kmdb->sacls_add('create_user', $creds);
+$kmdb->sacls_add('disable', $creds);
+$kmdb->sacls_add('enable', $creds);
+$kmdb->sacls_add('fetch', $creds);
+$kmdb->sacls_add('generate_ecdh_key1', $creds);
+$kmdb->sacls_add('remove', $creds);
 
 my $p = "Aa1thisisapasswd!!!!";
 
@@ -87,7 +107,14 @@ my $p = "Aa1thisisapasswd!!!!";
 # routines leave a completely empty DB.  We are starting with kvno = 1,
 # which is slightly different than the MIT default but we're only really
 # testing on Heimdal at the moment and our stuff works a tad differently,
-# anyway.
+# anyway.  We create a new Krb5Admin::ForkClient because we want to test
+# the ACLs and the protocol.
+
+$kmdb = Krb5Admin::ForkClient->new({
+    dbname	=> 'db:t/test-hdb',
+    sqlite	=> 't/sqlite.db',
+    allow_fetch => 1,
+}, CREDS => $creds);
 
 testObjC("create", $kmdb, [undef], 'create', $sprinc);
 testObjC("create_user", $kmdb, [$p], 'create_user', $uprinc, $p);
@@ -99,7 +126,7 @@ testObjC("list", $kmdb, [$uprinc, $sprinc], 'list');
 
 my $result;
 
-$result = $kmdb->query('user');
+$result = $kmdb->query($uprinc);
 
 ok($result->{policy} eq 'default', qq{user policy is ``default''});
 ok($result->{principal} eq $uprinc, qq{query returned correct princ});
@@ -111,7 +138,7 @@ compare_keys($result, [
 		{enctype=>23,kvno=>1}
 	], "user has correct key types 1");
 
-$result = $kmdb->query('service');
+$result = $kmdb->query($sprinc);
 
 ok($result->{policy} eq 'default', qq{service policy is ``default''});
 ok($result->{principal} eq $sprinc, qq{query returned correct princ});
@@ -127,7 +154,7 @@ compare_keys($result, [
 
 testObjC("change", $kmdb, [undef], 'change', $sprinc, 3, [{enctype=>17,
     key=>'0123456789abcdef'}]);
-$result = $kmdb->query('service');
+$result = $kmdb->query($sprinc);
 compare_keys($result, [
 		{enctype=>17,kvno=>3},
 		{enctype=>18,kvno=>2},
@@ -137,7 +164,7 @@ compare_keys($result, [
 
 testObjC("change", $kmdb, [undef], 'change', $sprinc, 4, keys => [{enctype=>17,
     key=>'0123456789ABCDEF'}]);
-$result = $kmdb->query('service');
+$result = $kmdb->query($sprinc);
 compare_keys($result, [
 		{enctype=>17,kvno=>4},
 		{enctype=>17,kvno=>3},
@@ -147,7 +174,7 @@ compare_keys($result, [
 	], "service has correct key types 3");
 
 testObjC("change_passwd", $kmdb, ["${p}1"], 'change_passwd', $uprinc, "${p}1");
-$result = $kmdb->query('user');
+$result = $kmdb->query($uprinc);
 compare_keys($result, [
 		{enctype=>18,kvno=>2},
 		{enctype=>16,kvno=>2},
@@ -160,12 +187,12 @@ compare_princ_to_attrs($result, [qw/+requires_preauth -allow_svr/],
 # Test enable, disable:
 
 testObjC("disable", $kmdb, [undef], 'disable', 'user');
-$result = $kmdb->query('user');
+$result = $kmdb->query($uprinc);
 compare_princ_to_attrs($result, [qw/-allow_tix +requires_preauth -allow_svr/],
     "user has correct attributes 2");
 
 testObjC("enable", $kmdb, [undef], 'enable', 'user');
-$result = $kmdb->query('user');
+$result = $kmdb->query($uprinc);
 compare_princ_to_attrs($result, [qw/+requires_preauth -allow_svr/],
     "user has correct attributes 2");
 
@@ -210,8 +237,8 @@ if (!$@) {
 	ok(keys %allprincs == 0, "mquery returned no extra results");
 }
 
-testObjC("remove user", $kmdb, [undef], 'remove', 'user');
-testObjC("remove service", $kmdb, [undef], 'remove', 'service');
+testObjC("remove user", $kmdb, [undef], 'remove', $uprinc);
+testObjC("remove service", $kmdb, [undef], 'remove', $sprinc);
 
 #
 # Let's try to test the new ECDH key negotiation for create.
@@ -292,26 +319,28 @@ eval {
 };
 ok(!$@, "bind_host did not toss an exception") or diag(Dumper($@));
 
+undef $kmdb;
 my $hostprinc = "host/$host\@TEST.REALM";
 eval {
-	my $acl  = Kharon::Entitlement::Object->new();
-	my $kmdb = Krb5Admin::KerberosDB->new(
-	    acl		=> $acl,
-	    client	=> $binding,
+	my $kmdb = Krb5Admin::ForkClient->new({
 	    dbname	=> 'db:t/test-hdb',
-	    acl_file	=> 't/krb5_admin.acl',
 	    sqlite	=> 't/sqlite.db',
-	);
-	$acl->set_creds($binding);
-	$acl->set_subobject($kmdb);
+	    allow_fetch	=> 1,
+	}, CREDS => $binding);
 
-	$gend = $kmdb->genkeys('bootstrap_host_key', "host/$host\@TEST.REALM",
+	$gend = $kmdb->genkeys('bootstrap_host_key', $hostprinc,
 	    1, 17, 18);
-	$kmdb->bootstrap_host_key("host/$host\@TEST.REALM", 1,
+	$kmdb->bootstrap_host_key($hostprinc, 1,
 	    public => $gend->{public}, enctypes => [17, 18]);
 };
 ok(!$@, "genkeys/bootstrap_host_key did not toss an exception")
     or diag(Dumper($@));
+
+$kmdb = Krb5Admin::ForkClient->new({
+    dbname	=> 'db:t/test-hdb',
+    sqlite	=> 't/sqlite.db',
+    allow_fetch => 1,
+}, CREDS => $creds);
 
 $result = {};
 eval {
