@@ -34,16 +34,16 @@ our @KHARON_RW_SC_EXPORT = qw/	bind_host
 
 our @KHARON_RO_SC_EXPORT = qw/	query
 				fetch_tickets
+				query_host
+				query_hostmap
+				query_ticket
+				sacls_query
 			     /;
 
 our @KHARON_RO_AC_EXPORT = qw/	fetch
 				list
 				listpols
 				mquery
-				query_host
-				query_hostmap
-				query_ticket
-				sacls_query
 			     /;
 
 sub KHARON_MASTER {
