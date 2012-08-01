@@ -36,7 +36,8 @@ sub run_daemon {
 sub new {
 	my ($proto, $config, %args) = @_;
 	my $class = ref($proto) || $proto;
-	my $self;
+
+	my $self = $class->SUPER::new();
 
 	$args{REMOTE_IP} = 'SOCKETPAIR'	if !defined($args{REMOTE_IP});
 
