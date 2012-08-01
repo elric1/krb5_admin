@@ -407,8 +407,11 @@ sub init_db {
 sub drop_db {
 	my ($self) = @_;
 	my ($dbh) = $self->{dbh};
+	my $sacls = $self->{sacls};
 
 	# XXXrcd: should we unlink(2) the Kerberos DB?  Maybe not.
+
+	$sacls->drop_db()	if defined($sacls);
 
 	$dbh->{AutoCommit} = 1;
 	$dbh->do('DROP TABLE IF EXISTS prestashed');
@@ -1093,19 +1096,22 @@ sub create_host {
 
 	my @args = ('name');
 	my @vals = ($host);
-	delete $fields{name};
+	delete $args{name};
 	for my $arg (keys %args) {
-		next if defined($fields{$arg}) && !$fields{$arg};
+		next if !defined($fields{$arg});
 
 		push(@args, $arg);
 		push(@vals, $args{$arg});
-		delete $fields{$arg};
+		delete $args{$arg};
 	}
 
 	my $stmt = "INSERT INTO hosts(" . join(',', @args) . ")" .
 		   "VALUES (" . join(',', map {"?"} @args) . ")";
 
 	sql_command($dbh, $stmt, @vals);
+
+	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
+
 	$dbh->commit();
 	return undef;
 }
