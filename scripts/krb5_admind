@@ -1,22 +1,10 @@
 #!/usr/pkg/bin/perl
 
-use IO::File;
-
 use Getopt::Std;
-use Socket;
 use Sys::Hostname;
 use Sys::Syslog;
 
-use Kharon::Protocol::ArrayHash;
-use Kharon::Engine::Server v0.3;
-use Kharon::Entitlement::ACLFile;
-use Kharon::Entitlement::Equals;
-use Kharon::Entitlement::Object;
-use Kharon::Entitlement::Stack;
-use Kharon::Entitlement::SimpleSQL;
-
-use Krb5Admin::KerberosDB;
-use Krb5Admin::Log;
+use Krb5Admin::Daemon;
 
 use strict;
 use warnings;
@@ -45,7 +33,7 @@ our %xrealm_bootstrap;
 our %win_xrealm_bootstrap;
 our %prestash_xrealm;
 
-our %opts;
+my %opts;
 getopts('MPa:c:d:m:', \%opts) or usage();
 
 $master   = hostname()		if  defined($opts{M});
@@ -62,69 +50,16 @@ if (-f $config || defined($opts{c})) {
 
 $kmdb_class = 'Krb5Admin::KerberosDB' if !defined($kmdb_class);
 
-my $logger = Krb5Admin::Log->new();
-my $ahr = Kharon::Protocol::ArrayHash->new(banner => { version => '2.0' } );
-my $pes = Kharon::Engine::Server->new(protocols => [$ahr], logger => $logger);
-$pes->Connect();
+my %config;
+$config{acl_file}		= $acl_file;
+$config{config}			= $config;
+$config{dbname}			= $dbname;
+$config{allow_fetch}		= $allow_fetch;
+$config{master}			= $master;
+$config{kmdb_class}		= $kmdb_class;
+$config{xrealm_bootstrap}	= \%xrealm_bootstrap;
+$config{win_xrealm_bootstrap}	= \%win_xrealm_bootstrap;
+$config{prestash_xrealm}	= \%prestash_xrealm;
+$config{preforked}		= $opts{P};
 
-sub mk_kmdb {
-	my %args = @_;
-	my @acls = ();
-
-	my $acl     = Kharon::Entitlement::Stack->new();
-
-	my $objacl  = Kharon::Entitlement::Object->new();
-	push(@acls, $objacl);
-
-	my $sqlacl  = Kharon::Entitlement::SimpleSQL->new(
-	    table => 'krb5_admin_simple_acls');
-	$sqlacl->set_del_check(sub { $acl->check($_[0]); });
-	push(@acls, $sqlacl);
-
-	# When the ACL file is not present, don't bother with file ACL checks
-	#
-	if (-f $acl_file) {
-		my $subacls = Kharon::Entitlement::Equals->new();
-		my $aclfile = Kharon::Entitlement::ACLFile->new(
-					filename => $acl_file,
-					subobject => $subacls);
-		push(@acls, $aclfile);
-	}
-
-	$acl->set_subobjects(@acls);
-	$acl->set_creds($args{CREDS});
-	$pes->set_acl($acl);
-
-	my %kmdb_args = (
-		acl			=> $acl,
-		sacls			=> $sqlacl,
-		client			=> $args{CREDS},
-		addr			=> $args{REMOTE_IP},
-		allow_fetch		=> $allow_fetch,
-		xrealm_bootstrap	=> \%xrealm_bootstrap,
-		win_xrealm_bootstrap	=> \%win_xrealm_bootstrap,
-		prestash_xrealm		=> \%prestash_xrealm,
-		dbname			=> $dbname,
-	);
-	syslog('info', '%s connected from %s', $args{CREDS},
-	    $args{REMOTE_IP});
-
-	my $ret = $kmdb_class->new(%kmdb_args);
-
-	$objacl->set_subobject($ret);
-	$sqlacl->set_dbh($ret->get_dbh());
-
-	return $ret;
-}
-
-my %args;
-$args{master} = $master		if defined($master);
-
-if ($opts{P}) {
-	$args{object}	= \&mk_kmdb;
-	$pes->RunKncAcceptor(%args);
-} else {
-	$args{object}	= &mk_kmdb(CREDS => $ENV{KNC_CREDS},
-	    REMOTE_IP => $ENV{KNC_REMOTE_IP});
-	$pes->RunObj(%args);
-}
+Krb5Admin::Daemon::run(\%config) or usage();
