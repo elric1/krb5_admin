@@ -63,42 +63,9 @@ sub testObjC {
 
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
-my $creds  = 'host/host1.test.realm@TEST.REALM';
+my $creds  = 'admin_user@TEST.REALM';
 my $sprinc = 'service/host1.test.realm@TEST.REALM';
 my $uprinc = 'user@TEST.REALM';
-
-my $kmdb;
-
-my $sqlacl  = Kharon::Entitlement::SimpleSQL->new(
-    table => 'krb5_admin_simple_acls');
-
-$kmdb = Krb5Admin::KerberosDB->new(
-    local	=> 1,
-    client	=> $creds,
-    dbname	=> 'db:t/test-hdb',
-    sqlite	=> 't/sqlite.db',
-    sacls	=> $sqlacl,
-);
-
-$sqlacl->set_dbh($kmdb->get_dbh());
-
-#
-# XXXrcd: This is destructive!
-
-$kmdb->drop_db();
-$kmdb->init_db();
-$kmdb->sacls_add('bind_host', $creds);
-$kmdb->sacls_add('change', $creds);
-$kmdb->sacls_add('change_passwd', $creds);
-$kmdb->sacls_add('create', $creds);
-$kmdb->sacls_add('create_bootstrap_id', $creds);
-$kmdb->sacls_add('create_host', $creds);
-$kmdb->sacls_add('create_user', $creds);
-$kmdb->sacls_add('disable', $creds);
-$kmdb->sacls_add('enable', $creds);
-$kmdb->sacls_add('fetch', $creds);
-$kmdb->sacls_add('generate_ecdh_key1', $creds);
-$kmdb->sacls_add('remove', $creds);
 
 my $p = "Aa1thisisapasswd!!!!";
 
@@ -110,7 +77,7 @@ my $p = "Aa1thisisapasswd!!!!";
 # anyway.  We create a new Krb5Admin::ForkClient because we want to test
 # the ACLs and the protocol.
 
-$kmdb = Krb5Admin::ForkClient->new({
+my $kmdb = Krb5Admin::ForkClient->new({
     dbname	=> 'db:t/test-hdb',
     sqlite	=> 't/sqlite.db',
     allow_fetch => 1,

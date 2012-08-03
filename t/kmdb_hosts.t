@@ -38,12 +38,6 @@ $kmdb = Krb5Admin::KerberosDB->new(
     sqlite	=> 't/sqlite.db',
 );
 
-#
-# XXXrcd: This is destructive!
-
-$kmdb->drop_db();
-$kmdb->init_db();
-
 my $proid1 = 'proid1@TEST.REALM';
 my $proid2 = 'proid2@TEST.REALM';
 my $proid3 = 'proid3@TEST.REALM';
