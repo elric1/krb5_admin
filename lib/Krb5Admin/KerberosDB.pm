@@ -219,6 +219,10 @@ sub acl_keytab {
 	# that the request is coming from a properly mapped host.
 	# Otherwise, we ignore it.
 
+	if (!defined($self->{hostname})) {
+		$self->{hostname} = reverse_the($self->{addr});
+	}
+
 	my $host_ok = defined($self->{hostname}) ?
 	    grep { $_ eq $pprinc[2] } host_list($self->{hostname}) : 1;
 
@@ -312,7 +316,7 @@ sub new {
 	$self->{local}	  = $args{local};
 	$self->{client}	  = $args{client};
 	$self->{addr}	  = $args{addr};
-	$self->{hostname} = reverse_the($args{addr});
+	$self->{hostname} = undef;
 	$self->{ctx}	  = $ctx;
 	$self->{hndl}	  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, $dbname);
 	$self->{acl}	  = $args{acl};
