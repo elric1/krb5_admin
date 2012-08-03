@@ -8,22 +8,28 @@ use Krb5Admin::C;
 use strict;
 use warnings;
 
-our @KHARON_RW_SC_EXPORT = qw/	bind_host
+our @KHARON_RW_SC_EXPORT = qw/	add_acl
+				bind_host
 				bootstrap_host_key
 				change
 				change_passwd
 				create
+				create_appid
 				create_bootstrap_id
 				create_host
 				create_user
+				del_acl
 				disable
 				enable
 				generate_ecdh_key1
+				insert_aclgroup
 				insert_hostmap
 				insert_ticket
 				master
+				modify
 				modify_host
 				remove 
+				remove_aclgroup
 				remove_host
 				remove_hostmap
 				remove_ticket
@@ -32,8 +38,11 @@ our @KHARON_RW_SC_EXPORT = qw/	bind_host
 				sacls_del
 			     /;
 
-our @KHARON_RO_SC_EXPORT = qw/	query
+our @KHARON_RO_SC_EXPORT = qw/	is_appid_owner
 				fetch_tickets
+				query
+				query_acl
+				query_aclgroup
 				query_host
 				query_hostmap
 				query_ticket

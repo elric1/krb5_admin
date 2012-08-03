@@ -15,7 +15,7 @@ use Kharon::Entitlement::SimpleSQL;
 use Krb5Admin::Daemon;
 use Krb5Admin::KerberosDB;
 
-use POSIX;
+use POSIX qw/dup2/;
 use Sys::Hostname;
 
 use strict;

@@ -37,6 +37,7 @@ use constant {
 	SUPPORT_DESMD5		=> 0x00004000,
 	NEW_PRINC		=> 0x00008000,
 	SQL_DB_FILE		=> '/var/kerberos/krb5_admin.db',
+	GROUP_RECURSION		=> 16,
 	MAX_TIX_PER_HOST	=> 1024,
 };
 
@@ -286,16 +287,23 @@ sub new {
 
 	my $sqlite   = SQL_DB_FILE;
 	my $dbname;
+	my $dbh;
 
 	$dbname   = $args{dbname}	if defined($args{dbname});
+	$dbh      = $args{dbh}		if defined($args{dbh});
 	$sqlite   = $args{sqlite}	if defined($args{sqlite});
 
 	# initialize our database handle
-	my $dbh = DBI->connect("dbi:SQLite:$sqlite", "", "",
-	    {RaiseError => 1, PrintError => 0, AutoCommit => 1});
-	die "Could not open database " . DBI::errstr if !defined($dbh);
-	$dbh->do("PRAGMA foreign_keys = ON");
-	$dbh->do("PRAGMA journal_mode = WAL");
+	if (!defined($dbh)) {
+		$dbh = DBI->connect("dbi:SQLite:$sqlite", "", "",
+		    {RaiseError => 1, PrintError => 0, AutoCommit => 1});
+		die "Could not open database " . DBI::errstr if !defined($dbh);
+		$dbh->do("PRAGMA foreign_keys = ON");
+		$dbh->do("PRAGMA journal_mode = WAL");
+		$self->{my_dbh} = 1;
+	}
+	$dbh->{PrintError} = 0;
+	$dbh->{RaiseError} = 1;
 	$dbh->{AutoCommit} = 0;
 
 	my $ctx = $self->{ctx};
@@ -311,6 +319,7 @@ sub new {
 	$self->{sacls}	  = $args{sacls};
 	$self->{dbh}	  = $dbh;
 
+	$self->{my_dbh} = 0			if !defined($self->{my_dbh});
 	$self->{local}	= 0			if !defined($self->{local});
 	$self->{client}	= "LOCAL_MODIFICATION"	if          $self->{local};
 	$self->{debug}	= 0			if !defined($self->{debug});
@@ -331,7 +340,7 @@ sub new {
 sub DESTROY {
 	my ($self) = @_;
 
-	if (defined($self->{dbh})) {
+	if ($self->{my_dbh} && defined($self->{dbh})) {
 		$self->{dbh}->disconnect();
 		undef($self->{dbh});
 	}
@@ -344,6 +353,64 @@ sub get_dbh {
 	return $self->{dbh};
 }
 
+#
+# Define the SQL-based tables:
+
+our %field_desc = (
+	principals	=> {
+		pkey		=> [qw/principal/],
+		uniq		=> [qw/principal/],
+		fields		=> [qw/principal type/],
+		lists		=> [ [qw/prestashed principal host/] ],
+	},
+	appids		=> {
+		pkey		=> [qw/appid/],
+		uniq		=> [qw/appid/],
+		fields		=> [qw/appid desc/],
+		lists		=> [ [qw/appid_acls appid acl owner/],
+				     [qw/appid_cstraints appid cstraint/] ],
+		wontgrow	=> 0,
+	},
+	appid_acls	=> {
+                pkey            => [qw/appid acl/],
+                uniq            => [],
+                fields          => [qw/appid acl/],
+                wontgrow        => 1,
+		fkey		=> [[qw/acl acls name/]],
+	},
+	appid_cstraints => {
+		pkey		=> [qw/appid cstraint/],
+		uniq		=> [],
+		fields		=> [qw/appid cstraint/],
+		wontgrow	=> 1,
+	},
+	acls		=> {
+		pkey		=> [qw/name/],
+		uniq		=> [qw/name/],
+		fields		=> [qw/name type/],
+		wontgrow	=> 0,
+	},
+	aclgroups	=> {
+		pkey		=> undef,
+		uniq		=> [],
+		fields		=> [qw/aclgroup acl/],
+		wontgrow	=> 1,
+	},
+	hosts		=> {
+		pkey		=> 'name',
+		uniq		=> [qw/name ip_addr bootbinding/],
+		fields		=> [qw/name realm ip_addr bootbinding/],
+		lists		=> [[qw/host_labels host label/]],
+		wontgrow	=> 0,
+	},
+	hostmap		=> {
+		pkey		=> undef,
+		uniq		=> [],
+		fields		=> [qw/logical physical/],
+		wontgrow	=> 1,
+	},
+);
+
 sub init_db {
 	my ($self) = @_;
 	my $dbh = $self->{dbh};
@@ -354,6 +421,55 @@ sub init_db {
 	$sacls->init_db()	if defined($sacls);
 
 	$dbh->{AutoCommit} = 1;
+
+	$dbh->do(qq{
+		CREATE TABLE appids (
+			appid		VARCHAR PRIMARY KEY,
+			desc		VARCHAR
+		)
+	});
+
+	$dbh->do(qq{
+		CREATE TABLE appid_acls (
+			appid		VARCHAR NOT NULL,
+			acl		VARCHAR NOT NULL,
+
+			PRIMARY KEY (appid, acl)
+			FOREIGN KEY (appid) REFERENCES appids(appid)
+				ON DELETE CASCADE
+			FOREIGN KEY (acl)   REFERENCES acls(name)
+		)
+	});
+
+	$dbh->do(qq{
+		CREATE TABLE appid_cstraints (
+			appid		VARCHAR NOT NULL,
+			cstraint	VARCHAR NOT NULL,
+
+			PRIMARY KEY (appid, cstraint)
+			FOREIGN KEY (appid) REFERENCES appids(appid)
+		)
+	});
+
+	$dbh->do(qq{
+		CREATE TABLE acls (
+			name		VARCHAR NOT NULL,
+			type		VARCHAR NOT NULL,
+
+			PRIMARY KEY (name)
+		)
+	});
+
+	$dbh->do(qq{
+		CREATE TABLE aclgroups (
+			aclgroup	VARCHAR NOT NULL,
+			acl		VARCHAR NOT NULL,
+
+			PRIMARY KEY (aclgroup, acl)
+			FOREIGN KEY (aclgroup) REFERENCES acls(name)
+			FOREIGN KEY (acl)      REFERENCES acls(name)
+		)
+	});
 
 	#
 	# XXXrcd: the hosts structure should likely point to a list of
@@ -414,6 +530,11 @@ sub drop_db {
 	$sacls->drop_db()	if defined($sacls);
 
 	$dbh->{AutoCommit} = 1;
+	$dbh->do('DROP TABLE IF EXISTS aclgroups');
+	$dbh->do('DROP TABLE IF EXISTS appid_cstraints');
+	$dbh->do('DROP TABLE IF EXISTS appid_acls');
+	$dbh->do('DROP TABLE IF EXISTS acls');
+	$dbh->do('DROP TABLE IF EXISTS appids');
 	$dbh->do('DROP TABLE IF EXISTS prestashed');
 	$dbh->do('DROP TABLE IF EXISTS hostmap');
 	$dbh->do('DROP TABLE IF EXISTS host_labels');
@@ -529,6 +650,45 @@ sub internal_create {
 	}
 
 	syslog('info', "%s", $self->{client} . " created $name");
+	return undef;
+}
+
+#
+# XXXrcd: this needs to be fixed...
+
+sub create_appid {
+	my ($self, $appid, %args) = @_;
+	my $dbh = $self->{dbh};
+
+	require_scalar("insert <appid>", 1, $appid);
+
+	if (defined(my $vr = $self->{realms})) {
+		my ($user, $realm) = ($appid =~ m{^(.+)\@(.+)$});
+		if (!defined($realm)) {
+			die [503, q{appid must be of the form <user>@<REALM>}];
+		}
+		if (!grep($_ eq $realm, @$vr)) {
+			die [503, q{appid realm invalid, should be one of: } .
+			    join(", ", @$vr)];
+		}
+	}
+
+	if (!$self->{local} && !exists($args{owner})) {
+		$args{owner} = [$self->{client}];
+	}
+
+	my $stmt = "INSERT INTO appids(appid) VALUES (?)";
+
+	sql_command($dbh, $stmt, $appid);
+
+	generic_modify($dbh, \%field_desc, 'appids', $appid, %args);
+
+	$dbh->commit();
+
+	$self->create($appid);
+	$self->internal_modify($appid,
+	    {attributes => [qw/+requires_preauth -allow_svr/]});
+
 	return undef;
 }
 
@@ -911,14 +1071,39 @@ sub reset_passwd {
 }
 
 sub modify {
-	my ($self, $name, $mods) = @_;
+	my ($self, $name, %mods) = @_;
+	my $dbh = $self->{dbh};
 
-	require_scalar("modify <princ> {mods}", 1, $name);
-	require_hashref("modify <princ> {mods}", 2, $mods);
-	die [501, "Function not implemented"];
+	require_scalar("modify <princ> %mods", 1, $name);
+	require_hashref("modify <princ> %mods", 2, \%mods);
 
-	$self->internal_modify($name, $mods);
+	generic_modify($dbh, \%field_desc, 'appids', $name, %mods);
+
+# XXXrcd: FIX THIS TEST!
+#	eval {
+#		$self->check_acl('modify', $appid);
+#	};
+#	if ($@) {
+#		$dbh->rollback();
+#		die [503, "You cannot relinquish permissions."];
+#	}
+
+	eval {
+		$self->internal_modify($name, \%mods);
+	};
+	if ($@) {
+		$dbh->rollback();
+		die [503, "You cannot relinquish permissions."];
+	}
+
+        $dbh->commit();
+	return undef;
 }
+
+#
+# internal modify is a routine which only modifies the krb5 principal in
+# the underlying Kerberos DB.  It can be called from other routines that
+# are only interested in modifying the Kerberos attributes.
 
 sub internal_modify {
 	my ($self, $name, $mods) = @_;
@@ -977,6 +1162,7 @@ sub query {
 	my ($self, $name) = @_;
 	my $ctx  = $self->{ctx};
 	my $hndl = $self->{hndl};
+	my $dbh  = $self->{dbh};
 
 	require_scalar("query <princ>", 1, $name);
 	my $ret = Krb5Admin::C::krb5_query_princ($ctx, $hndl, $name);
@@ -997,6 +1183,15 @@ sub query {
 	$ret->{keys} = [ map {
 		{ kvno => $_->{kvno}, enctype => $_->{enctype} }
 	} @tmp ];
+
+	my $appid = generic_query($dbh, \%field_desc, 'appids', ['appid'],
+	    appid => $name);
+
+	if (defined($appid)) {
+		for my $k (keys %$appid) {
+			$ret->{$k} = $appid->{$k};
+		}
+	}
 
 	$ret;
 }
@@ -1040,11 +1235,68 @@ sub remove {
 	my ($self, $name) = @_;
 	my $ctx  = $self->{ctx};
 	my $hndl = $self->{hndl};
+	my $dbh  = $self->{dbh};
 
 	require_scalar("remove <princ>", 1, $name);
+
+	#
+	# First, we remove any associated appid record for the principal.
+
+	# XXX: Remove should first drop any associated ACLs,
+	# so that this does not have to be done manually to avoid
+	# foreign-key constraint violations.
+
+	my $stmt = "DELETE FROM appids WHERE appid = ?";
+
+	sql_command($dbh, $stmt, $name);
+	$dbh->commit();
+
+	#
+	# And then we nuke the princ:
+
 	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $name);
 	return undef;
 }
+
+sub KHARON_ACL_is_appid_owner { return 1; }
+
+sub is_appid_owner {
+	my ($self, $principal, $appid) = @_;
+	my $dbh = $self->{dbh};
+ 
+	#
+	# We implement here a single SQL statement that will deal
+	# with recursive groups up to N levels.	 After this, we give
+	# up...	 XXXrcd: should we deal with more recursion than this
+	# or simply define N as being a hard limit?
+
+	my @joins = ('LEFT JOIN acls ON appid_acls.acl = acls.name');
+	my @where = ('acls.name = ?'); 
+	my @bindv = ($principal);
+
+	for (my $i=0; $i < GROUP_RECURSION; $i++) {
+		my $join = "LEFT JOIN aclgroups AS aclgroups$i ";
+		if ($i) {
+			$join .= "ON aclgroups$i.aclgroup = aclgroups" .
+			    ($i - 1) . ".acl";
+		} else {
+			$join .= "ON aclgroups$i.aclgroup = acls.name";
+		}
+
+		push(@joins, $join);
+		push(@where, "aclgroups$i.acl = ?");
+		push(@bindv, $principal);
+	} 
+
+	my $stmt = q{SELECT COUNT(appid_acls.appid) FROM appid_acls } .
+	    join(' ', @joins) . ' WHERE appid_acls.appid = ? AND (' .
+	    join(' OR ', @where) . ")";
+
+	my $sth = sql_command($dbh, $stmt, $appid, @bindv);
+
+	return $sth->fetch()->[0] ? 1 : 0;
+}
+
 
 #
 # Export the Kharon::Entitlement::SimpleSQL interface:
@@ -1066,25 +1318,6 @@ sub sacls_add		{ my $self = shift(@_); $self->{sacls}->add(@_) }
 sub sacls_del		{ my $self = shift(@_); $self->{sacls}->del(@_) }
 sub sacls_query		{ my $self = shift(@_); $self->{sacls}->query(@_) }
 sub sacls_init_db	{ my $self = shift(@_); $self->{sacls}->init_db(@_) }
-
-#
-# Define the SQL-based host and prestashed ticket interfaces:
-
-our %field_desc = (
-	hosts		=> {
-		pkey		=> 'name',
-		uniq		=> [qw/name ip_addr bootbinding/],
-		fields		=> [qw/name realm ip_addr bootbinding/],
-		lists		=> [[qw/host_labels host label/]],
-		wontgrow	=> 0,
-	},
-	hostmap		=> {
-		pkey		=> undef,
-		uniq		=> [],
-		fields		=> [qw/logical physical/],
-		wontgrow	=> 1,
-	},
-);
 
 sub create_host {
 	my ($self, $host, %args) = @_;
@@ -1553,6 +1786,93 @@ sub remove_ticket {
 	$dbh->commit();
 
 	return undef;
+}
+
+sub add_acl {
+	my ($self, $acl, $type) = @_;
+	my $dbh = $self->{dbh};
+
+	require_scalar("add_acl <acl> <type>", 1, $acl);
+	require_scalar("add_acl <acl> <type>", 2, $type);
+
+	my $stmt = "INSERT INTO acls(name, type) VALUES (?, ?)";
+
+	sql_command($dbh, $stmt, $acl, $type);
+	$dbh->commit();
+	return undef;
+}
+
+sub del_acl {
+	my ($self, $acl) = @_;
+	my $dbh = $self->{dbh};
+
+	require_scalar("remove_acl <acl>", 1, $acl);
+
+	my $stmt = "DELETE FROM acls WHERE name = ?";
+
+	sql_command($dbh, $stmt, $acl);
+	$dbh->commit();
+	return undef;
+}
+
+sub KHARON_ACL_query_acl { return 1; }
+
+sub query_acl {
+	my ($self, %query) = @_;
+	my $dbh = $self->{dbh};
+
+	return generic_query($dbh, \%field_desc, 'acls', [keys %query], %query);
+}
+
+sub insert_aclgroup {
+	my ($self, @acls) = @_;
+	my $dbh = $self->{dbh};
+
+	require_scalar("insert_hostmap <aclgroup> <acl>", 1, $acls[0]);
+	require_scalar("insert_hostmap <aclgroup> <acl>", 2, $acls[1]);
+
+	my $acls = $self->query_acl(name => $acls[0]);
+
+	if ($acls->{type} ne 'group') {
+		die [503, "LHS of an aclgroup must be of type group"];
+	}
+
+	my $stmt = "INSERT INTO aclgroups (aclgroup, acl) VALUES (?, ?)";
+
+	sql_command($dbh, $stmt, @acls);
+
+	$dbh->commit();
+
+	return undef;
+}
+
+sub remove_aclgroup {
+	my ($self, @acls) = @_;
+	my $dbh = $self->{dbh};
+
+	require_scalar("remove_aclgroup <aclgroup> <acl>", 1, $acls[0]);
+	require_scalar("remove_aclgroup <aclgroup> <acl>", 2, $acls[1]);
+
+	my $stmt = "DELETE FROM aclgroups WHERE aclgroup = ? AND acl = ?";
+
+	sql_command($dbh, $stmt, @acls);
+
+	$dbh->commit();
+
+	return;
+}
+
+sub KHARON_ACL_query_aclgroup { return 1; }
+
+sub query_aclgroup {
+	my ($self, $acl) = @_;
+	my $dbh = $self->{dbh};
+	my %args;
+
+	$args{aclgroup} = $acl	if defined($acl);
+
+	return generic_query($dbh, \%field_desc, 'aclgroups', [keys %args],
+	    %args);
 }
 
 1;
