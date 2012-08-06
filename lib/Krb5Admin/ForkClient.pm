@@ -11,6 +11,7 @@ use Kharon::Engine::Client::Fork;
 use Kharon::Entitlement::Object;
 use Kharon::Entitlement::Stack;
 use Kharon::Entitlement::SimpleSQL;
+use Kharon::Log::Null;
 
 use Krb5Admin::Daemon;
 use Krb5Admin::KerberosDB;
@@ -28,6 +29,14 @@ sub run_daemon {
 	dup2($fh->fileno(), 1);
 
 	$config->{master} = hostname();
+
+	#
+	# We default the logger to not log as this module is generally
+	# used for testing.
+
+	if (!defined($config->{logger})) {
+		$config->{logger} = Kharon::Log::Null->new();
+	}
 
 	Krb5Admin::Daemon::run($config, %args);
 	exit(0);
