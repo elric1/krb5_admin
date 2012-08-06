@@ -16,7 +16,7 @@ use Kharon::Log::Null;
 use Krb5Admin::Daemon;
 use Krb5Admin::KerberosDB;
 
-use POSIX qw/dup2/;
+use POSIX qw/dup2 _exit/;
 use Sys::Hostname;
 
 use strict;
@@ -38,8 +38,8 @@ sub run_daemon {
 		$config->{logger} = Kharon::Log::Null->new();
 	}
 
-	Krb5Admin::Daemon::run($config, %args);
-	exit(0);
+	eval { Krb5Admin::Daemon::run($config, %args); };
+	_exit($@ ? 1 : 0);
 }
 
 sub new {
