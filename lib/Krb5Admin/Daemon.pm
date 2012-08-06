@@ -63,8 +63,12 @@ sub mk_kmdb {
 		sqlite			=> $config->{sqlite},
 		dbname			=> $config->{dbname},
 	);
-#	syslog('info', '%s connected from %s', $args{CREDS},
-#	    $args{REMOTE_IP});
+
+	if (!defined($config->{preforked}) || !$config->{preforked} &&
+	    defined($args{CREDS}) && defined($args{REMOTE_IP})) {
+		syslog('info', '%s connected from %s', $args{CREDS},
+		    $args{REMOTE_IP});
+	}
 
 	$kmdb_class = $config->{kmdb_class} if defined($config->{kmdb_class});
 	my $ret = $kmdb_class->new(%kmdb_args);
