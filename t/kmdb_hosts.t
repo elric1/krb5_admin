@@ -2,7 +2,7 @@
 
 use Test::More tests => 36;
 
-use Krb5Admin::KerberosDB;
+use Krb5Admin::ForkClient;
 
 use Data::Dumper;
 
@@ -30,18 +30,19 @@ $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
 my $kmdb;
 
-$kmdb = Krb5Admin::KerberosDB->new(
-    local	=> 1,
-    client	=> 'host/host1.test.realm@TEST.REALM',
+$kmdb = Krb5Admin::ForkClient->new({
     dbname	=> 'db:t/test-hdb',
-    acl_file	=> 't/krb5_admin.acl',
     sqlite	=> 't/sqlite.db',
-);
+}, CREDS => 'admin_user@TEST.REALM');
 
 my $proid1 = 'proid1@TEST.REALM';
 my $proid2 = 'proid2@TEST.REALM';
 my $proid3 = 'proid3@TEST.REALM';
 my $proid4 = 'proid4@TEST.REALM';
+
+for my $p ($proid1, $proid2, $proid3, $proid4) {
+	$kmdb->create_appid($p);
+}
 
 #
 # First, we create three hosts.
@@ -195,6 +196,8 @@ testObjC("Query logical.test.realm's tickets", $kmdb,
 		      ['logical.test.realm','baz.test.realm']]}],
 	"query_ticket", host => 'logical.test.realm', verbose => 1);
 
-
+for my $p ($proid1, $proid2, $proid3, $proid4) {
+	$kmdb->remove($p);
+}
 
 exit(0);

@@ -57,6 +57,8 @@ $kmdb->sacls_add('disable', $creds);
 $kmdb->sacls_add('enable', $creds);
 $kmdb->sacls_add('fetch', $creds);
 $kmdb->sacls_add('insert_aclgroup', $creds);
+$kmdb->sacls_add('insert_hostmap', $creds);
+$kmdb->sacls_add('insert_ticket', $creds);
 $kmdb->sacls_add('modify', $creds);
 $kmdb->sacls_add('remove', $creds);
 $kmdb->sacls_add('remove_aclgroup', $creds);

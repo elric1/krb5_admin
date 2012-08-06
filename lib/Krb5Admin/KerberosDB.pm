@@ -1069,6 +1069,24 @@ sub reset_passwd {
 	return $passwd;
 }
 
+sub KHARON_ACL_modify {
+	my ($self, $verb, $name, %mods) = @_;
+
+	#
+	# This ACL supports self-service modification of ``appid''
+	# principals but only their ``appid'' bits:
+
+	my @actions = qw{desc owner add_owner del_owner
+			 cstraint add_cstraint del_cstraint};
+
+	for my $mod (keys %mods) {
+		return undef if !grep {$_ eq $mod} @actions;
+	}
+
+	return 1	if $self->is_appid_owner($name);
+	return undef;
+}
+
 sub modify {
 	my ($self, $name, %mods) = @_;
 	my $dbh = $self->{dbh};
@@ -1520,6 +1538,42 @@ sub _check_hosts {
 	}
 }
 
+sub KHARON_ACL_insert_ticket {
+	my ($self, $verb, $princ, @hosts) = @_;
+
+	my $is_owner;
+	eval {
+		my $appid;
+
+		#
+		# don't check host labels if the appid doesn't have
+		# cstraints or on ticket removal...
+
+		@hosts = ()			if $verb eq 'remove_ticket';
+		$appid = $self->query($princ)	if @hosts > 0;
+		@hosts = ()			if !defined($appid->{cstraint});
+
+		for my $h (@hosts) {
+			$h = $self->query_host($h);
+			if (!defined($h)) {
+				die "Host $h does not exist.\n";
+			}
+
+			for my $c (@{$appid->{cstraint}}) {
+				if (!grep {$c eq $_} @{$h->{label}}) {
+					die "Appid constraints not met by " .
+					    "host labels.\n";
+				}
+			}
+		}
+		$is_owner = $self->is_appid_owner($self->{client}, $princ);
+	};
+	return "Permission denied: $@" if $@;
+
+	return 1 if $is_owner eq '1';
+	return undef;
+}
+
 sub insert_ticket {
 	my ($self, $princ, @hosts) = @_;
 	my $ctx = $self->{ctx};
@@ -1751,6 +1805,8 @@ sub fetch_tickets {
 		    0);
 	} @$tix };
 }
+
+sub KHARON_ACL_remove_ticket { KHARON_ACL_insert_ticket(@_) }
 
 sub remove_ticket {
 	my ($self, $princ, @hosts) = @_;
