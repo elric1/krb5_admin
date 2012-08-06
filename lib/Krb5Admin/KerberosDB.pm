@@ -628,7 +628,6 @@ sub internal_create {
 
 	if (!exists($args{public})) {
 		Krb5Admin::C::krb5_createkey($ctx, $hndl, $name);
-		syslog('info', "%s", $self->{client} . " created $name");
 		return undef;
 	}
 
@@ -653,7 +652,6 @@ sub internal_create {
 		    $args{enctypes}, $passwd);
 	}
 
-	syslog('info', "%s", $self->{client} . " created $name");
 	return undef;
 }
 
@@ -710,7 +708,6 @@ sub create_user {
 			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR |
 					   REQUIRES_PWCHANGE,
 		}, [], $passwd);
-	syslog('info', "%s", $self->{client} . " created $name");
 	$ret;
 }
 
@@ -979,8 +976,6 @@ sub fetch {
 	my @ret;
 
 	require_scalar("fetch <princ>", 1, $name);
-
-	syslog('info', "%s", $self->{client} . " fetched $name");
 	Krb5Admin::C::krb5_getkey($ctx, $hndl, $name);
 }
 
