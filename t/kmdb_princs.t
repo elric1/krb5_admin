@@ -88,6 +88,10 @@ testObjC("create_user", $kmdb, [$p], 'create_user', $uprinc, $p);
 
 #
 # Now, we test to ensure that the princs are what we expect them to be.
+#
+# XXX: order of "list" results depends on HDB storage format, this
+# will break if Heimdal's encoding of principals or the underlying
+# database engine change.
 
 testObjC("list", $kmdb, [$uprinc, $sprinc], 'list');
 
@@ -261,8 +265,15 @@ compare_keys($result, $gend->{keys}, "ecdh after change keys are the same");
 #
 # Now we should try to create a bootstrap id:
 
+$kmdb->sacls_add('bind_host', $creds);
 my $binding;
 eval {
+	$kmdb = Krb5Admin::ForkClient->new({
+	    dbname	=> 'db:t/test-hdb',
+	    sqlite	=> 't/sqlite.db',
+	    allow_fetch	=> 1,
+	}, CREDS => q{WELLKNOWN/ANONYMOUS@TEST.REALM});
+
 	$gend = $kmdb->genkeys('create_bootstrap_id', 'bootstrap', 1, 18);
 	$binding = $kmdb->create_bootstrap_id(public => $gend->{public},
 	    enctypes => [18], realm => 'TEST.REALM');
@@ -270,6 +281,12 @@ eval {
 };
 ok(!$@, "genkeys/create_bootstrap_id did not toss an exception")
     or diag(Dumper($@));
+
+$kmdb = Krb5Admin::ForkClient->new({
+    dbname	=> 'db:t/test-hdb',
+    sqlite	=> 't/sqlite.db',
+    allow_fetch => 1,
+}, CREDS => $creds);
 
 $result = {};
 eval {
@@ -286,10 +303,9 @@ eval {
 };
 ok(!$@, "bind_host did not toss an exception") or diag(Dumper($@));
 
-undef $kmdb;
 my $hostprinc = "host/$host\@TEST.REALM";
 eval {
-	my $kmdb = Krb5Admin::ForkClient->new({
+	$kmdb = Krb5Admin::ForkClient->new({
 	    dbname	=> 'db:t/test-hdb',
 	    sqlite	=> 't/sqlite.db',
 	    allow_fetch	=> 1,
