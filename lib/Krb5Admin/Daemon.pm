@@ -86,12 +86,11 @@ sub run {
 	my $remote_ip	= $inargs{REMOTE_IP};
 	   $remote_ip	= $ENV{KNC_REMOTE_IP}	if !defined($remote_ip);
 
-	my $logger = $config->{logger};
-	$logger = Krb5Admin::Log->new()		if !defined($logger);
+	$config->{logger} //= Krb5Admin::Log->new();
 
 	my $ahr = Kharon::Protocol::ArrayHash->new(banner => {version=>'2.0'});
 	my $pes = Kharon::Engine::Server->new(protocols => [$ahr],
-	    logger => $logger);
+	    logger => $config->{logger});
 	$pes->Connect();
 
 	my %args;
