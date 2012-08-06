@@ -1368,11 +1368,11 @@ sub modify_host {
 sub KHARON_ACL_query_host { return 1; }
 
 sub query_host {
-	my ($self, %query) = @_;
+	my ($self, $name) = @_;
 	my $dbh = $self->{dbh};
 
-	return generic_query($dbh, \%field_desc, 'hosts', [keys %query],
-	    %query);
+	return generic_query($dbh, \%field_desc, 'hosts', ['name'],
+	    name => $name);
 }
 
 sub bind_host {
@@ -1714,7 +1714,7 @@ sub KHARON_ACL_fetch_tickets {
 	# Now, we must also check to ensure that the client is
 	# in the correct realm for the host that we have in our DB.
 
-	$host = $self->query_host(name=>$host);
+	$host = $self->query_host($host);
 	return if (!defined($host) || $host->{realm} ne $realm);
 
 	# The request is authorised.
