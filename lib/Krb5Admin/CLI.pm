@@ -24,25 +24,28 @@ our %host_hmap = (
 	label		=> [],
 );
 
+our %princ_hmap = (
+        # Associated HDB attributes
+	# XXX: It would be nice if the API supported time
+	#      suffixes (1d, 2w, ...)
+	princ_expire_time	=> undef,
+	pw_expiration		=> undef,
+	max_life		=> undef,
+	max_renewable_life	=> undef,
+	attributes		=> [],
+);
+
 our %appid_hmap = (
 	desc		=> undef,
-	attributes	=> undef,
 	owner		=> [],
 	cstraint	=> [],
-        # Associated HDB attributes
-	# XXX: It would be nice if the API supported time suffixes (1d, 2w, ...)
-	princ_expire_time => undef,
-	pw_expiration	=> undef,
-	max_life	=> undef,
-	max_renewable_life => undef,
-	attributes	=> [],
 );
 
 sub KHARON_HASHIFY_COMMANDS {
 	return {
 		create_appid	=> [1, \%appid_hmap],
 		create_host	=> [1, \%host_hmap],
-		modify		=> [1, \%appid_hmap],
+		modify		=> [1, {%princ_hmap, %appid_hmap}],
 		modify_host	=> [1, \%host_hmap],
 	};
 }
