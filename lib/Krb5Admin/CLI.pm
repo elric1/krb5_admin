@@ -139,6 +139,50 @@ sub FORMAT_query {
 	return 0;
 }
 
+sub FORMAT_is_appid_owner {
+	my ($self, $cmd, $args, @rets) = @_;
+
+	return 1	if $rets[0] == 0;
+	return 0;
+}
+
+sub FORMAT_query_acl {
+	my ($self, $cmd, $inargs, $ret) = @_;
+
+	if (!defined($ret)) {
+		$self->printerr("Not found.");
+		return 1;
+	}
+
+	my %args = @$inargs;
+
+	if (exists($args{name}) && exists($args{type})) {
+		if ($ret == 0) {
+			$self->print("Not found.");
+			return 1;
+		}
+		return 0;
+	}
+
+	if (exists($args{name})) {
+		$self->print($ret->{type} . "\n");
+		return 0;
+	}
+
+	if (exists($args{type})) {
+		for my $acl (keys %$ret) {
+			$self->print("$acl\n");
+		}
+		return 0;
+	}
+
+	for my $acl (keys %$ret) {
+		$self->qout($ret->{$acl}->{type}, $acl);
+	}
+
+	return 0;
+}
+
 1;
 
 __END__
