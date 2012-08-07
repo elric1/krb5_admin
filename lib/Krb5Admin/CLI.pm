@@ -24,10 +24,25 @@ our %host_hmap = (
 	label		=> [],
 );
 
+our %appid_hmap = (
+	desc		=> undef,
+	owner		=> [],
+	cstraint	=> [],
+);
+
 sub KHARON_HASHIFY_COMMANDS {
 	return {
-		modify_host	=> [1, \%host_hmap],
+		create_appid	=> [1, \%appid_hmap],
 		create_host	=> [1, \%host_hmap],
+		modify		=> [1, \%appid_hmap],
+		modify_host	=> [1, \%host_hmap],
+	};
+}
+
+sub KHARON_COMMAND_ALIASES {
+	return {
+		is_owner	=> 'is_appid_owner',
+		is_pwner	=> 'is_appid_owner',
 	};
 }
 
@@ -47,6 +62,7 @@ Commands that operate on principals:
 
 Commands that operate on users:
 
+	create_appid user	creates a new non-human user
 	create_user user	creates a new user account
 	desdeco user		upgrades the user to the strong_human policy
 
@@ -110,6 +126,15 @@ sub FORMAT_query {
 	# Now print it all out:
 
 	$self->qout("Principal:", $ret->{principal});
+	if (defined($ret->{owner})) {
+		$self->qout("Owner:", join(',', @{$ret->{owner}}));
+	}
+	if (defined($ret->{desc})) {
+		$self->qout("Desc:", $ret->{desc});
+	}
+	if (defined($ret->{cstraint})) {
+		$self->qout("Cstraint:", join(', ', @{$ret->{cstraint}}));
+	}
 	$self->qout("Policy:", $ret->{policy});
 	$self->qout("Last modified by:", $ret->{mod_name});
 	$self->qout("Last modified on:", $self->fmtdate($ret->{mod_date}));
@@ -178,6 +203,26 @@ sub FORMAT_query_acl {
 
 	for my $acl (keys %$ret) {
 		$self->qout($ret->{$acl}->{type}, $acl);
+	}
+
+	return 0;
+}
+
+sub FORMAT_query_aclgroup {
+	my ($self, $cmd, $args, $ret) = @_;
+	my $out = $self->{out};
+
+	if (@$args > 0) {
+		for my $memb (@$ret) {
+			print $out "$memb\n";
+		}
+		return 0;
+	}
+
+	for my $group (keys %$ret) {
+		for my $memb (@{$ret->{$group}}) {
+			$self->qout($group, $memb);
+		}
 	}
 
 	return 0;
