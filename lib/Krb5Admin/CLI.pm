@@ -26,8 +26,16 @@ our %host_hmap = (
 
 our %appid_hmap = (
 	desc		=> undef,
+	attributes	=> undef,
 	owner		=> [],
 	cstraint	=> [],
+        # Associated HDB attributes
+	# XXX: It would be nice if the API supported time suffixes (1d, 2w, ...)
+	princ_expire_time => undef,
+	pw_expiration	=> undef,
+	max_life	=> undef,
+	max_renewable_life => undef,
+	attributes	=> [],
 );
 
 sub KHARON_HASHIFY_COMMANDS {
