@@ -33,7 +33,16 @@ sub mk_kmdb {
 
 	my $sqlacl  = Kharon::Entitlement::SimpleSQL->new(
 	    table => 'krb5_admin_simple_acls');
-	$sqlacl->set_del_check(sub { $acl->check($_[0]); });
+	$sqlacl->set_del_check(sub {
+		my $ret;
+
+		eval { $ret = $acl->check($_[0]); };
+		return 1 if defined($ret) && $ret eq '1';
+		eval { $ret = $acl->check('sacls_add'); };
+		return 1 if defined($ret) && $ret eq '1';
+		eval { $ret = $acl->check('sacls_del'); };
+		return 1 if defined($ret) && $ret eq '1';
+	});
 	push(@acls, $sqlacl);
 
 	#
