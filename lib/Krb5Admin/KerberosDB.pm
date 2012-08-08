@@ -452,6 +452,7 @@ sub init_db {
 
 			PRIMARY KEY (appid, cstraint)
 			FOREIGN KEY (appid) REFERENCES appids(appid)
+				ON DELETE CASCADE
 		)
 	});
 
@@ -495,6 +496,7 @@ sub init_db {
 
 			PRIMARY KEY (host, label)
 			FOREIGN KEY (host) REFERENCES hosts(name)
+				ON DELETE CASCADE
 		)
 	});
 
