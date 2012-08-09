@@ -1,6 +1,7 @@
 #!/usr/pkg/bin/perl
 #
 
+use File::Temp qw/ :mktemp /;
 use Getopt::Std;
 
 use Krb5Admin::C;
@@ -18,6 +19,11 @@ our $ctx;
 our $expand_srvloc = 0;
 
 my $vfmt = "   %- 22.22s %- 25.25s %s\n";
+
+our $global_ccname;
+END {
+	unlink($global_ccname);
+}
 
 sub warning {
 	my ($format, @args) = @_;
@@ -92,6 +98,12 @@ sub save_tickets {
 sub fetch {
 	my ($global_kmdb, @realms) = @_;
 
+	my $orig_krb5ccname = $ENV{KRB5CCNAME};
+	my $fh;
+	($fh, $global_ccname) = mkstemp("/tmp/krb5_keytab_ccXXXXXX");
+	undef($fh);
+	$ENV{KRB5CCNAME} = "FILE:$global_ccname";
+
 	my $clnt = 'host/' .  [host_list(hostname())]->[0];
 
 	if (@realms == 0) {
@@ -110,6 +122,10 @@ sub fetch {
 			save_tickets($princstr, $tix);
 		}
 	}
+
+	unlink($global_ccname);
+	undef $global_ccname;
+	$ENV{KRB5CCNAME} = $orig_krb5ccname;
 }
 
 sub query {
