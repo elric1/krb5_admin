@@ -30,8 +30,8 @@ our %princ_hmap = (
 	#      suffixes (1d, 2w, ...)
 	princ_expire_time	=> undef,
 	pw_expiration		=> undef,
-	max_life		=> undef,
-	max_renewable_life	=> undef,
+	max_life		=> 'duration',
+	max_renewable_life	=> 'duration',
 	attributes		=> [],
 );
 
