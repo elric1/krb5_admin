@@ -164,8 +164,7 @@ Krb5Admin::Client.
 
 =item new(ARGS)
 
-Creates a new "Krb5Admin::KerberosDB" object.  ARGS is a hash which
-is simply ignored.
+Creates a new "Krb5Admin" object.  ARGS is a hash.
 
 =back
 
@@ -228,7 +227,7 @@ different principal PRINCIPAL.  Other than passing in GEND
 which must the the result of a call to $kmdb->genkeys(), it's
 usage and return are the same as $kmdb->genkeys().
 
-=item $kmdb->create(PRINCIPAL, [%ARGS])
+=item $kmdb->create(PRINCIPAL[, %ARGS])
 
 Creates a principal suitable for use as a service principal.  If
 %ARGS is empty, the keys will be selected randomly and enctypes
@@ -236,6 +235,23 @@ will be set to the defaults.  If %ARGS contains ``public''---the
 public key returned from $kmdb->genkeys(), it will be used to
 recreate the keys returned from $kmdb->genkeys.  In this case,
 $ARGS{enctype} must also be provided and is an array ref of enctypes.
+
+=item $kmdb->create_appid(PRINCIPAL[, %ARGS])
+
+Creates a principal suitable for use as a non-human user and
+populates the ancilliary appid SQL table.  An appid is a principal
+with the following additional attributes: owner, desc, and cstraints.
+owner is a set of ACLs which have rights to modify the appid.  desc
+is simply a description.  cstraints is a set of text labels all of
+which are required to be present as host labels on a host for which
+the appid will be prestashed.
+
+=item $kmdb->create_bootstrap_id([%ARGS])
+
+Creates a ``bootstrap id'', that is a principal of the form
+bootstrap/<random_string>@REALM.  The arguments are the same
+as for $kmdb->create() except the principal is not specified.
+The name of the generated principal is returned.
 
 =item $kmdb->create_user(PRINCIPAL[, PASSWD])
 
@@ -246,11 +262,21 @@ and DISALLOW_SVR.  The PASSWD argument is optional and if it is
 not specified a random password will be selected.  The password
 will in either case be returned from the method call.
 
+=item $kmdb->bootstrap_host_key(PRINCIPAL, KVNO[, %ARGS])
+
+Bootstraps the host key.  %ARGS is the same as for $kmdb->create().
+This method takes the KVNO which should be the expected kvno of
+the newly created key.
+
 =item $kmdb->list([GLOB])
 
 Lists the principals in the Kerberos DB.  If supplied, the GLOB
-will be applied before the list is returned.  The return will be
-an array reference.
+will be applied before the list is returned.
+
+=item $kmdb->listpols([GLOB])
+
+Lists the policies in the Kerberos DB.  If supplied, the GLOB
+will be applied before the list is returned.
 
 =item $kmdb->fetch(PRINCIPAL)
 
@@ -276,9 +302,60 @@ command.  The only option that is currently defined is '+needchange'
 which will cause the REQUIRES_PWCHANGE flag to be set on the
 principal upon completion.
 
-=item $kmdb->modify(PRINCIPAL, MODS)
+=item $kmdb->reset_passwd(PRINCIPAL)
 
-TDB.
+Will randomise the passwd of principal and set the +needchange flag.
+The new passwd is returned.
+
+=item $kmdb->modify(PRINCIPAL, %MODS)
+
+Will modify the principal.  The following elements of the hash are
+supported:
+
+=over 4
+
+=item princ_expire_time
+
+time in seconds of the epoch when the principal will expire.
+
+=item pw_expiration
+
+time in seconds of the epoch when the principal's passwd will expire.
+
+=item max_life
+
+time in seconds assigned to maximum ticket lifetime.
+
+=item max_renewable_life
+
+time in seconds assigned to maximum renewable ticket lifetime.
+
+=item attributes
+
+array ref containing the set of attributes to set.
+
+=back
+
+In addition, if the principal is an appid, the following elements
+are supported:
+
+=over 4
+
+=item desc
+
+description of the appid.
+
+=item owner
+
+array ref containing the set of owners.
+
+=item cstraint
+
+array ref containing the set of text labels all of which are required
+to be present as host labels on a host for which the appid will be
+prestashed.
+
+=back
 
 =item $kmdb->mquery([GLOB, ...])
 
@@ -314,5 +391,81 @@ Will set the -allow_tix flag from PRINCIPAL.
 =item $kmdb->remove(PRINCIPAL)
 
 Will remove PRINCIPAL.
+
+=item $kmdb->is_appid_owner(PRINCIPAL, APPID)
+
+Will return true if PRINCIPAL is the owner of APPID.  Both arguments
+are Kerberos principals.
+
+=item $kmdb->sacls_add
+
+TBD.
+
+=item $kmdb->sacls_del
+
+TBD.
+
+=item $kmdb->sacls_query
+
+TBD.
+
+=item $kmdb->create_host(HOST[, %ARGS])
+
+Will create a host named HOST and properties defined by %ARGS.  %ARGS
+can contain
+
+=over 4
+
+=item ip_addr
+
+=item realm
+
+=item label
+
+=back
+
+=item $kmdb->modify_host(HOST, %ARGS)
+
+Modifies HOST according to %ARGS.
+
+=item $kmdb->query_host(HOST)
+
+Returns a hashref of HOST.
+
+=item $kmdb->bind_host(HOST, BINDING)
+
+Binds HOST to BINDING.  That is, allow the Kerberos principal
+BINDING to bootstrap host keys for the host.
+
+=item $kmdb->remove_host(HOST)
+
+Removes the host.
+
+=item $kmdb->insert_hostmap(LOGICAL, PHYSICAL)
+
+Adds the host PHYSICAL to the cluster LOGICAL.
+
+=item $kmdb->query_hostmap(LOGICAL)
+
+Returns the members of the cluster LOGICAL.
+
+=item $kmdb->remove_hostmap(LOGICAL, PHYSICAL)
+
+Removes the host PHYSICAL from the cluster LOGICAL.
+
+=item $kmdb->insert_ticket(PRINCIPAL, HOST, [HOST, ...])
+
+Configure prestashed tickets for PRINCIPAL to appear on the list
+of hosts provided.
+
+=item $kmdb->query_ticket(%QUERY)
+
+=item $kmdb->fetch_tickets(REALM[, HOST])
+
+Will fetch tickets.
+
+=item $kmdb->remove_ticket(PRINCIPAL, HOST, [HOST ...])
+
+Removes prestashed tickets from the list of hosts.
 
 =back
