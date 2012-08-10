@@ -22,7 +22,7 @@ my $vfmt = "   %- 22.22s %- 25.25s %s\n";
 
 our $global_ccname;
 END {
-	unlink($global_ccname);
+	eval { unlink($global_ccname) if defined($global_ccname); };
 }
 
 sub warning {
