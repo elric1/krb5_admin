@@ -21,6 +21,7 @@ our %enctypes = (
 our %host_hmap = (
 	realm		=> undef,
 	ip_addr		=> undef,
+	bootbinding	=> undef,
 	label		=> [],
 );
 
