@@ -115,7 +115,8 @@ sub FORMAT_mquery {
 	my ($self, $cmd, $args, @rets) = @_;
 
 	for my $i (@rets) {
-		$self->FORMAT_query($i);
+		$self->FORMAT_query($cmd, $args, $i);
+		$self->print("\n");
 	}
 
 	return 0;
