@@ -74,8 +74,8 @@ sub mk_kmdb {
 	);
 
 	if (defined($args{CREDS}) && defined($args{REMOTE_IP})) {
-		$config->{logger}->log('info', '%s connected from %s',
-		    $args{CREDS}, $args{REMOTE_IP});
+		$config->{logger}->log('info', $args{CREDS} .
+		    ' connected from ' .  $args{REMOTE_IP});
 	}
 
 	$kmdb_class = $config->{kmdb_class} if defined($config->{kmdb_class});
