@@ -1085,7 +1085,7 @@ sub KHARON_ACL_modify {
 		return undef if !grep {$_ eq $mod} @actions;
 	}
 
-	return 1	if $self->is_appid_owner($name);
+	return 1	if $self->is_appid_owner($self->{client}, $name);
 	return undef;
 }
 
