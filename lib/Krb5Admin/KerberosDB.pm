@@ -1863,7 +1863,7 @@ sub del_acl {
 	my ($self, $acl) = @_;
 	my $dbh = $self->{dbh};
 
-	require_scalar("remove_acl <acl>", 1, $acl);
+	require_scalar("del_acl <acl>", 1, $acl);
 
 	my $stmt = "DELETE FROM acls WHERE name = ?";
 
