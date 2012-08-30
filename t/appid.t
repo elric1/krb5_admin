@@ -99,18 +99,18 @@ testObjC("Query ACL groups", $kmdb, [$groups], 'query_aclgroup');
 #         order that we have here.  It's an implementation detail and so
 #         these tests may eventually fail with a working implementation.
 
-testObjC("Assign ACL", $kmdb, [undef], 'modify',
+testObjC("Assign ACL: assign owner", $kmdb, [undef], 'modify',
     'appid0', owner => ['elric@IMRRYR.ORG']);
 #testObjC("Query appid0", $kmdb, [{owner=>['elric@IMRRYR.ORG'], desc=>undef,
 #    cstraint=>[]}], 'query', 'appid0');
 
-testObjC("Assign ACL", $kmdb, [undef], 'modify',
+testObjC("Assign ACL: add_owner", $kmdb, [undef], 'modify',
     'appid0', add_owner => ['yyrkoon@IMRRYR.ORG']);
 #testObjC("Query appid0", $kmdb,
 #    [{owner=>['elric@IMRRYR.ORG','yyrkoon@IMRRYR.ORG'], desc=>undef,
 #      cstraint=>[]}], 'query', 'appid0');
 
-testObjC("Assign ACL", $kmdb, [undef], 'modify',
+testObjC("Assign ACL: del_owner", $kmdb, [undef], 'modify',
     'appid0', del_owner => ['elric@IMRRYR.ORG']);
 #testObjC("Query appid0", $kmdb,
 #    [{owner=>['yyrkoon@IMRRYR.ORG'], desc=>undef, cstraint=>[]}],
