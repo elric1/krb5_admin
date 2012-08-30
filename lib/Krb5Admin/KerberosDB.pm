@@ -79,20 +79,30 @@ sub require_princ {
 	}
 }
 
-sub require_fqprinc {
+sub canonicalise_fqprinc {
 	my ($ctx, $usage, $argnum, $princ) = @_;
 	my @p;
-	my $tmp;
+	my $ret;
+
+	require_scalar($usage, $argnum, $princ);
 
 	eval {
 		@p = Krb5Admin::C::krb5_parse_name($ctx, $princ);
-		$tmp = unparse_princ(\@p);
+		$ret = unparse_princ(\@p);
 	};
 
 	if ($@) {
 		die [503, "Syntax error: arg $argnum must be a fully " .
 		    "qualified principal: $@\nusage: $usage"];
 	}
+
+	return $ret;
+}
+
+sub require_fqprinc {
+	my ($ctx, $usage, $argnum, $princ) = @_;
+
+	my $tmp = canonicalise_fqprinc(@_);
 
 	if ($tmp ne $princ) {
 		die [503, "Syntax error: arg $argnum must be a fully " .
@@ -663,8 +673,9 @@ sub internal_create {
 sub create_appid {
 	my ($self, $appid, %args) = @_;
 	my $dbh = $self->{dbh};
+	my $ctx = $self->{ctx};
 
-	require_scalar("insert <appid>", 1, $appid);
+	$appid = canonicalise_fqprinc($ctx, "insert <appid>", 1, $appid);
 
 	if (defined(my $vr = $self->{realms})) {
 		my ($user, $realm) = ($appid =~ m{^(.+)\@(.+)$});
@@ -1092,8 +1103,9 @@ sub KHARON_ACL_modify {
 sub modify {
 	my ($self, $name, %mods) = @_;
 	my $dbh = $self->{dbh};
+	my $ctx = $self->{ctx};
 
-	require_scalar("modify <princ> %mods", 1, $name);
+	$name = canonicalise_fqprinc($ctx, "modify <princ> %mods", 1, $name);
 	require_hashref("modify <princ> %mods", 2, \%mods);
 
 	generic_modify($dbh, \%field_desc, 'appids', $name, %mods);
@@ -1204,7 +1216,7 @@ sub query {
 	} @tmp ];
 
 	my $appid = generic_query($dbh, \%field_desc, 'appids', ['appid'],
-	    appid => $name);
+	    appid => $ret->{principal});
 
 	if (defined($appid)) {
 		for my $k (keys %$appid) {
@@ -1256,7 +1268,7 @@ sub remove {
 	my $hndl = $self->{hndl};
 	my $dbh  = $self->{dbh};
 
-	require_scalar("remove <princ>", 1, $name);
+	$name = canonicalise_fqprinc($ctx, "remove <princ>", 1, $name);
 
 	#
 	# First, we remove any associated appid record for the principal.
@@ -1280,8 +1292,13 @@ sub remove {
 sub KHARON_ACL_is_appid_owner { return 1; }
 
 sub is_appid_owner {
-	my ($self, $principal, $appid) = @_;
+	my ($self, $princ, $appid) = @_;
 	my $dbh = $self->{dbh};
+	my $ctx = $self->{ctx};
+
+	my $usage = "is_appid_owner <princ> <appid>";
+	$princ = canonicalise_fqprinc($ctx, $usage, 1, $princ);
+	$appid = canonicalise_fqprinc($ctx, $usage, 2, $appid);
  
 	#
 	# We implement here a single SQL statement that will deal
@@ -1291,7 +1308,7 @@ sub is_appid_owner {
 
 	my @joins = ('LEFT JOIN acls ON appid_acls.acl = acls.name');
 	my @where = ('acls.name = ?'); 
-	my @bindv = ($principal);
+	my @bindv = ($princ);
 
 	for (my $i=0; $i < GROUP_RECURSION; $i++) {
 		my $join = "LEFT JOIN aclgroups AS aclgroups$i ";
@@ -1304,7 +1321,7 @@ sub is_appid_owner {
 
 		push(@joins, $join);
 		push(@where, "aclgroups$i.acl = ?");
-		push(@bindv, $principal);
+		push(@bindv, $princ);
 	} 
 
 	my $stmt = q{SELECT COUNT(appid_acls.appid) FROM appid_acls } .
