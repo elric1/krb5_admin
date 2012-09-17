@@ -1906,8 +1906,8 @@ sub insert_aclgroup {
 	my ($self, @acls) = @_;
 	my $dbh = $self->{dbh};
 
-	require_scalar("insert_hostmap <aclgroup> <acl>", 1, $acls[0]);
-	require_scalar("insert_hostmap <aclgroup> <acl>", 2, $acls[1]);
+	require_scalar("insert_aclgroup <aclgroup> <acl>", 1, $acls[0]);
+	require_scalar("insert_aclgroup <aclgroup> <acl>", 2, $acls[1]);
 
 	my $acls = $self->query_acl(name => $acls[0]);
 
