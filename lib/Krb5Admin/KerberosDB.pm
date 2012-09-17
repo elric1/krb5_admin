@@ -15,6 +15,7 @@ use Kharon::Entitlement::ACLFile;
 use Kharon::Entitlement::Equals;
 
 use Kharon::dbutils qw/sql_command generic_query generic_modify/;
+use Kharon::utils qw/getclassvar/;
 
 use strict;
 use warnings;
@@ -342,6 +343,9 @@ sub new {
 	$self->{xrealm_bootstrap}	= $args{xrealm_bootstrap};
 	$self->{win_xrealm_bootstrap}	= $args{win_xrealm_bootstrap};
 	$self->{prestash_xrealm}	= $args{prestash_xrealm};
+
+	$self->{sacls}->set_verbs(getclassvar($self, 'KHARON_RW_SC_EXPORT'),
+	    'fetch');
 
 	if (!defined($self->{allow_fetch})) {
 		$self->{allow_fetch} = 0;
