@@ -52,6 +52,8 @@ my $i;
 for $i (keys %$acls) {
 	my $type = $acls->{$i}->{type};
 
+	next if $i eq 'admin_user@TEST.REALM';	# now create in 00prepare.t.
+
 	testObjC("Create ACL: $i", $kmdb, [undef], 'add_acl', $i, $type);
 }
 

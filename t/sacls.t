@@ -18,6 +18,10 @@ $kmdb = Krb5Admin::ForkClient->new({
 }, CREDS => 'admin_user@TEST.REALM');
 
 eval {
+	$kmdb->add_acl('foo@TEST.REALM', 'krb5');
+	$kmdb->add_acl('bar@TEST.REALM', 'krb5');
+	$kmdb->add_acl('baz@TEST.REALM', 'krb5');
+
 	$kmdb->sacls_add('create', 'foo@TEST.REALM');
 	$kmdb->sacls_add('create', 'bar@TEST.REALM');
 	$kmdb->sacls_add('create', 'baz@TEST.REALM');

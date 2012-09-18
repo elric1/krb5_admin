@@ -436,8 +436,6 @@ sub init_db {
 
 	Krb5Admin::C::init_kdb($self->{ctx}, $self->{hndl});
 
-	$sacls->init_db()	if defined($sacls);
-
 	$dbh->{AutoCommit} = 1;
 
 	$dbh->do(qq{
@@ -536,6 +534,8 @@ sub init_db {
 	});
 
 	$dbh->{AutoCommit} = 0;
+
+	$sacls->init_db([[qw/subject acls name/]])	if defined($sacls);
 
 	return undef;
 }

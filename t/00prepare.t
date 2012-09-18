@@ -42,6 +42,9 @@ $sqlacl->set_dbh($kmdb->get_dbh());
 
 $kmdb->drop_db();
 $kmdb->init_db();
+
+$kmdb->add_acl($creds, 'krb5');
+
 $kmdb->sacls_add('sacls_add', $creds);
 $kmdb->sacls_add('sacls_del', $creds);
 $kmdb->sacls_add('add_acl', $creds);
