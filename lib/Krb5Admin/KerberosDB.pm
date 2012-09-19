@@ -384,7 +384,7 @@ our %field_desc = (
 	labels		=> {
 		pkey		=> [qw/label/],
 		uniq		=> [qw/label/],
-		fields		=> [qw/label/],
+		fields		=> [qw/label desc/],
 	},
 	appids		=> {
 		pkey		=> [qw/appid/],
@@ -445,7 +445,8 @@ sub init_db {
 
 	$dbh->do(qq{
 		CREATE TABLE labels (
-			label		VARCHAR PRIMARY KEY
+			label		VARCHAR PRIMARY KEY,
+			desc		VARCHAR NOT NULL
 		)
 	});
 
@@ -1374,14 +1375,15 @@ sub sacls_query		{ my $self = shift(@_); $self->{sacls}->query(@_) }
 sub sacls_init_db	{ my $self = shift(@_); $self->{sacls}->init_db(@_) }
 
 sub add_label {
-	my ($self, $label) = @_;
+	my ($self, $label, $desc) = @_;
 	my $dbh = $self->{dbh};
 
-	require_scalar("add_label <label>", 1, $label);
+	require_scalar("add_label <label> <desc>", 1, $label);
+	require_scalar("add_label <label> <desc>", 2, $desc);
 
-	my $stmt = 'INSERT INTO labels(label) VALUES (?)';
+	my $stmt = 'INSERT INTO labels(label, desc) VALUES (?, ?)';
 
-	sql_command($dbh, $stmt, $label);
+	sql_command($dbh, $stmt, $label, $desc);
 
 	$dbh->commit();
 	return undef;
@@ -1409,8 +1411,7 @@ sub list_labels {
 	my ($self, $label) = @_;
 	my $dbh = $self->{dbh};
 
-	my $ret = generic_query($dbh, \%field_desc, 'labels', []);
-	return keys(%$ret);
+	return generic_query($dbh, \%field_desc, 'labels', []);
 }
 
 sub create_host {

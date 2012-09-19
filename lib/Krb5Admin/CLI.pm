@@ -177,6 +177,14 @@ sub FORMAT_query {
 	return 0;
 }
 
+sub FORMAT_list_labels {
+	my ($self, $cmd, $inargs, $ret) = @_;
+
+	for my $label (keys %$ret) {
+		$self->qout($label, $ret->{$label}->{desc});
+	}
+}
+
 sub FORMAT_is_appid_owner {
 	my ($self, $cmd, $args, @rets) = @_;
 
