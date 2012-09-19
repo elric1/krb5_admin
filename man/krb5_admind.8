@@ -10,8 +10,9 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl MPv
+.Op Fl D Ar kdb
+.Op Fl S Ar sqlitedb
 .Op Fl a Ar acl_file
-.Op Fl d Ar database
 .Op Fl m Ar master
 .Sh DESCRIPTION
 .Nm
@@ -29,6 +30,9 @@ Some additional limitations on the target principal may be defined.
 .Pp
 The options are as follows:
 .Bl -tag -width indentxxxxxx
+.It Fl D Ar kdb
+specifies the location of the Kerberos DB.
+Defaults to the location built into the Kerberos libriares.
 .It Fl M
 specifies that the master is the current host.
 Should be used only for setting up test servers.
@@ -39,13 +43,14 @@ will run in preforked mode, that is
 .Nm
 will expect that fd 0 will be a listening socket and will
 serially accept and process incoming connexions.
+.It Fl S Ar sqlitedb
+specifies the location of the sqlite3 adjunct database where
+.Nm
+stores its additional schemas.
 .It Fl a Ar acl_file
 specifies the location of the ACL file.
 Defaults to
 .Pa /etc/krb5/krb5_admin.acl .
-.It Fl d Ar database
-specifies the location of the MIT Kerberos DB.
-Defaults to the location built into the MIT Kerberos libriares.
 .It Fl m Ar master
 specifies the hostname of the master KDC.
 If a KDC which is not the master is asked to perform a write operation

@@ -26,6 +26,7 @@ openlog('krb5_admind', 'pid', 'auth');
 our $acl_file = ACL_FILE;
 our $config = KRB5_ADMIND_CONFIG;
 our $dbname;
+our $sqlite;
 our $allow_fetch;
 our $master;
 our $kmdb_class;
@@ -34,12 +35,14 @@ our %win_xrealm_bootstrap;
 our %prestash_xrealm;
 
 my %opts;
-getopts('MPa:c:d:m:', \%opts) or usage();
+getopts('D:MPS:a:c:d:m:', \%opts) or usage();
 
 $master   = hostname()		if  defined($opts{M});
 $master   = $opts{m}		if !defined($master);
 $acl_file = $opts{a}		if  defined($opts{a});
 $dbname   = $opts{d}		if  defined($opts{d});
+$dbname   = $opts{D}		if  defined($opts{D});
+$sqlite   = $opts{S}		if  defined($opts{S});
 $config   = $opts{c}		if  defined($opts{c});
 
 if (-f $config || defined($opts{c})) {
@@ -54,6 +57,7 @@ my %config;
 $config{acl_file}		= $acl_file;
 $config{config}			= $config;
 $config{dbname}			= $dbname;
+$config{sqlite}			= $sqlite;
 $config{allow_fetch}		= $allow_fetch;
 $config{master}			= $master;
 $config{kmdb_class}		= $kmdb_class;
