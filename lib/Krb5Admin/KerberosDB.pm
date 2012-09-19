@@ -381,6 +381,11 @@ our %field_desc = (
 		fields		=> [qw/principal type/],
 		lists		=> [ [qw/prestashed principal host/] ],
 	},
+	labels		=> {
+		pkey		=> [qw/label/],
+		uniq		=> [qw/label/],
+		fields		=> [qw/label/],
+	},
 	appids		=> {
 		pkey		=> [qw/appid/],
 		uniq		=> [qw/appid/],
@@ -439,6 +444,12 @@ sub init_db {
 	$dbh->{AutoCommit} = 1;
 
 	$dbh->do(qq{
+		CREATE TABLE labels (
+			label		VARCHAR PRIMARY KEY
+		)
+	});
+
+	$dbh->do(qq{
 		CREATE TABLE appids (
 			appid		VARCHAR PRIMARY KEY,
 			desc		VARCHAR
@@ -463,8 +474,9 @@ sub init_db {
 			cstraint	VARCHAR NOT NULL,
 
 			PRIMARY KEY (appid, cstraint)
-			FOREIGN KEY (appid) REFERENCES appids(appid)
+			FOREIGN KEY (appid)	REFERENCES appids(appid)
 				ON DELETE CASCADE
+			FOREIGN KEY (cstraint)	REFERENCES labels(label)
 		)
 	});
 
@@ -507,8 +519,9 @@ sub init_db {
 			label		VARCHAR NOT NULL,
 
 			PRIMARY KEY (host, label)
-			FOREIGN KEY (host) REFERENCES hosts(name)
+			FOREIGN KEY (host)	REFERENCES hosts(name)
 				ON DELETE CASCADE
+			FOREIGN KEY (label)	REFERENCES labels(label)
 		)
 	});
 
@@ -559,6 +572,7 @@ sub drop_db {
 	$dbh->do('DROP TABLE IF EXISTS hostmap');
 	$dbh->do('DROP TABLE IF EXISTS host_labels');
 	$dbh->do('DROP TABLE IF EXISTS hosts');
+	$dbh->do('DROP TABLE IF EXISTS labels');
 	$dbh->{AutoCommit} = 0;
 }
 
@@ -1358,6 +1372,46 @@ sub sacls_add		{ my $self = shift(@_); $self->{sacls}->add(@_) }
 sub sacls_del		{ my $self = shift(@_); $self->{sacls}->del(@_) }
 sub sacls_query		{ my $self = shift(@_); $self->{sacls}->query(@_) }
 sub sacls_init_db	{ my $self = shift(@_); $self->{sacls}->init_db(@_) }
+
+sub add_label {
+	my ($self, $label) = @_;
+	my $dbh = $self->{dbh};
+
+	require_scalar("add_label <label>", 1, $label);
+
+	my $stmt = 'INSERT INTO labels(label) VALUES (?)';
+
+	sql_command($dbh, $stmt, $label);
+
+	$dbh->commit();
+	return undef;
+}
+
+sub del_label {
+	my ($self, $label) = @_;
+	my $dbh = $self->{dbh};
+
+	require_scalar("del_label <label>", 1, $label);
+
+	my $stmt = 'DELETE FROM labels WHERE label = ?';
+
+	sql_command($dbh, $stmt, $label);
+
+	# toss errors if label not found...
+
+	$dbh->commit();
+	return undef;
+}
+
+sub KHARON_ACL_list_labels { return 1; }
+
+sub list_labels {
+	my ($self, $label) = @_;
+	my $dbh = $self->{dbh};
+
+	my $ret = generic_query($dbh, \%field_desc, 'labels', []);
+	return keys(%$ret);
+}
 
 sub create_host {
 	my ($self, $host, %args) = @_;
