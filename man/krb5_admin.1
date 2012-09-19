@@ -10,6 +10,8 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl dlv
+.Op Fl D Ar kdb
+.Op Fl S Ar sqlitedb
 .Op Fl h Ar hostspec
 .Op Fl r Ar REALM
 .Ar command Ar arg Oo Ar arg ... Oc
@@ -24,6 +26,17 @@ flag.)
 .Pp
 The options are as follows:
 .Bl -tag -width indentxxxxxx
+.It Fl D Ar kdb
+specifies the location of the Kerberos DB when running against a local
+database.
+Defaults to the location built into the Kerberos libriares.
+Implies
+.Fl l .
+.It Fl S Ar sqlitedb
+specifies the location of the sqlite3 adjunct database where
+.Nm
+stores its additional schemas.
+Can only be used if running against a local database.
 .It Fl d
 print debugging output.
 .It Fl h Ar hostspec
