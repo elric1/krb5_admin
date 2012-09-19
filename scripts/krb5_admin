@@ -27,13 +27,15 @@ EOM
 
 my %opts;
 my $dbname;
+my $sqldbname;
 my @kdcs;
 my $realm;
 
-getopts('D:dh:lr:sv?', \%opts) or usage();
+getopts('D:S:dh:lr:sv?', \%opts) or usage();
 
 usage()			if exists($opts{'?'});
 $dbname = $opts{'D'}	if exists($opts{'D'});
+$sqldbname = $opts{'S'}	if exists($opts{'S'});
 $debug = 1		if exists($opts{'d'});
 $verbose = 1		if exists($opts{'v'});
 $terse = 1		if exists($opts{'s'});
@@ -47,6 +49,11 @@ if (@kdcs + ($opts{l}?1:0) + ($opts{r}?1:0) > 1) {
 	usage();
 }
 
+if (defined($sqldbname) && !$opts{'l'}) {
+	print STDERR "-S may only be used in conjunction with -l or -D.\n";
+	usage();
+}
+
 my $cli = Krb5Admin::CLI->new(appname => 'krb5_admin');
 
 my $kmdb;
@@ -55,7 +62,7 @@ eval {
 		my $sqlacl  = Kharon::Entitlement::SimpleSQL->new(
 		    table => 'krb5_admin_simple_acls');
 		$kmdb = Krb5Admin::KerberosDB->new(local=>1, dbname=>$dbname,
-		    sacls=>$sqlacl);
+		    sqlite=>$sqldbname, sacls=>$sqlacl);
 		$sqlacl->set_dbh($kmdb->get_dbh());
 	} else {
 		my %args;
