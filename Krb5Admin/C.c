@@ -407,30 +407,26 @@ krb5_getkey(krb5_context ctx, kadm5_handle hndl, char *in)
 	kadm5_principal_ent_rec	 dprinc;
 	krb5_principal		 princ = NULL;
 	krb5_keyblock		 kb;
-	kadm5_config_params	 params;
-	kadm5_ret_t		 ret;
+        kadm5_ret_t		 ret;
 	int			 i;
+	int			 got_dprinc = 0;
 	char			 croakstr[2048] = "";
-	key			 k;
+	key			 k = NULL;
 	key			 ok = NULL;
 	key			 first = NULL;
 
-	memset((char *) &params, 0, sizeof(params));	
 	memset(&dprinc, 0, sizeof(dprinc));
 
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
 	K5BAIL(kadm5_get_principal(hndl, princ, &dprinc, 
 	    KADM5_PRINCIPAL_NORMAL_MASK | KADM5_KEY_DATA));
+	got_dprinc = 1;
 
 	for (i=0; i < dprinc.n_key_data; i++) {
 		krb5_key_data	*kd = &dprinc.key_data[i];
 
+		free(k);
 		k = calloc(sizeof(struct _key), 1);
-		if (!first)
-			first = k;
-		if (ok)
-			ok->next = k;
-		ok = k;
 
 		/*
 		 * Here we elide both duplicated DES keys and
@@ -451,28 +447,47 @@ krb5_getkey(krb5_context ctx, kadm5_handle hndl, char *in)
 		ret = kadm5_decrypt_key(hndl, &dprinc, kd->key_data_type[0],
 		    -1 /*salt*/, kd->key_data_kvno, &kb, NULL, NULL);
 
+                if (ret == KRB5_KDB_NO_PERMITTED_KEY)
+                    continue;
+                K5BAIL(ret);
+
 		/* XXXrcd: assert that we have enough space */
 		k->enctype = kb.enctype;
 		k->length = kb.length;
 		memcpy(k->data, kb.contents, kb.length);
 		krb5_free_keyblock_contents(ctx, &kb);
 #else
+		ret = 0;
 		k->enctype = kd->key_data_type[0];
 		k->length = kd->key_data_length[0];
 		memcpy(k->data, kd->key_data_contents[0], k->length);
 #endif
+
+		if (!first)
+			first = k;
+		if (ok)
+			ok->next = k;
+		ok = k;
+		k = NULL;
 	}
 
 done:
 	/* XXXrcd: free up used data structures! */
+	free(k);
 
 	if (princ)
 		krb5_free_principal(ctx, princ);
 
+	if (got_dprinc) {
+		kadm5_free_principal_ent(hndl, &dprinc);
+	}
+
 	if (ret) {
-#if 0 /* XXXrcd: clean up */
-		key_free(ok);
-#endif
+		for (k = first; k; ) {
+			first = k->next;
+			free(k);
+			k = first;
+		}
 		croak("%s", croakstr);
 	}
 

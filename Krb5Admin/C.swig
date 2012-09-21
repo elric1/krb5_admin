@@ -112,12 +112,14 @@
 
 %typemap(out) key {
 	key	k;
+	key	tmp;
 
 	/* XXXrcd: clean up the data while I am using it... */
 
-	for (k=$1; k; k = k->next) {
+	for (k=$1; k; k = tmp) {
 		HV		*hv = newHV();
 
+		tmp = k->next;
 		EXTEND(sp,1);
 
 		HV_STORE_PVN(hv, (*k), princ);
@@ -128,10 +130,11 @@
 		HV_STORE_IV(hv, (*k), enctype);
 		HV_STORE_PVN_LEN_F(hv, "key", k->data, k->length);
 
+		free(k);
+
 		$result = sv_2mortal(newRV_noinc((SV*)hv));
 		argvi++;
 	}
-	/* XXXrcd: memory leak. */
 }
 
 
