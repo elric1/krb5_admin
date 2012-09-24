@@ -344,6 +344,16 @@ sub new {
 	$self->{win_xrealm_bootstrap}	= $args{win_xrealm_bootstrap};
 	$self->{prestash_xrealm}	= $args{prestash_xrealm};
 
+	#
+	# If we are not provided with sacls, then we make them in the
+	# default way...
+
+	if (!defined($self->{sacls})) {
+		$self->{sacls} = Kharon::Entitlement::SimpleSQL->new(
+		    table => 'krb5_admin_simple_acls');
+		$self->{sacls}->set_dbh($dbh);
+	}
+
 	$self->{sacls}->set_verbs(getclassvar($self, 'KHARON_RW_SC_EXPORT'),
 	    'fetch');
 

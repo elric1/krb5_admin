@@ -59,11 +59,8 @@ my $cli = Krb5Admin::CLI->new(appname => 'krb5_admin');
 my $kmdb;
 eval {
 	if (exists($opts{'l'})) {
-		my $sqlacl  = Kharon::Entitlement::SimpleSQL->new(
-		    table => 'krb5_admin_simple_acls');
 		$kmdb = Krb5Admin::KerberosDB->new(local=>1, dbname=>$dbname,
-		    sqlite=>$sqldbname, sacls=>$sqlacl);
-		$sqlacl->set_dbh($kmdb->get_dbh());
+		    sqlite=>$sqldbname);
 	} else {
 		my %args;
 		$args{realm} = $realm	if defined($realm);
