@@ -810,11 +810,8 @@ sub check_acls {
 sub obtain_lock {
 	my ($self, $user) = @_;
 
-	#
-	# XXXrcd: should implement recursive locking strategy as this
-	#         will likely be necessary for clustering support...
-
-	return if exists($self->{"lock.user.$user"});
+	$self->{"lock.user.$user.count"} //= 0;
+	return if $self->{"lock.user.$user.count"}++ > 0;
 
 	my $lockdir  = "/var/run/krb5_keytab";
 	my $lockfile = "$lockdir/lock.user.$user";
@@ -836,6 +833,11 @@ sub obtain_lock {
 
 	vprint "obtaining lock: $lockfile\n";
 
+	#
+	# XXXrcd: we have the possibility here of deadlocks as there is
+	#         no timeout.  We have a couple of options, set an alarm
+	#         or fall back to another locking method such as fcntl.
+
 	my $lock_fh = new IO::File($lockfile, O_CREAT|O_WRONLY)
 	    or die "Could not open lockfile $lockfile: $!";
 	flock($lock_fh, LOCK_EX) or die "Could not obtain lock: $!";
@@ -846,16 +848,21 @@ sub obtain_lock {
 	# And we save the lock in $self so that we can keep the lock
 	# open and later unlock.
 
-	$self->{"lock.user.$user"} = $lock_fh;
+	$self->{"lock.user.$user.fh"} = $lock_fh;
 }
 
 sub release_lock {
 	my ($self, $user) = @_;
 
-	if (exists($self->{"lock.user.$user"})) {
-		delete $self->{"lock.user.$user"};
-		unlink("/var/run/krb5_keytab/lock.user.$user");
+	$self->{"lock.user.$user.count"} //= 0;
+	if ($self->{"lock.user.$user.count"} < 1) {
+		die "release_lock called for $user where no lock is held.";
 	}
+
+	return if --$self->{"lock.user.$user.count"};
+
+	delete $self->{"lock.user.$user.fh"};
+	unlink("/var/run/krb5_keytab/lock.user.$user");
 }
 
 #
