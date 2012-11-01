@@ -887,6 +887,12 @@ sub need_new_key {
 		return 1;
 	}
 
+	#
+	# XXXrcd: need to use builtin kinit functions _but_ we
+	#         have to avoid using the older keys as we are
+	#         testing the integrity of the keytab.  Perhaps
+	#         we must write a new C function to do this?
+
 	# Avoid spawning shells, ignore stderr and stdout.
 	#
 	my $pid = fork();
@@ -1437,7 +1443,7 @@ sub install_all_keys {
 	@princs = $self->expand_princs($user, @princs);
 
 	$self->vprint("checking acls...\n");
-	$self->check_acls($user, @princs);	# this will exit on failure.
+	$self->check_acls($user, @princs);	# this will throw on failure.
 
 	for my $i (@princs) {
 		push(@{$instmap{$i->[0]}->{$i->[2]}}, $i);
