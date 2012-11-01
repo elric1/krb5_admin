@@ -542,8 +542,8 @@ sub fix_quirks {
 	return @keys if !defined($lib);
 	return @keys if !exists($krb5_lib_quirks->{$lib});
 
-	vprint "Fixing keytab quirks " . join(', ', @{$krb5_lib_quirks->{$lib}})
-	    . " for library: $lib\n";
+	$self->vprint("Fixing keytab quirks " .
+	    join(', ', @{$krb5_lib_quirks->{$lib}}) .  " for library: $lib\n");
 	if (in_set('nounsupp', $krb5_lib_quirks->{$lib})) {
 
 		my @libenc = ('des-cbc-crc', @{$krb5_libs->{$lib}});
@@ -831,7 +831,7 @@ sub obtain_lock {
 	die("lock directory invalid")
 	    if (!@s || $s[2] != 040700 || $s[4] || $s[5]);
 
-	vprint "obtaining lock: $lockfile\n";
+	$self->vprint("obtaining lock: $lockfile\n");
 
 	#
 	# XXXrcd: we have the possibility here of deadlocks as there is
@@ -842,7 +842,7 @@ sub obtain_lock {
 	    or die "Could not open lockfile $lockfile: $!";
 	flock($lock_fh, LOCK_EX) or die "Could not obtain lock: $!";
 
-	vprint "lock obtained\n";
+	$self->vprint("lock obtained\n");
 
 	#
 	# And we save the lock in $self so that we can keep the lock
@@ -945,16 +945,16 @@ sub write_keys_internal {
 	my ($self, $lib, $kt, @keys) = @_;
 	my $ctx = $self->{ctx};
 
-	vprint "Starting to write keys in write_keys_internal...\n";
+	$self->vprint("Starting to write keys in write_keys_internal...\n");
 	for my $i ($self->fix_quirks($lib, @keys)) {
 		next if $i->{enctype} == 0;
 
-		vprint "Writing (" . $i->{princ} . ", " .
-		    $i->{kvno} . ", " . $i->{enctype} . ")\n";
+		$self->vprint("Writing (" . $i->{princ} . ", " .
+		    $i->{kvno} . ", " . $i->{enctype} . ")\n");
 
 		Krb5Admin::C::write_kt($ctx, $kt, $i);
 	}
-	vprint "Finished writing keys in write_keys_internal...\n";
+	$self->vprint("Finished writing keys in write_keys_internal...\n");
 }
 
 sub write_keys_kt {
@@ -975,7 +975,7 @@ sub write_keys_kt {
 
 	return if $self->{force} < 2 && !$self->is_quirky($lib, @ktkeys);
 
-	vprint "Recreating keytab file fixing quirks...\n";
+	$self->vprint("Recreating keytab file fixing quirks...\n");
 
 	$oldkt = $kt;
 	$oldkt =~ s/WRFILE://;
@@ -990,7 +990,7 @@ sub write_keys_kt {
 	chown(get_ugid($user), $kt)	or die "chown: $!";
 	rename($kt, $oldkt)		or die "rename: $!";
 
-	vprint "New keytab file rename(2)ed into position, quirk-free\n";
+	$self->vprint("New keytab file renamed into position, quirk-free\n");
 }
 
 sub install_key {
@@ -1015,15 +1015,15 @@ sub install_key {
 
 	$kmdb->master()		if $action eq 'change';
 
-	vprint "installing: $strprinc\n";
+	$self->vprint("installing: $strprinc\n");
 
 	my $func = $kmdb->can('change');
 	eval { $ret = $kmdb->query($strprinc) };
 	my $err = $@;
 	if ($err) {
 		die $err if $action ne 'default';
-		vprint "query error: " . format_err($err) . "\n";
-		vprint "creating: $strprinc\n";
+		$self->vprint("query error: " . format_err($err) . "\n");
+		$self->vprint("creating: $strprinc\n");
 
 		$func = $kmdb->can('create');
 	}
@@ -1059,7 +1059,8 @@ sub install_key {
 			}
 			$action = 'change';
 		} else {
-			vprint "The keys for $strprinc already exist.\n";
+			$self->vprint("The keys for $strprinc already " .
+			    "exist.\n");
 			return 0;
 		}
 	}
@@ -1110,15 +1111,15 @@ sub install_key_legacy {
 		return 0 if !$self->need_new_key($kt, $strprinc);
 	}
 
-	vprint "installing (legacy): $strprinc\n";
+	$self->vprint("installing (legacy): $strprinc\n");
 
 	$kmdb->master()		if $action eq 'change';
 
 	eval { @ret = $kmdb->fetch($strprinc) };
 	if ($@) {
 		die $@ if $action ne 'default';
-		vprint "fetch error: " . format_err($@) . "\n";
-		vprint "creating: $strprinc\n";
+		$self->vprint("fetch error: " . format_err($@) . "\n");
+		$self->vprint("creating: $strprinc\n");
 		eval {
 			$kmdb->create($strprinc);
 			if (defined($etypes)) {
@@ -1127,7 +1128,7 @@ sub install_key_legacy {
 			}
 		};
 		if ($@) {
-			vprint "creation error: ".format_err($@)."\n";
+			$self->vprint("creation error: ".format_err($@)."\n");
 		}
 		@ret = $kmdb->fetch($strprinc);
 	}
