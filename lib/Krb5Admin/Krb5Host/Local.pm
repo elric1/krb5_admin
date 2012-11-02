@@ -92,6 +92,12 @@ sub DESTROY {
 	my ($self) = @_;
 
 	local($?);
+	for my $lock (keys %$self) {
+		next if $lock !~ /^lock\.user\.([^.]+)\.count$/;
+		next if $self->{"lock.user.$1.count"} < 1;
+
+		unlink("/var/run/krb5_keytab/lock.user.$1");
+	}
 	unlink($self->{ccfile}) if exists($self->{ccfile});
 }
 
