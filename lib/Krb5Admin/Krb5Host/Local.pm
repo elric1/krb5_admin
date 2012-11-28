@@ -1385,12 +1385,6 @@ sub install_keys {
 		if (my $err = $@) {
 			$self->vprint("Cannot connect to KDC: " .
 			    format_err($err) . "\n");
-			my $errstr = format_err($err);
-
-			die [map { sprintf("Failed to install (%s) " .
-			    "keys for %s instance %s, %s", $action, $user,
-			    unparse_princ($_), $errstr);
-			} @princs];
 		}
 	}
 
