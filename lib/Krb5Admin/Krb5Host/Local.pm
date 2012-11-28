@@ -1361,7 +1361,7 @@ sub install_keys {
 	my $realm = $princs[0]->[0];
 	my $inst  = $princs[0]->[2];
 	my $client;
-	my $errs = 0;
+	my $errs = [];
 	my $bootstrapping = 0;
 
 	if (!$got_tickets) {
@@ -1382,10 +1382,15 @@ sub install_keys {
 			    { realm => $realm });
 		};
 
-		if ($@) {
+		if (my $err = $@) {
 			$self->vprint("Cannot connect to KDC: " .
-			    format_err($@) . "\n");
-			return scalar(@princs);
+			    format_err($err) . "\n");
+			my $errstr = format_err($err);
+
+			die [map { sprintf("Failed to install (%s) " .
+			    "keys for %s instance %s, %s", $action, $user,
+			    unparse_princ($_), $errstr);
+			} @princs];
 		}
 	}
 
@@ -1406,21 +1411,20 @@ sub install_keys {
 		eval {
 			&$f($self,$kmdb, $action, $lib, $client, $user, $princ);
 		};
-		if ($@) {
-			# XXXrcd: must fix workflow here!
-			print STDERR (format_err($@) . "\n");
-			print STDERR "Failed to install keys: $strprinc\n";
-			syslog('err', "Failed to install (%s) keys for %s " .
-			    "instance %s, %s", $action, $user,
-			    $strprinc, format_err($@));
-			$errs++;
+		if (my $err = $@) {
+			my $errstr = sprintf("Failed to install (%s) " .
+			    "keys for %s instance %s, %s", $action, $user,
+			    $strprinc, format_err($err));
+			syslog('err', "%s", $errstr);
+			push(@$errs, $errstr);
 		} else {
 			syslog('info', "Installed (%s) keys for %s " .
 			    "instance %s", $action, $user, $strprinc);
 		}
 	}
 
-	return $errs;
+	die $errs if @$errs > 0;
+	return;
 }
 
 #
@@ -1449,7 +1453,7 @@ sub install_all_keys {
 	my $xrealm = $self->{xrealm};
 	my %instmap;
 	my $kt = get_kt($user);
-	my $errs = 0;
+	my $errs = [];
 
 	$self->user_acled($user);
 	$self->validate_lib($user, $lib);
@@ -1483,8 +1487,15 @@ sub install_all_keys {
 		$self->vprint("installing keys for connexion $i->[0], " .
 		    "$i->[1]...\n");
 
-		$errs += $self->install_keys($user, $kmdb, $got_tickets,
-		    $xrealm, $action, $lib, @{$i->[2]});
+		eval {
+			$self->install_keys($user, $kmdb, $got_tickets, $xrealm,
+			    $action, $lib, @{$i->[2]});
+		};
+
+		my $err;
+		$err = $@ if $@;
+		push(@$errs, @$err)  if defined($err) && ref($err) eq 'ARRAY';
+		push(@$errs, $err)   if defined($err) && ref($err) ne 'ARRAY';
 	}
 
 	$kt =~ s/^WRFILE://;
@@ -1494,8 +1505,8 @@ sub install_all_keys {
 	$self->release_lock($user);
 	$self->reset_krb5ccname();
 
-	$self->vprint("Successfully updated keytab file\n") if $errs == 0;
-	return $errs;
+	$self->vprint("Successfully updated keytab file\n") if @$errs == 0;
+	die $errs if defined($errs) && @$errs > 0;
 }
 
 1;
