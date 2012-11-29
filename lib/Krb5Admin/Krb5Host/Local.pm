@@ -1345,8 +1345,6 @@ sub install_bootstrap_key {
 
 	$self->write_keys_kt($user, undef, undef, undef, @{$gend->{keys}});
 
-	# XXXrcd: must fix workflow here.
-	# We must output the binding so that applications know what it is.
 	return $binding;
 }
 
