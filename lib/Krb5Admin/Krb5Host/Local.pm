@@ -1016,7 +1016,7 @@ sub install_key {
 	$etypes = $krb5_libs->{$lib} if defined($lib);
 
 	if ($action ne 'change' && $self->{force} < 1) {
-		return 0 if !$self->need_new_key($kt, $strprinc);
+		return if !$self->need_new_key($kt, $strprinc);
 	}
 
 	$kmdb->master()		if $action eq 'change';
@@ -1067,7 +1067,7 @@ sub install_key {
 		} else {
 			$self->vprint("The keys for $strprinc already " .
 			    "exist.\n");
-			return 0;
+			return;
 		}
 	}
 
@@ -1097,6 +1097,8 @@ sub install_key {
 	$self->write_keys_kt($user, $lib, undef, undef, @{$gend->{'keys'}});
 	&$func($kmdb, $strprinc, @kvno_arg, 'public' => $gend->{'public'},
 	    'enctypes' => $etypes);
+
+	return;
 }
 
 sub install_key_legacy {
@@ -1114,7 +1116,7 @@ sub install_key_legacy {
 	$etypes = $krb5_libs->{$lib} if defined($lib);
 
 	if ($action ne 'change' && $self->{force} < 1) {
-		return 0 if !$self->need_new_key($kt, $strprinc);
+		return if !$self->need_new_key($kt, $strprinc);
 	}
 
 	$self->vprint("installing (legacy): $strprinc\n");
@@ -1162,6 +1164,8 @@ sub install_key_legacy {
 	my @keys = $self->mk_keys(@$etypes);
 	$self->write_keys_kt($user, $lib, $strprinc, $kvno, @keys);
 	$kmdb->change($strprinc, $kvno, \@keys);
+
+	return;
 }
 
 sub bootstrap_host_key {
@@ -1253,7 +1257,7 @@ sub bootstrap_host_key {
 	#
 	# SUCCCESS!
 
-	return 0 if !$@;
+	return if !$@;
 
 	$self->vprint("bootstrapping host key failed: ". format_err($@) ."\n");
 
@@ -1285,6 +1289,8 @@ sub bootstrap_host_key {
 	$kmdb->bootstrap_host_key($strprinc, $kvno + 1,
 	    public => $gend->{public}, enctypes => $etypes);
 	eval { $self->del_kt_princ($bootprinc); };
+
+	return;
 }
 
 sub install_host_key {
@@ -1341,7 +1347,7 @@ sub install_bootstrap_key {
 
 	# XXXrcd: must fix workflow here.
 	# We must output the binding so that applications know what it is.
-	print $binding . "\n";
+	return $binding;
 }
 
 #
@@ -1362,7 +1368,7 @@ sub install_keys {
 	my $inst  = $princs[0]->[2];
 	my $client;
 	my $errs = [];
-	my $bootstrapping = 0;
+	my @ret;
 
 	if (!$got_tickets) {
 		$client = unparse_princ([defined($xrealm) ? $xrealm : $realm,
@@ -1402,8 +1408,10 @@ sub install_keys {
 			$f = \&install_bootstrap_key;
 		}
 
+		my @res;
 		eval {
-			&$f($self,$kmdb, $action, $lib, $client, $user, $princ);
+			@res = &$f($self,$kmdb, $action, $lib, $client,
+			    $user, $princ);
 		};
 		if (my $err = $@) {
 			my $errstr = sprintf("Failed to install (%s) " .
@@ -1415,10 +1423,12 @@ sub install_keys {
 			syslog('info', "Installed (%s) keys for %s " .
 			    "instance %s", $action, $user, $strprinc);
 		}
+
+		push(@ret, @res);
 	}
 
 	die $errs if @$errs > 0;
-	return;
+	return @ret;
 }
 
 #
@@ -1448,6 +1458,7 @@ sub install_all_keys {
 	my %instmap;
 	my $kt = get_kt($user);
 	my $errs = [];
+	my @ret;
 
 	$self->user_acled($user);
 	$self->validate_lib($user, $lib);
@@ -1481,15 +1492,18 @@ sub install_all_keys {
 		$self->vprint("installing keys for connexion $i->[0], " .
 		    "$i->[1]...\n");
 
+		my @res;
 		eval {
-			$self->install_keys($user, $kmdb, $got_tickets, $xrealm,
-			    $action, $lib, @{$i->[2]});
+			@res = $self->install_keys($user, $kmdb, $got_tickets,
+			    $xrealm, $action, $lib, @{$i->[2]});
 		};
 
 		my $err;
 		$err = $@ if $@;
 		push(@$errs, @$err)  if defined($err) && ref($err) eq 'ARRAY';
-		push(@$errs, $err)   if defined($err) && ref($err) ne 'ARRAY';
+		push(@$errs,  $err)  if defined($err) && ref($err) ne 'ARRAY';
+
+		push(@ret,  @res);
 	}
 
 	$kt =~ s/^WRFILE://;
@@ -1501,6 +1515,8 @@ sub install_all_keys {
 
 	$self->vprint("Successfully updated keytab file\n") if @$errs == 0;
 	die $errs if defined($errs) && @$errs > 0;
+
+	return @ret;
 }
 
 1;
