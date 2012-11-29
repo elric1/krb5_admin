@@ -1461,6 +1461,8 @@ sub install_all_keys {
 	$self->user_acled($user);
 	$self->validate_lib($user, $lib);
 
+	my ($uid, $gid) = get_ugid($user);
+
 	@princs = $self->expand_princs($user, @princs);
 
 	$self->vprint("checking acls...\n");
@@ -1505,8 +1507,8 @@ sub install_all_keys {
 	}
 
 	$kt =~ s/^WRFILE://;
-	chmod(0400, $kt)		or die "chmod: $!";
-	chown(get_ugid($user), $kt)	or die "chown: $!";
+	chmod(0400, $kt)	or die "chmod: $!";
+	chown($uid, $gid, $kt)	or die "chown: $!";
 
 	$self->release_lock($user);
 	$self->reset_krb5ccname();
