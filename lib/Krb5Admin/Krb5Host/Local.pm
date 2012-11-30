@@ -52,6 +52,7 @@ our $bootetype_code = $revenctypes{$bootetype_name};
 # First we define the object's interface, the public methods:
 
 our %kt_opts = (
+	interactive		=> 0,
 	local			=> 0,
 	kadmin			=> 0,
 	invoking_user		=> undef,
@@ -66,6 +67,7 @@ our %kt_opts = (
 	use_fetch		=> 0,
 	force			=> 0,
 	verbose			=> 1,
+	xrealm			=> undef,
 );
 
 sub new {
@@ -1006,7 +1008,7 @@ sub write_keys_kt {
 }
 
 sub install_key {
-	my ($self, $kmdb, $action, $lib, $client, $user, $princ) = @_;
+	my ($self, $kmdb, $action, $lib, $user, $princ) = @_;
 	my $ctx = $self->{ctx};
 	my $default_krb5_lib = $self->{default_krb5_lib};
 	my $krb5_libs = $self->{krb5_libs};
@@ -1108,7 +1110,7 @@ sub install_key {
 }
 
 sub install_key_legacy {
-	my ($self, $kmdb, $action, $lib, $client, $user, $princ) = @_;
+	my ($self, $kmdb, $action, $lib, $user, $princ) = @_;
 	my $krb5_libs = $self->{krb5_libs};
 	my $strprinc = unparse_princ($princ);
 	my $kt = get_kt($user);
@@ -1175,7 +1177,7 @@ sub install_key_legacy {
 }
 
 sub bootstrap_host_key {
-	my ($self, $kmdb, $action, $lib, $client, $user, $princ) = @_;
+	my ($self, $kmdb, $action, $lib, $user, $princ) = @_;
 	my $default_krb5_lib = $self->{default_krb5_lib};
 	my $krb5_libs = $self->{krb5_libs};
 	my $use_fetch = $self->{use_fetch};
@@ -1300,7 +1302,7 @@ sub bootstrap_host_key {
 }
 
 sub install_host_key {
-	my ($self, $kmdb, $action, $lib, $client, $user, $princ) = @_;
+	my ($self, $kmdb, $action, $lib, $user, $princ) = @_;
 	my $use_fetch = $self->{use_fetch};
 	my $f;
 
@@ -1326,7 +1328,7 @@ sub install_host_key {
 }
 
 sub install_bootstrap_key {
-	my ($self, $kmdb, $action, $lib, $client, $user, $princ) = @_;
+	my ($self, $kmdb, $action, $lib, $user, $princ) = @_;
 	my $ctx = $self->{ctx};
 	my $realm = $princ->[0];
 
@@ -1354,6 +1356,116 @@ sub install_bootstrap_key {
 	return $binding;
 }
 
+# XXXrcd: move this function to somewhere that makes a bit more sense??
+# XXXrcd: hmmm, we're saving kmdb in our hash.  Should we undef it if
+#	  set_opt() is called with various parameters?  Or in any other
+#	  circumstances?
+sub get_kmdb {
+	my ($self, %args) = @_;
+	my $realm = $args{realm};
+	my $xrealm = $args{xrealm};
+
+	#
+	# Here we attempt to return a kmdb handle if we are configured
+	# to fetch one in a predefined way.  Otherwise, we return undef
+	# and let the caller obtain one the way in which they would like.
+
+	return $self->{kmdb} if defined($self->{kmdb});
+
+	#
+	# Below, all of the mechanisms require administrative access, so we
+	# enforce it here:
+
+	if (!$self->is_admin() && $self->{invoking_user} ne 'root') {
+		die "-A and -Z require administrative access.";
+	}
+
+	#
+	# Are we configured to use the local Kerberos DB?
+
+	if ($self->{local}) {
+		$self->{kmdb} = Krb5Admin::KerberosDB->new(local => 1);
+		return $self->{kmdb};
+	}
+
+	#
+	# How about windows principal bootstrapping?
+
+	if (defined($self->{winprinc})) {
+		my @princs;
+
+		@princs = ($self->{winprinc}) if $self->{winprinc} ne '';
+
+		if (@princs == 0) {
+			my %hashprincs;
+
+			die "opt xrealm must be defined if winprinc == ''."
+			    if !defined($xrealm);
+
+			%hashprincs = map { $_->{princ} => 1 } (get_keys(''));
+			@princs = map { [parse_princ($_)] } (keys %hashprincs);
+			@princs = grep { $_->[0] eq $xrealm } @princs;
+			@princs = grep { $_->[1] =~ /\$$/o } @princs;
+			@princs = grep { !defined($_->[2]) } @princs;
+
+			if (@princs == 0) {
+				die "Can't find any principals in realm " .
+				    $xrealm . " which end in a buck (\$).\n";
+			}
+
+			@princs = map { unparse_princ($_) } @princs;
+		}
+
+		my $ret;
+		for my $princ (@princs) {
+			# XXXrcd: get rid of system($KINIT).
+			$ret = system($KINIT, '-k', @KINITOPT, $princ);
+
+			if ($ret == 0) {
+				$self->{kmdb} = Krb5Admin::Client->new(undef,
+				    {realm=>$realm});
+				return $self->{kmdb};
+			}
+
+			$self->vprint("Warning: Could not obtain tickets for ".
+			    "$princ.\n");
+		}
+
+		die "could not obtain creds for any windows principal.\n";
+	}
+
+	#
+	# And, finally, we try to obtain admin tickets if we are so
+	# configured.
+
+	return if !$self->{kadmin};
+
+	if (!$self->{interactive}) {
+		die "Must be run interactively to use kadmin princs.";
+	}
+
+	print "Please enter your Kerberos administrative principal\n";
+	print "This is generally your username followed by ``/admin'',\n";
+	print "I.e.: user/admin\n\n";
+
+	for (my $i=0; $i < 10; $i++) {
+		print "Admin principal: ";
+		my $admin = <STDIN>;
+
+		chomp($admin);
+
+		if ($admin !~ m,[a-z0-9A-Z]+/admin,) {
+			print "Invalid Kerberos admin principal.\n";
+			next;
+		}
+
+		# XXXrcd: remove system($KINIT) because das ist nicht gut.
+		system($KINIT, @KINITOPT, $admin) and next;
+		$self->{kmdb} = Krb5Admin::Client->new(undef, {realm=>$realm});
+		return $self->{kmdb};
+	}
+}
+
 #
 # install_keys is a dispatcher that determines what to do with each
 # key.  It will [optionally] create a connexion to krb5_admind ($kmdb)
@@ -1365,28 +1477,26 @@ sub install_bootstrap_key {
 # encountered.
 
 sub install_keys {
-	my ($self, $user, $kmdb, $got_tickets, $xrealm, $action, $lib,
-	    @princs) = @_;
+	my ($self, $user, $action, $lib, @princs) = @_;
 	my $use_fetch = $self->{use_fetch};
 	my $realm = $princs[0]->[0];
 	my $inst  = $princs[0]->[2];
-	my $client;
+	my $xrealm = $self->{xrealm};
 	my $errs = [];
 	my @ret;
 
-	if (!$got_tickets) {
-		$client = unparse_princ([defined($xrealm) ? $xrealm : $realm,
-		    "host", $inst]);
-	}
+	my $kmdb = $self->get_kmdb(realm => $realm);
 
 	if (!defined($kmdb)) {
-		my $str = "";
+		my $client;
 
-		$str .= "connecting to $princs[0]->[0]'s KDCs";
-		if (defined($client)) {
-			$str .= " using $client creds.";
-		}
-		$self->vprint("$str\n");
+		$client = unparse_princ([defined($xrealm) ? $xrealm : $realm,
+		    "host", $inst]);
+
+		# XXXrcd: put a message into get_kmdb()...
+		$self->vprint("connecting to $princs[0]->[0]'s KDCs" .
+		    " using $client creds.");
+
 		eval {
 			$kmdb = Krb5Admin::Client->new($client,
 			    { realm => $realm });
@@ -1414,7 +1524,7 @@ sub install_keys {
 
 		my @res;
 		eval {
-			@res = &$f($self,$kmdb, $action, $lib, $client,
+			@res = &$f($self, $kmdb, $action, $lib,
 			    $user, $princ);
 		};
 		if (my $err = $@) {
@@ -1456,9 +1566,6 @@ sub install_all_keys {
 	my ($self, $user, $action, $lib, @princs) = @_;
 	my $ctx = $self->{ctx};
 	my $use_fetch = $self->{use_fetch};
-	my $kmdb = $self->{kmdb};
-	my $got_tickets = $self->{got_tickets};
-	my $xrealm = $self->{xrealm};
 	my %instmap;
 	my $kt = get_kt($user);
 	my $errs = [];
@@ -1500,8 +1607,8 @@ sub install_all_keys {
 
 		my @res;
 		eval {
-			@res = $self->install_keys($user, $kmdb, $got_tickets,
-			    $xrealm, $action, $lib, @{$i->[2]});
+			@res = $self->install_keys($user, $action, $lib,
+			    @{$i->[2]});
 		};
 
 		my $err;
