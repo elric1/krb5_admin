@@ -81,9 +81,7 @@ sub new {
 	#
 	# Take the configuration parameters passed in:
 
-	for my $opt (keys %args) {
-		$self->set_opt($opt, $args{$opt});
-	}
+	$self->set_opt(%args);
 
 	return $self;
 }
@@ -101,7 +99,7 @@ sub DESTROY {
 	unlink($self->{ccfile}) if exists($self->{ccfile});
 }
 
-sub set_opt {
+sub internal_set_opt {
 	my ($self, $opt, $val) = @_;
 
 	#
@@ -133,6 +131,14 @@ sub set_opt {
 	}
 
 	$self->{$opt} = $val;
+}
+
+sub set_opt {
+	my ($self, %opts) = @_;
+
+	for my $opt (keys %opts) {
+		$self->internal_set_opt($opt, $opts{$opt});
+	}
 }
 
 #
