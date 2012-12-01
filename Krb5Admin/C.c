@@ -1545,3 +1545,71 @@ init_kdb(krb5_context ctx, kadm5_handle hndl)
 	croak("init_kdb is not implemented for MIT Kerberos");
 }
 #endif
+
+/*
+ * need_new_key() attempts to determine if the current keytab
+ * has a valid and up to date key for ``princ''.  We do this
+ * by fetching creds for ``princ'' and validating them against
+ * the keytab.  This may return a false positive if we talk to
+ * a slave KDC and the master has been recently updated.  This
+ * is an acceptable failure case as our main user krb5_keytab
+ * has a -f flag to force an update.
+ */
+
+void
+need_new_key(krb5_context ctx, char *ktname, char *princ)
+{
+	krb5_get_creds_opt       opt = NULL;
+	krb5_ccache		 cache = NULL;
+	krb5_keytab		 kt = NULL;
+	krb5_creds		*out = NULL;
+	krb5_principal		 server = NULL;
+	krb5_error_code		 ret = 0;
+	char			 croakstr[2048] = "";
+
+	/*
+	 * XXXrcd: should we create a new ccache with only TGT in case of
+	 *	  caching?  Well, for now, we proceed with the
+	 *	  assumption that we will only be using fresh
+	 *	  ccaches that Krb5Admin::Krb5Host::Local has just
+	 *	  obtained and that we therefore do not need to worry
+	 *        about this issue.  In the future, it would be safer
+	 *        to grab the TGT from the ccache.
+	 */
+
+	if (ktname)
+		K5BAIL(krb5_kt_resolve(ctx, ktname, &kt));
+	else
+		K5BAIL(krb5_kt_default(ctx, &kt));
+
+	K5BAIL(krb5_cc_default(ctx, &cache));
+	K5BAIL(krb5_parse_name(ctx, princ, &server));
+	K5BAIL(krb5_get_creds_opt_alloc(ctx, &opt));
+	K5BAIL(krb5_get_creds(ctx, opt, cache, server, &out));
+	K5BAIL(krb5_verify_init_creds(ctx, out, server, kt, NULL, NULL));
+
+	/*
+	 * SUCCESS!
+	 * Okay, so now we know that we have creds and that they are
+	 * valid.  We could check the kvno and make sure that we have
+	 * no newer keys in the keytab, but we're going to defer this
+	 * until later.
+	 */
+
+done:
+	if (kt)
+		krb5_kt_close(ctx, kt);
+	if (cache)
+		krb5_cc_close(ctx, cache);
+	if (server)
+		krb5_free_principal(ctx, server);
+	if (opt)
+		krb5_get_creds_opt_free(ctx, opt);
+	if (out)
+		krb5_free_creds(ctx, out);
+
+	if (ret)
+		croak("%s", croakstr);
+
+	return;
+}
