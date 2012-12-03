@@ -68,7 +68,7 @@ our %kt_opts = (
 	user_libs		=> {},
 	use_fetch		=> 0,
 	force			=> 0,
-	verbose			=> 1,
+	verbose			=> 0,
 	xrealm			=> undef,
 	testing			=> 0,
 );
