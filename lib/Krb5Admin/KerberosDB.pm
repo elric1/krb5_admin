@@ -13,6 +13,7 @@ use Krb5Admin::Utils qw/reverse_the host_list/;
 use Krb5Admin::C;
 use Kharon::Entitlement::ACLFile;
 use Kharon::Entitlement::Equals;
+use Kharon::Entitlement::SimpleSQL;
 
 use Kharon::dbutils qw/sql_command generic_query generic_modify/;
 use Kharon::utils qw/getclassvar/;
