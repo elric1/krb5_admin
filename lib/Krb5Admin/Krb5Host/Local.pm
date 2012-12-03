@@ -63,6 +63,8 @@ our %kt_opts = (
 	krb5_libs		=> {},
 	krb5_lib_quirks		=> {},
 	default_krb5_lib	=> 'mitkrb5/1.4',
+	lockdir			=> undef,
+	ktdir			=> undef,
 	user_libs		=> {},
 	use_fetch		=> 0,
 	force			=> 0,
@@ -176,7 +178,7 @@ sub list_keytab {
 	}
 	syslog('info', "%s listed %s's keytab", $self->{invoking_user}, $user);
 
-	$ret->{ktname} = get_kt($user);
+	$ret->{ktname} = $self->get_kt($user);
 	$ret->{ktname} =~ s/^WR//o;
 
 	for my $key ($self->get_keys($ret->{ktname})) {
@@ -196,7 +198,7 @@ sub query_keytab {
 
 	$self->user_acled($user);
 
-	my @keys = $self->get_keys(get_kt($user));
+	my @keys = $self->get_keys($self->get_kt($user));
 	my @princs = get_princs(@keys);
 
 	for my $princ (get_princs(@keys)) {
@@ -219,7 +221,7 @@ sub generate_keytab {
 
 	my $ctx = $self->{ctx};
 	my $user_libs = $self->{user_libs};
-	my @keys = $self->get_keys(get_kt($user));
+	my @keys = $self->get_keys($self->get_kt($user));
 	my @princs = get_princs(@keys);
 	my @errs;
 	my @ret;
@@ -266,7 +268,7 @@ sub test_keytab {
 	$self->validate_lib($user, $lib);
 
 	my $ctx = $self->{ctx};
-	my @keys = $self->get_keys(get_kt($user));
+	my @keys = $self->get_keys($self->get_kt($user));
 	my @princs = get_princs(@keys);
 
 	@inprincs = $self->expand_princs($user, @inprincs);
@@ -821,6 +823,15 @@ sub check_acls {
 	die \@errs if @errs;
 }
 
+sub mk_kt_dir {
+	my ($self) = @_;
+	my $ktdir = $self->{ktdir};
+
+	mkdir($ktdir, 022);
+	chmod(0755, $ktdir);
+	die "$ktdir does not exist or isn't readable" if ! -d "$ktdir"; 
+}
+
 sub obtain_lock {
 	my ($self, $user) = @_;
 
@@ -828,6 +839,9 @@ sub obtain_lock {
 	return if $self->{"lock.user.$user.count"}++ > 0;
 
 	my $lockdir  = "/var/run/krb5_keytab";
+
+	$lockdir = $self->{lockdir} if defined($self->{lockdir});
+
 	my $lockfile = "$lockdir/lock.user.$user";
 
 	#
@@ -884,8 +898,9 @@ sub release_lock {
 # which we are operating.
 
 sub get_kt {
-	my ($user) = @_;
+	my ($self, $user) = @_;
 
+	return "WRFILE:$self->{ktdir}/$user"	 if defined($self->{ktdir});
 	return "WRFILE:/var/spool/keytabs/$user" if $user ne 'root';
 	return 'WRFILE:/etc/krb5.keytab';
 }
@@ -975,7 +990,7 @@ sub write_keys_kt {
 	my ($self, $user, $lib, $princ, $kvno, @keys) = @_;
 	my $ctx = $self->{ctx};
 	my $oldkt;
-	my $kt = get_kt($user);
+	my $kt = $self->get_kt($user);
 
 	for my $i (@keys) {
 		$i->{princ} = $princ	if defined($princ);
@@ -1013,7 +1028,7 @@ sub install_key {
 	my $default_krb5_lib = $self->{default_krb5_lib};
 	my $krb5_libs = $self->{krb5_libs};
 	my $strprinc = unparse_princ($princ);
-	my $kt = get_kt($user);
+	my $kt = $self->get_kt($user);
 	my $ret;
 	my $etypes;
 
@@ -1113,7 +1128,7 @@ sub install_key_legacy {
 	my ($self, $kmdb, $action, $lib, $user, $princ) = @_;
 	my $krb5_libs = $self->{krb5_libs};
 	my $strprinc = unparse_princ($princ);
-	my $kt = get_kt($user);
+	my $kt = $self->get_kt($user);
 	my @ret;
 	my $etypes;
 
@@ -1567,7 +1582,7 @@ sub install_all_keys {
 	my $ctx = $self->{ctx};
 	my $use_fetch = $self->{use_fetch};
 	my %instmap;
-	my $kt = get_kt($user);
+	my $kt = $self->get_kt($user);
 	my $errs = [];
 	my @ret;
 
@@ -1599,6 +1614,7 @@ sub install_all_keys {
 	}
 
 	$self->use_private_krb5ccname();
+	$self->mk_kt_dir();
 	$self->obtain_lock($user);
 
 	for my $i (@connexions) {
