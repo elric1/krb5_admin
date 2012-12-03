@@ -70,6 +70,7 @@ our %kt_opts = (
 	force			=> 0,
 	verbose			=> 1,
 	xrealm			=> undef,
+	testing			=> 0,
 );
 
 sub new {
@@ -855,9 +856,11 @@ sub obtain_lock {
 	chmod(0700, $lockdir);
 	chown(0, 0, $lockdir);
 
-	my @s = stat($lockdir);
-	die("lock directory invalid")
-	    if (!@s || $s[2] != 040700 || $s[4] || $s[5]);
+	if (!$self->{testing}) {
+		my @s = stat($lockdir);
+		die("lock directory invalid")
+		    if (!@s || $s[2] != 040700 || $s[4] || $s[5]);
+	}
 
 	$self->vprint("obtaining lock: $lockfile\n");
 
@@ -1015,9 +1018,12 @@ sub write_keys_kt {
 	$self->write_keys_internal($lib, $kt, @keys);
 
 	$kt =~ s/^WRFILE://;
-	chmod(0400, $kt)		or die "chmod: $!";
-	chown(get_ugid($user), $kt)	or die "chown: $!";
-	rename($kt, $oldkt)		or die "rename: $!";
+	if (!$self->{testing}) {
+		my ($uid, $gid) = get_ugid($user);
+		chmod(0400, $kt)	or die "chmod(0400, $kt): $!";
+		chown($uid, $gid, $kt)	or die "chown($uid, $gid, $kt): $!";
+	}
+	rename($kt, $oldkt)		    or die "rename: $!";
 
 	$self->vprint("New keytab file renamed into position, quirk-free\n");
 }
@@ -1636,8 +1642,10 @@ sub install_all_keys {
 	}
 
 	$kt =~ s/^WRFILE://;
-	chmod(0400, $kt)	or die "chmod: $!";
-	chown($uid, $gid, $kt)	or die "chown: $!";
+	if (-f $kt && !$self->{testing}) {
+		chmod(0400, $kt)	or die "chmod(0400, $kt): $!";
+		chown($uid, $gid, $kt)	or die "chown($uid, $gid, $kt): $!";
+	}
 
 	$self->release_lock($user);
 	$self->reset_krb5ccname();
