@@ -38,7 +38,7 @@ my  $ctx   = Krb5Admin::C::krb5_init_context();
 our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, undef);
 our $realm = Krb5Admin::C::krb5_get_realm($ctx);
 
-my $expected = [map { "kdc$_.test.realm" } (1..9)];
+my $expected = ['127.0.0.1', map { "kdc$_.test.realm" } (1..9)];
 
 my $kdcs;
 
