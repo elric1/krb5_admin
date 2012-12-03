@@ -1423,7 +1423,8 @@ sub get_kmdb {
 			die "opt xrealm must be defined if winprinc == ''."
 			    if !defined($xrealm);
 
-			%hashprincs = map { $_->{princ} => 1 } (get_keys(''));
+			%hashprincs = map { $_->{princ} => 1 }
+			    ($self->get_keys(''));
 			@princs = map { [parse_princ($_)] } (keys %hashprincs);
 			@princs = grep { $_->[0] eq $xrealm } @princs;
 			@princs = grep { $_->[1] =~ /\$$/o } @princs;
