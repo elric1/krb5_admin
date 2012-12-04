@@ -11,5 +11,9 @@ Makefile
 Makefile.old
 blib/
 pm_to_blib
-sqlite.db
-test-hdb.db
+t/sqlite.db
+t/test-hdb.db
+t/keytabs/
+t/krb5host.lock/
+t/sqlite.db-shm
+t/sqlite.db-wal
