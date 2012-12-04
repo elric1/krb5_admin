@@ -20,7 +20,6 @@
 
 [kdc]
 	ports = 1988
-	addresses = 127.0.0.1
 	database = {
 		dbname = db:t/test-hdb
 		mkey_file = t/test-mkey

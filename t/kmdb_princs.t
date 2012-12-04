@@ -2,12 +2,13 @@
 
 use Test::More tests => 44;
 
+use Sys::Hostname;
+
 use Kharon::Entitlement::Object;
 use Kharon::Entitlement::SimpleSQL;
 
 use Krb5Admin::C;
 use Krb5Admin::ForkClient;
-use Krb5Admin::KerberosDB;
 
 use Data::Dumper;
 
@@ -66,6 +67,8 @@ $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 my $creds  = 'admin_user@TEST.REALM';
 my $sprinc = 'service/host1.test.realm@TEST.REALM';
 my $uprinc = 'user@TEST.REALM';
+my $anon   = 'WELLKNOWN/ANONYMOUS@TEST.REALM';
+my $myhost = 'krb5_admin/' . hostname() . '@TEST.REALM';
 
 my $p = "Aa1thisisapasswd!!!!";
 
@@ -93,7 +96,15 @@ testObjC("create_user", $kmdb, [$p], 'create_user', $uprinc, $p);
 # will break if Heimdal's encoding of principals or the underlying
 # database engine change.
 
-testObjC("list", $kmdb, [$uprinc, $sprinc], 'list');
+my @princs;
+eval { @princs = $kmdb->list(); };
+if ($@) {
+	ok(0, "list");
+	diag(Dumper($@));
+} else {
+	is_deeply([sort @princs], [sort ($uprinc, $anon, $sprinc, $myhost)],
+	    "list");
+}
 
 my $result;
 
@@ -205,6 +216,9 @@ if (!$@) {
 	    "service has correct attributes in mquery");
 	delete $allprincs{$sprinc};
 
+	delete $allprincs{$anon};
+	delete $allprincs{$myhost};
+
 	ok(keys %allprincs == 0, "mquery returned no extra results");
 }
 
@@ -272,7 +286,7 @@ eval {
 	    dbname	=> 'db:t/test-hdb',
 	    sqlite	=> 't/sqlite.db',
 	    allow_fetch	=> 1,
-	}, CREDS => q{WELLKNOWN/ANONYMOUS@TEST.REALM});
+	}, CREDS => $anon);
 
 	$gend = $kmdb->genkeys('create_bootstrap_id', 'bootstrap', 1, 18);
 	$binding = $kmdb->create_bootstrap_id(public => $gend->{public},
