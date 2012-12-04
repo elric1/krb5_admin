@@ -1,9 +1,12 @@
+[appdefaults]
+	pkinit_anchors = FILE:t/ca.pem
+
 [libdefaults]
 	default_realm = TEST.REALM
 
 [realms]
 	TEST.REALM = {
-		kdc = 127.0.0.1:1988
+		kdc = __HOSTNAME__:1988
 		kdc = kdc1.test.realm
 		kdc = kdc2.test.realm
 		kdc = kdc3.test.realm
@@ -23,7 +26,14 @@
 		mkey_file = t/test-mkey
 		log_file = /dev/null
 	}
+	enable-pkinit = true
+	pkinit_identity = FILE:t/kdc.pem
+	pkinit_anchors = FILE:t/ca.pem
+	allow-anonymous = true
 
 [logging]
 	default = FILE=/dev/null
 	kdc = FILE=/dev/null
+
+[domain_realm]
+	__HOSTNAME__ = TEST.REALM

@@ -3,6 +3,8 @@
 
 use Test::More tests => 1;
 
+use Sys::Hostname;
+
 use Kharon::Entitlement::SimpleSQL;
 
 use Krb5Admin::C;
@@ -65,6 +67,14 @@ $kmdb->sacls_add('insert_ticket', $creds);
 $kmdb->sacls_add('modify', $creds);
 $kmdb->sacls_add('remove', $creds);
 $kmdb->sacls_add('remove_aclgroup', $creds);
+
+$kmdb->create('WELLKNOWN/ANONYMOUS@TEST.REALM');
+
+#
+# Create our custom krb5.conf:
+
+my $hostname = hostname();
+system("sed s/__HOSTNAME__/$hostname/g < t/krb5.conf.in > t/krb5.conf");
 
 ok(1);
 
