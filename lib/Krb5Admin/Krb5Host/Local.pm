@@ -372,12 +372,30 @@ sub validate_lib {
 }
 
 #
-# The following two functions are explicitly not re-entrant while being
+# The following four functions are explicitly not re-entrant while being
 # used, so one must be careful that all functions that call the first will
 # call the second before they return control to the caller.  And, we cannot
 # use threads with this module.  We can look into this at a future time,
 # there are solutions to this issue but they will require some hackery
 # to how we invoke KNC and populate the ccache.
+
+sub use_testing_ktname {
+	my ($self) = @_;
+
+	if (defined($self->{ktdir})) {
+		$self->{SAVED_KTNAME} = $ENV{'KRB5_KTNAME'};
+		$ENV{'KRB5_KTNAME'}   = $self->get_kt('root');
+	}
+}
+
+sub reset_testing_ktname {
+	my ($self) = @_;
+
+	if (defined($self->{ktdir})) {
+		$ENV{'KRB5_KTNAME'} = $self->{SAVED_KTNAME};
+		undef $self->{SAVED_KTNAME};
+	}
+}
 
 sub use_private_krb5ccname {
 	my ($self) = @_;
@@ -652,7 +670,7 @@ sub get_keys {
 	my ($self, $kt) = @_;
 	my $ctx = $self->{ctx};
 
-	$kt = "FILE:" . $DEFAULT_KEYTAB if !defined($kt) || $kt eq '';
+	$kt = $self->get_kt() if !defined($kt) || $kt eq '';
 	my @ktkeys = Krb5Admin::C::read_kt($ctx, $kt);
 
 	for my $i (@ktkeys) {
@@ -903,6 +921,8 @@ sub release_lock {
 sub get_kt {
 	my ($self, $user) = @_;
 
+	$user = 'root'				 if !defined($user) ||
+						    $user eq '';
 	return "WRFILE:$self->{ktdir}/$user"	 if defined($self->{ktdir});
 	return "WRFILE:/var/spool/keytabs/$user" if $user ne 'root';
 	return 'WRFILE:/etc/krb5.keytab';
@@ -1620,6 +1640,7 @@ sub install_all_keys {
 		$instkeys = \&install_key_legacy;
 	}
 
+	$self->use_testing_ktname();
 	$self->use_private_krb5ccname();
 	$self->mk_kt_dir();
 	$self->obtain_lock($user);
@@ -1650,6 +1671,7 @@ sub install_all_keys {
 
 	$self->release_lock($user);
 	$self->reset_krb5ccname();
+	$self->reset_testing_ktname();
 
 	$self->vprint("Successfully updated keytab file\n") if @$errs == 0;
 	die $errs if defined($errs) && @$errs > 0;
