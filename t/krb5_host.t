@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 4;
+use Test::More tests => 9;
 
 use Sys::Hostname;
 
@@ -50,7 +50,6 @@ if ($kdc_pid == 0) {
 	exit(1);
 }
 ok(1);
-diag("Started kdc for testing\n");
 
 my $krb5_admind_pid = fork();
 exit(1) if $krb5_admind_pid == -1;
@@ -63,7 +62,6 @@ if ($krb5_admind_pid == 0) {
 	exit(1);
 }
 ok(1);
-diag("Started krb5_admind for testing\n");
 sleep(2);
 
 #
@@ -140,7 +138,35 @@ $kmdb->bind_host(hostname(), $binding);
 eval { $kt->install_keytab('root', undef, 'host'); };
 ok(!$@, Dumper($@));
 
-diag("Killing kdc.\n");
+#
+# Okay, now we have a host key and so we can try to install some service
+# keys...
+
+my $me = `id -un`;
+chomp($me);
+
+eval { $kt->install_keytab('root', undef, 'nfs'); };
+ok(!$@, Dumper($@));
+eval { $kt->install_keytab($me, undef, $me); };
+ok(!$@, Dumper($@));
+
+#
+# And let's see if we can rotate the one of the keys:
+
+eval { $kt->change_keytab($me, 'mitkrb5/1.3', $me); };
+ok(!$@, Dumper($@));
+
+#
+# And, now, fetch some things and see if we get what we expect...
+
+my $ret;
+eval { $ret = $kt->query_keytab($me); };
+ok(!$@, Dumper($@));
+is_deeply($ret, {
+	$me . '/' . hostname() . '@TEST.REALM' => [['mitkrb5/1.4', 0]],
+#						   ['mitkrb5/1.3', 1]],
+});
+
 kill(15, $kdc_pid);
 kill(15, $krb5_admind_pid);
 exit(0);
