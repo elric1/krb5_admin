@@ -70,8 +70,10 @@ $kmdb->sacls_add('remove_aclgroup', $creds);
 
 my $hostname = hostname();
 
+$kmdb->create('krbtgt/TEST.REALM@TEST.REALM');
 $kmdb->create('WELLKNOWN/ANONYMOUS@TEST.REALM');
 $kmdb->create('krb5_admin/' . $hostname . '@TEST.REALM');
+$kmdb->create('default');
 
 #
 # Create our custom krb5.conf:

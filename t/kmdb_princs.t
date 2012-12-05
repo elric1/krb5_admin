@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 44;
+use Test::More tests => 43;
 
 use Sys::Hostname;
 
@@ -68,7 +68,9 @@ my $creds  = 'admin_user@TEST.REALM';
 my $sprinc = 'service/host1.test.realm@TEST.REALM';
 my $uprinc = 'user@TEST.REALM';
 my $anon   = 'WELLKNOWN/ANONYMOUS@TEST.REALM';
+my $tgt    = 'krbtgt/TEST.REALM@TEST.REALM';
 my $myhost = 'krb5_admin/' . hostname() . '@TEST.REALM';
+my $def    = 'default@TEST.REALM';
 
 my $p = "Aa1thisisapasswd!!!!";
 
@@ -102,7 +104,8 @@ if ($@) {
 	ok(0, "list");
 	diag(Dumper($@));
 } else {
-	is_deeply([sort @princs], [sort ($uprinc, $anon, $sprinc, $myhost)],
+	is_deeply([sort @princs],
+	    [sort ($uprinc, $anon, $sprinc, , $tgt, $def, $myhost)],
 	    "list");
 }
 
@@ -218,23 +221,14 @@ if (!$@) {
 
 	delete $allprincs{$anon};
 	delete $allprincs{$myhost};
+	delete $allprincs{$tgt};
+	delete $allprincs{$def};
 
 	ok(keys %allprincs == 0, "mquery returned no extra results");
 }
 
 testObjC("remove user", $kmdb, [undef], 'remove', $uprinc);
 testObjC("remove service", $kmdb, [undef], 'remove', $sprinc);
-
-#
-# Let's try to test the new ECDH key negotiation for create.
-
-eval {
-	my $ctx  = Krb5Admin::C::krb5_init_context();
-	my $hndl = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb');
-	Krb5Admin::C::krb5_createkey($ctx, $hndl,
-	    'krbtgt/TEST.REALM@TEST.REALM');
-};
-ok(!$@, 'created TGS key') or diag(Dumper($@));
 
 my $gend;
 eval {
