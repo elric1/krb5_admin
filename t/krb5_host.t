@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 9;
+use Test::More tests => 11;
 
 use Sys::Hostname;
 
@@ -113,7 +113,11 @@ diag $@ if $@;
 my $kt;
 
 $kt = get_kt(local => 1);
-$kt->install_keytab('root', undef, 'krb5_admin/' . hostname() . '@TEST.REALM');
+eval {
+	$kt->install_keytab('root', undef,
+	    'krb5_admin/' . hostname() . '@TEST.REALM');
+};
+ok(!$@, Dumper($@));
 undef($kt);
 
 #
@@ -132,8 +136,11 @@ eval {
 };
 ok(!$@, Dumper($@));
 
-$kmdb->create_host(hostname(), realm => 'TEST.REALM');
-$kmdb->bind_host(hostname(), $binding);
+eval {
+	$kmdb->create_host(hostname(), realm => 'TEST.REALM');
+	$kmdb->bind_host(hostname(), $binding);
+};
+ok(!$@, Dumper($@));
 
 eval { $kt->install_keytab('root', undef, 'host'); };
 ok(!$@, Dumper($@));
@@ -163,8 +170,8 @@ my $ret;
 eval { $ret = $kt->query_keytab($me); };
 ok(!$@, Dumper($@));
 is_deeply($ret, {
-	$me . '/' . hostname() . '@TEST.REALM' => [['mitkrb5/1.4', 0]],
-#						   ['mitkrb5/1.3', 1]],
+	$me . '/' . hostname() . '@TEST.REALM' => [['mitkrb5/1.4', 0],
+						   ['mitkrb5/1.3', 1]],
 });
 
 kill(15, $kdc_pid);
