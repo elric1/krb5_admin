@@ -133,7 +133,7 @@ void		my_free_ctx(krb5_context *);
 krb5_error_code	krb5_parse_name(krb5_context, const char *, krb5_principal *);
 krb5_error_code krb5_string_to_key(krb5_context, krb5_enctype, const char *,
 				   krb5_principal, krb5_keyblock *OUTPUT);
-void		need_new_key(krb5_context, char *, char *);
+int		kt_kvno(krb5_context, char *, char *);
 
 char 	**curve25519_pass1(krb5_context);
 char 	 *curve25519_pass2(krb5_context, char *, char *);

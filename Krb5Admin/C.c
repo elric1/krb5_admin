@@ -1547,17 +1547,19 @@ init_kdb(krb5_context ctx, kadm5_handle hndl)
 #endif
 
 /*
- * need_new_key() attempts to determine if the current keytab
- * has a valid and up to date key for ``princ''.  We do this
- * by fetching creds for ``princ'' and validating them against
- * the keytab.  This may return a false positive if we talk to
- * a slave KDC and the master has been recently updated.  This
- * is an acceptable failure case as our main user krb5_keytab
- * has a -f flag to force an update.
+ * kt_kvno() returns the current kvno of a principal as validated
+ * against the provided keytab.  If the keytab is NULL then we use
+ * the default keytab (i.e. KRB5_KTNAME or /etc/krb5.keytab).  This
+ * function is primarily intended to be used by Krb5Admin::Krb5Host
+ * to determine if the current host and the KDC are in sync w.r.t.
+ * keys.  We have the ``risk'' here of obtaining keys from a slave
+ * but that is mitigated by comparing the returned kvno against what
+ * the master KDC reports.  In the future, we may see if we can hardwire
+ * the code to only obtain tickets from the master KDC.
  */
 
-void
-need_new_key(krb5_context ctx, char *ktname, char *princ)
+int
+kt_kvno(krb5_context ctx, char *ktname, char *princ)
 {
 	krb5_get_creds_opt       opt = NULL;
 	krb5_ccache		 cache = NULL;
@@ -1565,7 +1567,10 @@ need_new_key(krb5_context ctx, char *ktname, char *princ)
 	krb5_creds		*out = NULL;
 	krb5_principal		 server = NULL;
 	krb5_error_code		 ret = 0;
-	char			 croakstr[2048] = "";
+	Ticket			 ticket;
+	size_t			 len;
+ 	char			 croakstr[2048] = "";
+	int			 kvno;
 
 	/*
 	 * XXXrcd: should we create a new ccache with only TGT in case of
@@ -1577,6 +1582,9 @@ need_new_key(krb5_context ctx, char *ktname, char *princ)
 	 *        to grab the TGT from the ccache.
 	 */
 
+	if (!princ)
+		croak("Arg 3 must not be undef.");
+
 	if (ktname)
 		K5BAIL(krb5_kt_resolve(ctx, ktname, &kt));
 	else
@@ -1587,6 +1595,14 @@ need_new_key(krb5_context ctx, char *ktname, char *princ)
 	K5BAIL(krb5_get_creds_opt_alloc(ctx, &opt));
 	K5BAIL(krb5_get_creds(ctx, opt, cache, server, &out));
 	K5BAIL(krb5_verify_init_creds(ctx, out, server, kt, NULL, NULL));
+
+	K5BAIL(decode_Ticket(out->ticket.data, out->ticket.length,
+	    &ticket, &len));
+
+	if (ticket.enc_part.kvno)
+		kvno = *ticket.enc_part.kvno;
+	else
+		kvno = 0;
 
 	/*
 	 * SUCCESS!
@@ -1611,5 +1627,5 @@ done:
 	if (ret)
 		croak("%s", croakstr);
 
-	return;
+	return kvno;
 }
