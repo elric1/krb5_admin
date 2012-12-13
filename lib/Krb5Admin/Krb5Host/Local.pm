@@ -1635,11 +1635,6 @@ sub install_all_keys {
 		}
 	}
 
-	my $instkeys = \&install_key;
-	if ($use_fetch) {
-		$instkeys = \&install_key_legacy;
-	}
-
 	$self->use_testing_ktname();
 	$self->use_private_krb5ccname();
 	$self->mk_kt_dir();
