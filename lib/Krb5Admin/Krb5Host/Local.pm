@@ -1150,7 +1150,7 @@ sub install_key {
 	return;
 }
 
-sub install_key_legacy {
+sub install_key_fetch {
 	my ($self, $kmdb, $action, $lib, $user, $princ) = @_;
 	my $krb5_libs = $self->{krb5_libs};
 	my $strprinc = unparse_princ($princ);
@@ -1164,7 +1164,7 @@ sub install_key_legacy {
 
 	$etypes = $krb5_libs->{$lib} if defined($lib);
 
-	if ($action ne 'change' && $self->{force} < 1) {
+	if ($action ne 'change' && $self->{force} < 1 && !$self->{local}) {
 		return if !$self->need_new_key($kt, $strprinc);
 	}
 
@@ -1354,7 +1354,7 @@ sub install_host_key {
 	# we call bootstrap_host_key() which is a tad more complex.
 
 	$f = \&install_key;
-	$f = \&install_key_legacy	if $use_fetch;
+	$f = \&install_key_fetch	if $use_fetch || $self->{local};
 
 	if ($kmdb) {
 		#
@@ -1557,7 +1557,7 @@ sub install_keys {
 
 		my $f = \&install_key;
 
-		$f = \&install_key_legacy	if $use_fetch;
+		$f = \&install_key_fetch	if $use_fetch || $self->{local};
 		$f = \&install_host_key		if $princ->[1] eq 'host';
 
 		if ($princ->[1] eq 'bootstrap' && $princ->[2] eq 'RANDOM') {
