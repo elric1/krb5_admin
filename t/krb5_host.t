@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 11;
+use Test::More tests => 23;
 
 use Sys::Hostname;
 
@@ -19,6 +19,7 @@ $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 #
 # XXXrcd: THIS MASKS A BUG THAT WE NEED TO FIND!:
 unlink('t/keytabs/root');
+unlink('t/keytabs/elric');
 
 #
 # As a first step, we start a kdc using our local configuration.  This
@@ -80,6 +81,17 @@ our $use_fetch = 0;
 #
 # Done: config file.
 
+sub mk_kte {
+	my ($ctx, $princ, $kvno, $enctype) = @_;
+
+	my $key = Krb5Admin::C::krb5_make_a_key($ctx, $enctype);
+ 
+	$key->{princ} = $princ;
+	$key->{kvno}  = $kvno;
+ 
+	return $key;
+}
+
 sub get_kt {
 
 	return Krb5Admin::Krb5Host::Local->new(
@@ -99,6 +111,8 @@ sub get_kt {
 		@_,
 	);
 }
+
+my $ctx = Krb5Admin::C::krb5_init_context();
 
 my $kmdb = Krb5Admin::KerberosDB->new(
     local	=> 1,
@@ -158,7 +172,50 @@ eval { $kt->install_keytab($me, undef, $me); };
 ok(!$@, Dumper($@));
 
 #
-# And let's see if we can rotate the one of the keys:
+# We should be able to ``install'' them again which should result
+# in no action being taken:
+
+eval { $kt->install_keytab('root', undef, 'nfs'); };
+ok(!$@, Dumper($@));
+eval { $kt->install_keytab($me, undef, $me); };
+ok(!$@, Dumper($@));
+
+#
+# Now, how about if we mess up the keys?
+
+for my $etype (17, 18, 23) {
+	eval {
+		Krb5Admin::C::write_kt($ctx, "WRFILE:t/keytabs/elric",
+		    mk_kte($ctx, "elric/roofdrak.imrryr.org", 1, $etype));
+	};
+	ok(!$@, Dumper($@));
+}
+
+#
+# We should be able to ``install'' them again which should result
+# in new keys being generated with kvno == 2.
+
+my @keys;
+eval { $kt->install_keytab($me, undef, $me); };
+ok(!$@, Dumper($@));
+eval { @keys = Krb5Admin::C::read_kt($ctx, "t/keytabs/$me"); };
+ok(!$@, Dumper($@));
+ok((grep { $_->{kvno} == 2 } @keys) > 0, "install replaced faulty keys");
+
+#
+# And let's see if we can rotate the keys:
+
+eval { $kt->change_keytab('root', 'mitkrb5/1.3', 'host'); };
+ok(!$@, Dumper($@));
+
+eval { $kt->change_keytab('root', 'mitkrb5/1.3', 'host'); };
+ok(!$@, Dumper($@));
+
+eval { $kt->change_keytab('root', 'mitkrb5/1.4', 'host'); };
+ok(!$@, Dumper($@));
+
+eval { $kt->change_keytab('root', 'mitkrb5/1.3', 'nfs'); };
+ok(!$@, Dumper($@));
 
 eval { $kt->change_keytab($me, 'mitkrb5/1.3', $me); };
 ok(!$@, Dumper($@));

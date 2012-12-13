@@ -929,43 +929,65 @@ sub get_kt {
 }
 
 #
-# Here, what we do is a kinit(1) for the key and check the return code.
-# If the kinit(1) is successful, then it's quite likely that we do not
-# need to contact the KDC and so we don't.  This is is heuristic that we
-# expect to work almost all the time.  And if it fails for some reason,
-# then we simply contact the KDC which is not a problem.
+# Here, we make a quick determination to see if we need a new key.  We
+# have stopped using the kinit(1) method and replaced it by fetching a
+# ticket for the service key in question and validating that it works
+# against our keytab.  This is a bit more robust.
+#
+# The arguments are:
+#
+#	$kt		string refering to keytab
+#	$princ		string principal
+#	$kvno		required kvno (undef == any)
 
 sub need_new_key {
-	my ($self, $kt, $key) = @_;
+	my ($self, $kt, $princ, $kvno) = @_;
 	my $ctx = $self->{ctx};
 
 	my @ktkeys;
-	eval { @ktkeys = Krb5Admin::C::read_kt($ctx, $kt); };
+	eval {
+		@ktkeys = Krb5Admin::C::read_kt($ctx, $kt);
+		@ktkeys = grep { $_->{princ} eq $princ} @ktkeys;
+		if (defined($kvno)) {
+			@ktkeys = grep { $_->{kvno} == $kvno} @ktkeys;
+		}
+	};
 
-	if ($@ || !grep { $_->{princ} eq $key } @ktkeys) {
-		return 1;
-	}
+	return 1 if $@;
+	return 1 if @ktkeys == 0;
 
 	#
-	# XXXrcd: need to use builtin kinit functions _but_ we
-	#         have to avoid using the older keys as we are
-	#         testing the integrity of the keytab.  Perhaps
-	#         we must write a new C function to do this?
-
-	# Avoid spawning shells, ignore stderr and stdout.
+	# Now, we know that we have a chance, i.e. we have at least one
+	# key for $princ, $kvno, we contact the KDC and have a chat.  We
+	# will try to get a key for $kvno and if it fails, we will try
+	# again.  The presumption here is that $kvno was determined during
+	# an exchange with the master KDC and so whatever slave we are
+	# talking to will eventually get updated.
 	#
-	my $pid = fork();
-	return 1 if ! defined($pid); # Can't fork
-	if ($pid == 0) {
-		open(STDOUT, ">/dev/null");
-		open(STDERR, ">&STDOUT");
-		exec { $KINIT } $KINIT, @KINITOPT,
-			"-cMEMORY:foo", "-kt", "$kt", "$key";
-		exit 1;
+	# XXXrcd: we return that we require a new key on any error which
+	#         is not strictly speaking correct.  Certain errors such
+	#         as decrypt integrity check failed, principal not found,
+	#         and so on mean we need a new key.  Other errors such as
+	#         cannot contact KDC mean that the KDC infrastructure is
+	#         having ``issues'' and we should likely punt in this
+	#         situation.  We'll have to revisit this at a later date.
+	#
+	# XXXrcd: also: what about the case where a slave returns me kvno-1
+	#         and it gives decrypt integrity check failed but the master
+	#         has kvno and it is correct?  This should loop rather than
+	#         give an error, shouldn't it?
+
+	for my $i (1..10) {
+		my $k;
+		eval { $k = Krb5Admin::C::kt_kvno($ctx, $kt, $princ); };
+
+		return 1 if $@;
+		return 0 if !defined($kvno) || $k == $kvno;
+
+		sleep(3);
 	}
-	waitpid($pid, 0);
-	return 1 if ($? != 0);
-	return 0;
+
+	return 1;
 }
 
 sub mk_keys {
@@ -1068,7 +1090,7 @@ sub install_key {
 		return if !$self->need_new_key($kt, $strprinc);
 	}
 
-	$kmdb->master()		if $action eq 'change';
+	$kmdb->master();
 
 	$self->vprint("installing: $strprinc\n");
 
@@ -1085,7 +1107,10 @@ sub install_key {
 
 	#
 	# Now, in this mode, we cannot simply fetch the keys and
-	# so, well, we will see if we are up to date.
+	# so, well, we will see if we are up to date.  We check this
+	# by first comparing kvno's but we need to realise that just
+	# because we have a kvno in our keytab, it does not mean that
+	# it is actually valid, so we must also test that.
 	#
 	# XXXrcd: If we aren't, well, the best thing that we can
 	#         do is either toss an exception or just warn and
@@ -1094,39 +1119,35 @@ sub install_key {
 	#         an fqdn). For other instances, we abort, as the
 	#         key may be shared among the members of a cluster.
 
-	if (!$err && $action eq 'default') {
-		my @ktkeys;
-		eval { @ktkeys = Krb5Admin::C::read_kt($ctx, $kt); };
-		@ktkeys = grep { $_->{"princ"} eq $strprinc } @ktkeys;
-
-		if (max_kvno(\@ktkeys) < max_kvno($ret->{keys})) {
-			#
-			# If the instance matches the local hostname,
-			# just change the key, it should not be shared
-			# with other hosts.
-
-			if ($princ->[2] ne hostname()) {
-				die "The kvno for $strprinc is less than".
-				    " the KDCs, aborting as the key may".
-				    " be shared with other hosts. If the".
-				    " is not shared, you may use $0 -c".
-				    " to force a key change.\n";
-			}
-			$action = 'change';
-		} else {
-			$self->vprint("The keys for $strprinc already " .
-			    "exist.\n");
-			return;
-		}
-	}
-
 	my $kvno = 0;
 	my @kvno_arg = ();
-	if ($action eq 'change') {
+	if (defined($ret)) {
 		# Find the max kvno:
 		$kvno = max_kvno($ret->{keys});
 		die "Could not determine max kvno" if $kvno == -1;
 		@kvno_arg = ($kvno + 1);
+	}
+
+	if (!$err && $action eq 'default') {
+		if (!$self->need_new_key($kt, $strprinc, $kvno)) {
+			$self->vprint("The keys for $strprinc already " .
+			    "exist.\n");
+			return;
+		}
+
+		#
+		# If the instance matches the local hostname,
+		# just change the key, it should not be shared
+		# with other hosts.
+
+		if ($princ->[2] ne hostname()) {
+			die "The kvno for $strprinc is less than".
+			    " the KDCs, aborting as the key may".
+			    " be shared with other hosts. If the".
+			    " is not shared, you may use $0 -c".
+			    " to force a key change.\n";
+		}
+		$action = 'change';
 	}
 
 	if (!defined($etypes) && $action eq 'change') {
