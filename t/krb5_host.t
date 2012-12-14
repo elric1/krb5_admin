@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 23;
+use Test::More tests => 30;
 
 use Sys::Hostname;
 
@@ -181,12 +181,21 @@ eval { $kt->install_keytab($me, undef, $me); };
 ok(!$@, Dumper($@));
 
 #
-# Now, how about if we mess up the keys?
+# Now, how about if we mess up the keys?  We specifically add AES
+# keys and will use mitkrb5/1.3 to see if they are left in place.
 
-for my $etype (17, 18, 23) {
+for my $etype (16, 17, 18, 23) {
 	eval {
-		Krb5Admin::C::write_kt($ctx, "WRFILE:t/keytabs/elric",
-		    mk_kte($ctx, "elric/roofdrak.imrryr.org", 1, $etype));
+		Krb5Admin::C::write_kt($ctx, "WRFILE:t/keytabs/$me",
+		    mk_kte($ctx, "$me/roofdrak.imrryr.org", 1, $etype));
+	};
+	ok(!$@, Dumper($@));
+}
+
+for my $etype (16, 17, 18, 23) {
+	eval {
+		Krb5Admin::C::write_kt($ctx, "WRFILE:t/keytabs/$me",
+		    mk_kte($ctx, "$me/roofdrak.imrryr.org", 2, $etype));
 	};
 	ok(!$@, Dumper($@));
 }
@@ -195,12 +204,20 @@ for my $etype (17, 18, 23) {
 # We should be able to ``install'' them again which should result
 # in new keys being generated with kvno == 2.
 
-my @keys;
-eval { $kt->install_keytab($me, undef, $me); };
+eval { $kt->install_keytab($me, 'mitkrb5/1.3', $me); };
 ok(!$@, Dumper($@));
+
+my @keys;
 eval { @keys = Krb5Admin::C::read_kt($ctx, "t/keytabs/$me"); };
 ok(!$@, Dumper($@));
 ok((grep { $_->{kvno} == 2 } @keys) > 0, "install replaced faulty keys");
+
+#
+# We also installed a bunch of incorrect keys of kvno == 2 to muddy
+# the waters.  Let's make sure that they are gone...
+
+ok((grep { $_->{kvno} == 2 && $_->{enctype} == 18 } @keys) == 0, "bad etype");
+ok((grep { $_->{kvno} == 2 && $_->{enctype} == 17 } @keys) == 0, "bad etype");
 
 #
 # And let's see if we can rotate the keys:

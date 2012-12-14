@@ -1047,6 +1047,52 @@ sub write_keys_kt {
 	my @ktkeys;
 	eval { @ktkeys = Krb5Admin::C::read_kt($ctx, $kt); };
 
+	for my $ktent (@ktkeys) {
+		#
+		# remove keys that are represented in @keys
+		# by kvno but not enctype.  Here, we assume
+		# that if a key is provided of a particular
+		# princ, kvno then all of the keys for that
+		# princ, kvno are provided.  It may seem a
+		# little strange to do all of this after we
+		# added the keys rather than just removing
+		# all of the keys with matching princ, kvno
+		# before we start but it is important to
+		# ensure that we never remove a key that is
+		# currently in use.  Krb5Admin::C::write_kt()
+		# already has logic to overwrite mismatched
+		# keys and to leave matching keys in place.
+
+		my @tmp;
+
+		@tmp = grep { $ktent->{princ} eq $_->{princ} } @keys;
+		@tmp = grep { $ktent->{kvno}  eq $_->{kvno} }  @tmp;
+
+		#
+		# Now, @tmp should represent the keys passed in that
+		# match $ktent's princ and kvno.  If there are none,
+		# then we are not operating on this princ, kvno and
+		# so we leave the key in place.
+
+		next if @tmp == 0;
+
+		#
+		# Otherwise, we leave the key in place if one of the
+		# keys in @tmp has the same enctype as the key, i.e.
+		# we just wrote it.
+
+		next if grep { $ktent->{enctype} eq $_->{enctype} } @tmp;
+
+		eval { Krb5Admin::C::kt_remove_entry($ctx, $kt, $ktent); };
+	}
+
+	#
+	# We do not really need to reload here but we're making sure that
+	# nothing went horribly wrong...
+
+	@ktkeys = ();
+	eval { @ktkeys = Krb5Admin::C::read_kt($ctx, $kt); };
+
 	return if $self->{force} < 2 && !$self->is_quirky($lib, @ktkeys);
 
 	$self->vprint("Recreating keytab file fixing quirks...\n");
