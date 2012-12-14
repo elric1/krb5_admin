@@ -1562,8 +1562,11 @@ int
 kt_kvno(krb5_context ctx, char *ktname, char *princ)
 {
 	krb5_get_creds_opt       opt = NULL;
+	krb5_const_realm	 realm;
 	krb5_ccache		 cache = NULL;
+	krb5_ccache		 memcache = NULL;
 	krb5_keytab		 kt = NULL;
+	krb5_creds		 cfg_creds, tgt;
 	krb5_creds		*out = NULL;
 	krb5_principal		 server = NULL;
 	krb5_error_code		 ret = 0;
@@ -1571,16 +1574,9 @@ kt_kvno(krb5_context ctx, char *ktname, char *princ)
 	size_t			 len;
  	char			 croakstr[2048] = "";
 	int			 kvno;
+	int			 free_tgt = 0;
 
-	/*
-	 * XXXrcd: should we create a new ccache with only TGT in case of
-	 *	  caching?  Well, for now, we proceed with the
-	 *	  assumption that we will only be using fresh
-	 *	  ccaches that Krb5Admin::Krb5Host::Local has just
-	 *	  obtained and that we therefore do not need to worry
-	 *        about this issue.  In the future, it would be safer
-	 *        to grab the TGT from the ccache.
-	 */
+	memset(&cfg_creds, 0x0, sizeof(cfg_creds));
 
 	if (!princ)
 		croak("Arg 3 must not be undef.");
@@ -1590,11 +1586,42 @@ kt_kvno(krb5_context ctx, char *ktname, char *princ)
 	else
 		K5BAIL(krb5_kt_default(ctx, &kt));
 
+	/*
+	 * Now, we copy the TGT from our default cache into a memory
+	 * cache.  We do this because we need to ensure that we are
+	 * actually performing a TGS_REQ and not simply retrieving
+	 * a cached copy of the service ticket.
+	 */
+
+	/* Fetch the TGT from the default ccache: */
+
 	K5BAIL(krb5_cc_default(ctx, &cache));
-	K5BAIL(krb5_parse_name(ctx, princ, &server));
+	K5BAIL(krb5_cc_get_principal(ctx, cache, &cfg_creds.client));
+	realm = krb5_principal_get_realm(ctx, cfg_creds.client);
+	K5BAIL(krb5_make_principal(ctx, &cfg_creds.server, realm,
+	    KRB5_TGS_NAME, realm, NULL));
+	K5BAIL(krb5_cc_retrieve_cred(ctx, cache, KRB5_TC_MATCH_SRV_NAMEONLY,
+	    &cfg_creds, &tgt));
+	free_tgt = 1;
+
+	/* Create a MEMORY: ccache and store the tgt in it: */
+
+	K5BAIL(krb5_cc_resolve(ctx, "MEMORY:kt_kvno", &memcache));
+	K5BAIL(krb5_cc_initialize(ctx, memcache, cfg_creds.client));
+	K5BAIL(krb5_cc_store_cred(ctx, memcache, &tgt));
+
+	/* Now that we have a memory ccache, we can try to obtain our creds */
+
 	K5BAIL(krb5_get_creds_opt_alloc(ctx, &opt));
-	K5BAIL(krb5_get_creds(ctx, opt, cache, server, &out));
+	K5BAIL(krb5_parse_name(ctx, princ, &server));
+	K5BAIL(krb5_get_creds(ctx, opt, memcache, server, &out));
 	K5BAIL(krb5_verify_init_creds(ctx, out, server, kt, NULL, NULL));
+
+	/*
+	 * XXXrcd: this next section is Heimdal specific.  We'll have
+	 *         make it work with MIT at some point.  Not too difficult,
+	 *         of course...
+	 */
 
 	K5BAIL(decode_Ticket(out->ticket.data, out->ticket.length,
 	    &ticket, &len));
@@ -1604,25 +1631,25 @@ kt_kvno(krb5_context ctx, char *ktname, char *princ)
 	else
 		kvno = 0;
 
-	/*
-	 * SUCCESS!
-	 * Okay, so now we know that we have creds and that they are
-	 * valid.  We could check the kvno and make sure that we have
-	 * no newer keys in the keytab, but we're going to defer this
-	 * until later.
-	 */
-
 done:
 	if (kt)
 		krb5_kt_close(ctx, kt);
 	if (cache)
 		krb5_cc_close(ctx, cache);
+	if (memcache)
+		krb5_cc_destroy(ctx, memcache);
 	if (server)
 		krb5_free_principal(ctx, server);
 	if (opt)
 		krb5_get_creds_opt_free(ctx, opt);
 	if (out)
 		krb5_free_creds(ctx, out);
+	if (free_tgt)
+		krb5_free_cred_contents(ctx, &tgt);
+	if (cfg_creds.client)
+		krb5_free_principal(ctx, cfg_creds.client);
+	if (cfg_creds.server)
+		krb5_free_principal(ctx, cfg_creds.server);
 
 	if (ret)
 		croak("%s", croakstr);
