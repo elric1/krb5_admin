@@ -1199,7 +1199,7 @@ sub get_hostbased_kmdb {
 	$client = unparse_princ([$realm, "host", $inst]);
 
 	# XXXrcd: put a message into get_kmdb()...
-	$self->vprint("connecting to ${realm}'s KDCs using $client creds.");
+	$self->vprint("connecting to ${realm}'s KDCs using $client creds.\n");
 
 	eval {
 		$kmdb = Krb5Admin::Client->new($client, { realm => $realm });
