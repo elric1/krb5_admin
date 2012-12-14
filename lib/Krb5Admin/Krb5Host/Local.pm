@@ -1319,8 +1319,19 @@ sub install_key {
 	}
 	my $gend = $kmdb->genkeys('change', $strprinc, $kvno + 1, @$etypes);
 	$self->write_keys_kt($user, $lib, undef, undef, @{$gend->{'keys'}});
-	&$func($kmdb, $strprinc, @kvno_arg, 'public' => $gend->{'public'},
-	    'enctypes' => $etypes);
+	eval {
+		&$func($kmdb, $strprinc, @kvno_arg,
+		    'public' => $gend->{'public'}, 'enctypes' => $etypes);
+	};
+
+	$err = $@;
+	if ($err) {
+		my $kt = $self->get_kt($user);
+		for my $ktent (@{$gend->{'keys'}}) {
+			Krb5Admin::C::kt_remove_entry($ctx, $kt, $ktent);
+		}
+		die $@;
+	}
 
 	return;
 }
