@@ -1,4 +1,4 @@
-# 
+#
 #
 
 package Krb5Admin::Log;
@@ -9,7 +9,7 @@ use warnings;
 use strict;
 
 sub cmd_log {
-        my ($self, $level, $code, $cmd, @args) = @_;
+	my ($self, $level, $code, $cmd, @args) = @_;
 
 	@args = $args[0]	if $cmd eq 'create_user';
 	@args = $args[0]	if $cmd eq 'change_passwd';

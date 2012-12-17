@@ -14,8 +14,8 @@
 			    "contain %s", (rhs));			\
 			ret = 1;					\
 			goto done;					\
-		} 							\
-		if (lhs) { 						\
+		}							\
+		if (lhs) {						\
 			success;					\
 		}							\
 	} while (0)
@@ -45,11 +45,11 @@
 		lhs_len = __len;					\
 	} while (0)
 
-#define HV_STORE_INTERNAL_F(hv, key, sv) 				\
+#define HV_STORE_INTERNAL_F(hv, key, sv)				\
 	(void)hv_store((hv), (key), strlen((key)), sv, 0)
 
 #define HV_STORE_PVN_LEN_F(hv, key, val, len) do {			\
-		if (val) 						\
+		if (val)						\
 			HV_STORE_INTERNAL_F(hv, key, newSVpvn(val,	\
 			    len));					\
 	} while (0)
@@ -57,7 +57,7 @@
 #define HV_STORE_PVN_LEN(hv, base, key, len)				\
 	HV_STORE_PVN_LEN_F(hv, #key, base . key, base . len)
 
-#define HV_STORE_PVN_F(hv, key, val) 					\
+#define HV_STORE_PVN_F(hv, key, val)					\
 	HV_STORE_PVN_LEN_F(hv, key, val, strlen(val));
 
 #define HV_STORE_PVN(hv, base, key) HV_STORE_PVN_F(hv, #key, base . key)

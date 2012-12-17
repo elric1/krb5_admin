@@ -57,7 +57,7 @@ typedef	void *kadm5_handle;
 struct _key {
 	char		*princ;
 	krb5_timestamp	 timestamp;
-	int	 	 kvno;
+	int		 kvno;
 	int		 enctype;
 	int		 length;
 	char		 data[1024];
@@ -77,7 +77,7 @@ krb5_get_kadm5_hndl(krb5_context ctx, char *dbname)
 	const char		*princstr = "root";
 	char			 croakstr[2048] = "";
 
-	memset((char *) &params, 0, sizeof(params));	
+	memset((char *) &params, 0, sizeof(params));
 
 	if (dbname) {
 		params.mask   = KADM5_CONFIG_DBNAME;
@@ -246,7 +246,7 @@ done:
 
 void
 krb5_modprinc(krb5_context ctx, kadm5_handle hndl, kadm5_principal_ent_rec p,
-              long mask)
+	      long mask)
 {
 	kadm5_ret_t	ret;
 	char		croakstr[256] = "";
@@ -407,7 +407,7 @@ krb5_getkey(krb5_context ctx, kadm5_handle hndl, char *in)
 	kadm5_principal_ent_rec	 dprinc;
 	krb5_principal		 princ = NULL;
 	krb5_keyblock		 kb;
-        kadm5_ret_t		 ret;
+	kadm5_ret_t		 ret;
 	int			 i;
 	int			 got_dprinc = 0;
 	char			 croakstr[2048] = "";
@@ -447,9 +447,9 @@ krb5_getkey(krb5_context ctx, kadm5_handle hndl, char *in)
 		ret = kadm5_decrypt_key(hndl, &dprinc, kd->key_data_type[0],
 		    -1 /*salt*/, kd->key_data_kvno, &kb, NULL, NULL);
 
-                if (ret == KRB5_KDB_NO_PERMITTED_KEY)
-                    continue;
-                K5BAIL(ret);
+		if (ret == KRB5_KDB_NO_PERMITTED_KEY)
+			continue;
+		K5BAIL(ret);
 
 		/* XXXrcd: assert that we have enough space */
 		k->enctype = kb.enctype;
@@ -506,7 +506,7 @@ krb5_createkey(krb5_context ctx, kadm5_handle hndl, char *in)
 	char			 croakstr[2048] = "";
 	char			 dummybuf[256];
 
-	memset((char *) &params, 0, sizeof(params));	
+	memset((char *) &params, 0, sizeof(params));
 	memset(dummybuf, 0x0, sizeof(dummybuf));
 	memset(&dprinc, 0, sizeof(dprinc));
 
@@ -615,7 +615,7 @@ krb5_setkey(krb5_context ctx, kadm5_handle hndl, char *in, int kvno,
 	int			 locked = 0;
 	char			 croakstr[2048] = "";
 
-	memset((char *) &params, 0, sizeof(params));	
+	memset((char *) &params, 0, sizeof(params));
 
 	/*
 	 * We expect that our typemap will give us an array of keys that
@@ -1074,7 +1074,7 @@ kinit_kt(krb5_context ctx, char *princstr, char *ktname, char *ccname)
 
 	if (ktname)
 		K5BAIL(krb5_kt_resolve(ctx, ktname, &kt));
-        else
+	else
 		K5BAIL(krb5_kt_default(ctx, &kt));
 
 	if (ccname)
@@ -1263,11 +1263,11 @@ done:
 char **
 krb5_list_pols(krb5_context ctx, kadm5_handle hndl, char *exp)
 {
-        kadm5_ret_t       ret;
+	kadm5_ret_t	  ret;
 	char		**out = NULL;
-        char            **pols = NULL;
+        char		**pols = NULL;
 	char		  croakstr[2048] = "";
-        int               count;
+	int		  count;
 	int		  i;
 
 	K5BAIL(kadm5_get_policies(hndl, exp, &pols, &count));
@@ -1285,10 +1285,10 @@ krb5_list_pols(krb5_context ctx, kadm5_handle hndl, char *exp)
 	out[i] = NULL;
 
 done:
-        /* XXXrcd: leaks like a sieve. */
+	/* XXXrcd: leaks like a sieve. */
 	if (ret)
 		croak("%s", croakstr);
-        return out;
+	return out;
 }
 #else
 char **
@@ -1302,14 +1302,14 @@ krb5_list_pols(krb5_context ctx, kadm5_handle hndl, char *exp)
 char **
 krb5_list_princs(krb5_context ctx, kadm5_handle hndl, char *exp)
 {
-        kadm5_ret_t       ret;
+	kadm5_ret_t	  ret;
 	char		**out = NULL;
-        char            **princs = NULL;
+	char		**princs = NULL;
 	char		  croakstr[2048] = "";
-        int               count;
+	int		  count;
 	int		  i;
 
-        K5BAIL(kadm5_get_principals(hndl, exp, &princs, &count));
+	K5BAIL(kadm5_get_principals(hndl, exp, &princs, &count));
 
 	/* We must null terminate the string because of our typemap. */
 	out = malloc((count + 1) * sizeof(*out));
@@ -1324,10 +1324,10 @@ krb5_list_princs(krb5_context ctx, kadm5_handle hndl, char *exp)
 	out[i] = NULL;
 
 done:
-        /* XXXrcd: leaks like a sieve. */
+	/* XXXrcd: leaks like a sieve. */
 	if (ret)
 		croak("%s", croakstr);
-        return out;
+	return out;
 }
 
 
@@ -1561,7 +1561,7 @@ init_kdb(krb5_context ctx, kadm5_handle hndl)
 int
 kt_kvno(krb5_context ctx, char *ktname, char *princ)
 {
-	krb5_get_creds_opt       opt = NULL;
+	krb5_get_creds_opt	 opt = NULL;
 	krb5_const_realm	 realm;
 	krb5_ccache		 cache = NULL;
 	krb5_ccache		 memcache = NULL;
@@ -1572,7 +1572,7 @@ kt_kvno(krb5_context ctx, char *ktname, char *princ)
 	krb5_error_code		 ret = 0;
 	Ticket			 ticket;
 	size_t			 len;
- 	char			 croakstr[2048] = "";
+	char			 croakstr[2048] = "";
 	int			 kvno;
 	int			 free_tgt = 0;
 

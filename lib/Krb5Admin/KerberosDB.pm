@@ -1,4 +1,4 @@
-# 
+#
 # Blame: "Roland C. Dowdeswell" <elric@imrryr.org>
 
 package Krb5Admin::KerberosDB;
@@ -48,13 +48,13 @@ our %flag_map = (
 	allow_forwardable		=>	[DISALLOW_FORWARDABLE, 1],
 	allow_tgs_req			=>	[DISALLOW_TGT_BASED,   1],
 	allow_renewable			=>	[DISALLOW_RENEWABLE,   1],
-	allow_proxiable			=>	[DISALLOW_PROXIABLE,   1], 
+	allow_proxiable			=>	[DISALLOW_PROXIABLE,   1],
 	allow_dup_skey			=>	[DISALLOW_DUP_SKEY,    1],
 	allow_tix			=>	[DISALLOW_ALL_TIX,     1],
 	requires_preauth		=>	[REQUIRES_PRE_AUTH,    0],
 	requires_hwauth			=>	[REQUIRES_HW_AUTH,     0],
 	needchange			=>	[REQUIRES_PWCHANGE,    0],
-	allow_svr			=>	[DISALLOW_SVR,         1], 
+	allow_svr			=>	[DISALLOW_SVR,         1],
 	password_changing_service	=>	[PWCHANGE_SERVICE,     0],
 	support_desmd5			=>	[SUPPORT_DESMD5,       0],
 );
@@ -406,10 +406,10 @@ our %field_desc = (
 		wontgrow	=> 0,
 	},
 	appid_acls	=> {
-                pkey            => [qw/appid acl/],
-                uniq            => [],
-                fields          => [qw/appid acl/],
-                wontgrow        => 1,
+		pkey		=> [qw/appid acl/],
+		uniq		=> [],
+		fields		=> [qw/appid acl/],
+		wontgrow	=> 1,
 		fkey		=> [[qw/acl acls name/]],
 	},
 	appid_cstraints => {
@@ -1157,7 +1157,7 @@ sub modify {
 		die [503, "You cannot relinquish permissions."];
 	}
 
-        $dbh->commit();
+	$dbh->commit();
 	return undef;
 }
 
@@ -1329,7 +1329,7 @@ sub is_appid_owner {
 	my $usage = "is_appid_owner <princ> <appid>";
 	$princ = canonicalise_fqprinc($ctx, $usage, 1, $princ);
 	$appid = canonicalise_fqprinc($ctx, $usage, 2, $appid);
- 
+
 	#
 	# We implement here a single SQL statement that will deal
 	# with recursive groups up to N levels.	 After this, we give
@@ -1337,7 +1337,7 @@ sub is_appid_owner {
 	# or simply define N as being a hard limit?
 
 	my @joins = ('LEFT JOIN acls ON appid_acls.acl = acls.name');
-	my @where = ('acls.name = ?'); 
+	my @where = ('acls.name = ?');
 	my @bindv = ($princ);
 
 	for (my $i=0; $i < GROUP_RECURSION; $i++) {
@@ -1352,7 +1352,7 @@ sub is_appid_owner {
 		push(@joins, $join);
 		push(@where, "aclgroups$i.acl = ?");
 		push(@bindv, $princ);
-	} 
+	}
 
 	my $stmt = q{SELECT COUNT(appid_acls.appid) FROM appid_acls } .
 	    join(' ', @joins) . ' WHERE appid_acls.appid = ? AND (' .

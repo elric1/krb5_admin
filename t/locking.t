@@ -54,7 +54,7 @@ sub kid_logic {
 		Krb5Admin::C::krb5_createkey($ctx, $hndl, "$prefix.$i");
 #		Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
 #			principal	=> "$prefix.$i",
-#			policy 		=> 'default',
+#			policy		=> 'default',
 #			attributes	=> REQUIRES_PRE_AUTH | DISALLOW_SVR,
 #		}, [], undef);
 	}

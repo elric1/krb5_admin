@@ -122,7 +122,7 @@ krb5_error_code		 kadm5_destroy(kadm5_handle);
 void	 krb5_modprinc(krb5_context, kadm5_handle, kadm5_principal_ent_rec,
 		       long);
 char	*krb5_createprinc(krb5_context, kadm5_handle,
-                 	  kadm5_principal_ent_rec, long,
+			  kadm5_principal_ent_rec, long,
 			  int, krb5_key_salt_tuple *,
 			  char *);
 void	 krb5_deleteprinc(krb5_context, kadm5_handle, char *);
@@ -135,5 +135,5 @@ krb5_error_code krb5_string_to_key(krb5_context, krb5_enctype, const char *,
 				   krb5_principal, krb5_keyblock *OUTPUT);
 int		kt_kvno(krb5_context, char *, char *);
 
-char 	**curve25519_pass1(krb5_context);
-char 	 *curve25519_pass2(krb5_context, char *, char *);
+char	**curve25519_pass1(krb5_context);
+char	 *curve25519_pass2(krb5_context, char *, char *);

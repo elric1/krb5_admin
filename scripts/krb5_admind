@@ -11,7 +11,7 @@ use warnings;
 
 use constant {
 	KRB5_ADMIND_CONFIG	=> '/etc/krb5/krb5_admind.conf',
-        ACL_FILE                => '/etc/krb5/krb5_admin.acl',
+	ACL_FILE                => '/etc/krb5/krb5_admin.acl',
 };
 
 sub usage {

@@ -26,7 +26,7 @@ our %host_hmap = (
 );
 
 our %princ_hmap = (
-        # Associated HDB attributes
+	# Associated HDB attributes
 	# XXX: It would be nice if the API supported time
 	#      suffixes (1d, 2w, ...)
 	princ_expire_time	=> undef,
