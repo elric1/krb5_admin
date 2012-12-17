@@ -691,7 +691,7 @@ sub del_kt_princ {
 
 	for my $ktent (@ktents) {
 		next if ($ktent->{"princ"} ne $strprinc);
-		Krb5Admin::C::kt_remove_entry($ctx, $kt, $ktent)
+		Krb5Admin::C::kt_remove_entry($ctx, $kt, $ktent);
 	}
 }
 
