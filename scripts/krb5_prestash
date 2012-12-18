@@ -7,6 +7,7 @@ use Getopt::Std;
 use Krb5Admin::C;
 use Krb5Admin::Client;
 use Krb5Admin::KerberosDB;
+use Krb5Admin::Krb5Host::Local;
 use Krb5Admin::Utils qw/host_list/;
 use Sys::Hostname;
 
@@ -19,11 +20,6 @@ our $ctx;
 our $expand_srvloc = 0;
 
 my $vfmt = "   %- 22.22s %- 25.25s %s\n";
-
-our $global_ccname;
-END {
-	eval { unlink($global_ccname) if defined($global_ccname); };
-}
 
 sub warning {
 	my ($format, @args) = @_;
@@ -47,86 +43,13 @@ sub qualify_princ {
 	return join('/', @princ[1..$#princ]) . '@' . $princ[0];
 }
 
-sub save_tickets {
-	my ($princstr, $tix) = @_;
-	my $tix_dir = '/var/spool/tickets';
-
-	if (!defined($princstr)) {
-		die "save_tickets called on undefined value.\n"
-	}
-
-	if (!defined($tix)) {
-		die "save_tickets called without \$tix.\n"
-	}
-
-	my @princ = Krb5Admin::C::krb5_parse_name($ctx, $princstr);
-
-	#
-	# XXXrcd: Implement more appropriate name mappings, in
-	#         the future...
-	#
-	#         For now, we just use the princ's name which is
-	#         suboptimal...
-
-	if (@princ != 2) {
-		warning("Fully qualified principal (\"%s\") is not " .
-		    "eligible for prestashed tickets.", $princstr);
-		next;
-	}
-
-	my $user = $princ[1];
-
-	my ($name, $passwd, $uid, $gid) = getpwnam($user);
-
-	if (!defined($name) || $name ne $user) {
-		# XXXrcd: print a warning---in a better way.
-		warning("Tickets sent for non-existent user %s.  " .
-		    "Skipping", $user);
-		next;
-	}
-
-	mkdir($tix_dir);
-	chmod(0755, $tix_dir);
-	my $ccache_fn = "$tix_dir/$user";
-	my $ccache = "FILE:$ccache_fn";
-
-	Krb5Admin::C::init_store_creds($ctx, $ccache,
-	    $tix->{$princstr});
-
-	chown($uid, 0, $ccache_fn);
-}
-
 sub fetch {
-	my ($global_kmdb, @realms) = @_;
+	my ($kmdb, @realms) = @_;
 
-	my $orig_krb5ccname = $ENV{KRB5CCNAME};
-	my $fh;
-	($fh, $global_ccname) = mkstemp("/tmp/krb5_keytab_ccXXXXXX");
-	undef($fh);
-	$ENV{KRB5CCNAME} = "FILE:$global_ccname";
+	my $khost = Krb5Admin::Krb5Host::Local->new(kmdb => $kmdb,
+	    invoking_user => 'root');
 
-	my $clnt = 'host/' .  [host_list(hostname())]->[0];
-
-	if (@realms == 0) {
-		@realms = (Krb5Admin::C::krb5_get_realm($ctx));
-	}
-
-	my $kmdb = $global_kmdb;
-	for my $realm (@realms) {
-		if (!defined($global_kmdb)) {
-			$kmdb = Krb5Admin::Client->new($clnt, {realm=>$realm});
-		}
-
-		my $tix = $kmdb->fetch_tickets($realm);
-
-		for my $princstr (keys %$tix) {
-			save_tickets($princstr, $tix);
-		}
-	}
-
-	unlink($global_ccname);
-	undef $global_ccname;
-	$ENV{KRB5CCNAME} = $orig_krb5ccname;
+	$khost->fetch_tickets(@realms);
 }
 
 sub query {
@@ -300,15 +223,15 @@ eval {
 	&$cmd($kmdb, @ARGV);
 };
 
-if ($@) {
+if (my $err = $@) {
 	print STDERR "ERROR: ";
-	if (ref($@) eq 'ARRAY') {
-		print STDERR join(' ', @{$@});
+	if (ref($err) eq 'ARRAY') {
+		print STDERR join(' ', @{$err});
 		print STDERR "\n";
 		exit(1);
 	}
-	if (ref($@) eq '' || $@->isa('Error')) {
-		print STDERR $@;
+	if (ref($err) eq '' || $@->isa('Error')) {
+		print STDERR $err;
 		print STDERR "\n";
 		exit(1);
 	}

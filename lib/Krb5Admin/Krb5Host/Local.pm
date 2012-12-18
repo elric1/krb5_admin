@@ -59,12 +59,14 @@ our %kt_opts = (
 	user2service		=> {},
 	allowed_enctypes	=> [],
 	admin_users		=> {},
+	kmdb			=> undef,	# XXXrcd: more logic
 	krb5_lib		=> '',
 	krb5_libs		=> {},
 	krb5_lib_quirks		=> {},
 	default_krb5_lib	=> 'mitkrb5/1.4',
 	lockdir			=> undef,
 	ktdir			=> undef,
+	tixdir			=> undef,
 	user_libs		=> {},
 	use_fetch		=> 0,
 	force			=> 0,
@@ -313,6 +315,112 @@ sub install_keytab {
 	my ($self, $user, $lib, @inprincs) = @_;
 
 	$self->install_all_keys($user, 'default', $lib, @inprincs);
+}
+
+sub install_ticket {
+	my ($self, $princstr, $tix) = @_;
+	my $ctx = $self->{ctx};
+
+	my $tixdir = $self->{tixdir};
+	   $tixdir = '/var/spool/tickets'	if !defined($tixdir);
+
+	if (!defined($princstr)) {
+		die "install_tickets called on undefined value.\n"
+	}
+
+	if (!defined($tix)) {
+		die "install_tickets called without \$tix.\n"
+	}
+
+	my @princ = Krb5Admin::C::krb5_parse_name($ctx, $princstr);
+
+	#
+	# XXXrcd: Implement more appropriate name mappings, in
+	#         the future...
+	#
+	#         For now, we just use the princ's name which is
+	#         suboptimal...
+	#
+	#         This could be a security issue in the future, so
+	#         we must revisit this decision.  For now, it is not
+	#         as we call it with specified realms and it is a
+	#         matter of configuration to only use realms that
+	#         you trust.
+
+	if (@princ != 2) {
+		die "Fully qualified principal (\"$princstr\") is not " .
+		    "eligible for prestashed tickets.\n";
+	}
+
+	my $user = $princ[1];
+
+	my ($name, $passwd, $uid, $gid) = getpwnam($user);
+
+	if (!defined($name) || $name ne $user) {
+		die "Tickets sent for non-existent user %user.\n";
+	}
+
+	#
+	# XXXrcd: may not always be able to create $tixdir?
+
+	mkdir($tixdir);
+	chmod(0755, $tixdir);
+	my $ccache_fn = "$tixdir/$user";
+	my $ccache = "FILE:$ccache_fn";
+
+	Krb5Admin::C::init_store_creds($ctx, $ccache, $tix->{$princstr});
+
+	#
+	# XXXrcd: chown() may fail in test mode.
+
+	chown($uid, 0, $ccache_fn);
+	return;
+}
+
+sub fetch_tickets_realm {
+	my ($self, $clnt, $realm) = @_;
+	my @errs;
+
+	my $kmdb = $self->get_kmdb();
+
+	if (!defined($kmdb)) {
+		$kmdb = Krb5Admin::Client->new($clnt, {realm=>$realm});
+	}
+
+	my $tix = $kmdb->fetch_tickets($realm);
+
+	for my $princstr (keys %$tix) {
+		eval { $self->install_ticket($princstr, $tix); };
+
+		push(@errs, $@) if $@;
+	}
+
+	die \@errs if @errs > 0;
+}
+
+sub fetch_tickets {
+	my ($self, @realms) = @_;
+	my @errs;
+
+	#
+	# XXXrcd: and ACLs.  ACLs ACLs ACLs.
+	# XXXrcd: may also want to test euid == 0.
+
+	$self->use_private_krb5ccname();
+
+	my $clnt = 'host/' .  [host_list(hostname())]->[0];
+
+	@realms = ($self->get_defrealm())	if @realms == 0;
+
+	for my $realm (@realms) {
+		eval { $self->fetch_tickets_realm($clnt, $realm); };
+
+		push(@errs, @{$@}) if $@;
+	}
+
+	$self->reset_krb5ccname();
+
+	die \@errs if @errs > 0;
 }
 
 
@@ -1136,7 +1244,7 @@ sub get_kmdb {
 	# enforce it here:
 
 	if (!$self->is_admin() && $self->{invoking_user} ne 'root') {
-		die "-A and -Z require administrative access.";
+		die "-A, -Z, and -l require administrative access.";
 	}
 
 	#

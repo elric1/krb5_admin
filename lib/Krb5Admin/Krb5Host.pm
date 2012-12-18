@@ -86,4 +86,15 @@ keys will be compatible with LIB.  If @PRINCS are specified then
 only the keys so specified are validated and/or installed, otherwise
 the default set of keys will be validated and/or installed.
 
+=item $krbhst->install_ticket(PRINC, TICKET)
+
+Will install a ticket for user PRINC.  No return value.  Exceptions are
+thrown on error.
+
+=item $krbhst->fetch_tickets(@REALMS)
+
+Fetch and install the configured prestashed tickets for the host.
+@REALMS, if specified, will cause the KDCs for each Realm to be
+contacted.
+
 =back
