@@ -141,12 +141,12 @@ done:
 char c_num[]	= "2345679";
 char c_low[]	= "qwertyuipasdfghjkzxcvbnm";
 char c_cap[]	= "QWERTYUPASDFGHJKLZXCVNM";
-char c_all[] =	"2345679"      "2345679"
-		"QWERTYUPASDFGHJKLZXCVNM"
-		"qwertyuipasdfghjkzxcvbnm"
-		"qwertyuipasdfghjkzxcvbnm"
-		"!@#$%^&*()-+=[]{};:,.<>?"
-		;
+char c_all[]	= "2345679"      "2345679"
+		  "QWERTYUPASDFGHJKLZXCVNM"
+		  "qwertyuipasdfghjkzxcvbnm"
+		  "qwertyuipasdfghjkzxcvbnm"
+		  "!@#$%^&*()-+=[]{};:,.<>?"
+		  ;
 
 static char *
 random_passwd(krb5_context ctx, int len)
