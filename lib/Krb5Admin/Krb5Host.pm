@@ -1,12 +1,25 @@
 #
 # Blame: "Roland C. Dowdeswell" <elric@imrryr.org>
 
-package Krb5Admin;
+package Krb5Admin::Krb5Host;
 
 use Krb5Admin::C;
 
 use strict;
 use warnings;
+
+our @KHARON_RW_SC_EXPORT = qw/	change_keytab
+				fetch_tickets
+				install_keytab
+				install_ticket
+			     /;
+
+our @KHARON_RO_SC_EXPORT = qw/	query_keytab
+				list_keytab
+				generate_keytab
+				test_keytab
+				show_krb5_conf
+			     /;
 
 1;
 

@@ -450,6 +450,10 @@ sub user_acled {
 	    " does not\nhave krb5_keytab administrative privileges.\n";
 }
 
+#
+# validate_lib() determines if lib is valid but makes no assertion to
+# whether it is allowed.
+
 sub validate_lib {
 	my ($self, $user, $krb5_lib) = @_;
 	my $krb5_libs = $self->{krb5_libs};
@@ -468,6 +472,17 @@ sub validate_lib {
 			    @$enctypes) .  "] specified.\n";
 		}
 	}
+}
+
+#
+# and lib_acled() determines if the invoking user is allowed to
+# install or change keys to library specified.
+
+sub lib_acled {
+	my ($self, $user, $krb5_lib) = @_;
+	my $krb5_libs = $self->{krb5_libs};
+	my $user_libs = $self->{user_libs};
+	my $allowed_enctypes = $self->{allowed_enctypes};
 
 	my $real_krb5_lib = $self->{default_krb5_lib};
 	$real_krb5_lib = $krb5_lib if defined($krb5_lib);
@@ -476,7 +491,10 @@ sub validate_lib {
 		die "$user does not support $real_krb5_lib.\n";
 	}
 
-	return 1;
+	# XXXrcd: need to do something about this---we are allowing
+	#         too much, aren't we?
+
+	return;
 }
 
 #
