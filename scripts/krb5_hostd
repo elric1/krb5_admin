@@ -1,0 +1,67 @@
+#!/usr/pkg/bin/perl
+
+use Getopt::Std;
+use Sys::Hostname;
+use Sys::Syslog;
+
+use Kharon::Engine::Server;
+
+use Krb5Admin::Krb5Host::Local;
+
+use strict;
+use warnings;
+
+our $KRB5_KEYTAB_CONFIG = '../etc/krb5_keytab.conf';
+
+#
+# These variables are expected to be set in the configuration file:
+
+our $verbose = 0;
+our %user2service = ();
+our @allowed_enctypes = ();
+our @admin_users = ();
+our %krb5_libs = ();
+our %krb5_lib_quirks = ();
+our $default_krb5_lib = ();
+our %user_libs = ();
+our $use_fetch = 0;
+
+
+sub get_kt {
+
+        return Krb5Admin::Krb5Host::Local->new(
+                verbose                 =>  $verbose,
+                invoking_user           => 'root',
+                user2service            => \%user2service,
+                allowed_enctypes        => \@allowed_enctypes,
+                admin_users             => \@admin_users,
+                krb5_libs               => \%krb5_libs,
+                krb5_lib_quirks         => \%krb5_lib_quirks,
+                default_krb5_lib        =>  $default_krb5_lib,
+                user_libs               => \%user_libs,
+                use_fetch               =>  $use_fetch,
+                ktdir                   =>  './t/keytabs',
+                lockdir                 =>  './t/krb5host.lock',
+                testing                 => 1,
+                @_,
+        );
+}
+
+sub usage {
+
+	print STDERR "Usage: krb5_hostd\n";
+	exit(1);
+}
+
+openlog('krb5_hostd', 'pid', 'auth');
+
+do $KRB5_KEYTAB_CONFIG if -f $KRB5_KEYTAB_CONFIG;
+# XXXrcd: fail if we can't read the configuration, I think.
+
+my %opts;
+getopts('', \%opts) or usage();
+
+my $ahr = Kharon::Protocol::ArrayHash->new(banner => {version=>'2.0'});
+my $pes = Kharon::Engine::Server->new(protocols => [$ahr]);
+$pes->Connect();
+$pes->RunObj(object => get_kt(local=>1));
