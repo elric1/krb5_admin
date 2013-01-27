@@ -79,7 +79,7 @@ sub MY::xs_c {
 return <<EOM
 C.pm: C_wrap.c
 
-C_wrap.c: C.c C.swig C.h
+C_wrap.c: C.c C.swig C.h sha.h
 	swig -perl5 ${HAVE} -const C.swig
 
 $rfc6234_files: rfc6234.txt
