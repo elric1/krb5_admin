@@ -5,7 +5,16 @@ Krb5Admin/C_wrap.c
 Krb5Admin/MYMETA.yml
 Krb5Admin/Makefile
 Krb5Admin/Makefile.old
+Krb5Admin/hkdf.c
+Krb5Admin/hmac.c
 Krb5Admin/pm_to_blib
+Krb5Admin/sha-private.h
+Krb5Admin/sha.h
+Krb5Admin/sha1.c
+Krb5Admin/sha224-256.c
+Krb5Admin/sha384-512.c
+Krb5Admin/shatest.c
+Krb5Admin/usha.c
 MYMETA.json
 MYMETA.yml
 Makefile
