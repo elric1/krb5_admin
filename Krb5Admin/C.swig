@@ -700,6 +700,30 @@ done:
 	argvi++;
 }
 
+/* XXXrcd: 512 is hard-coded in the following, this is bad... */
+%typemap(in,numinputs=0) uint8_t *HKDF_OUT_512 (uint8_t tmp[512]) {
+	$1 = tmp;
+}
+%typemap(argout) uint8_t *HKDF_OUT_512 {
+	$result = newSVpvn($1, 512);
+	argvi++;
+}
+
+%typemap(in,numinputs=1) (uint8_t *HKDF_OUT, int HKDF_OUT_LEN) {
+	/* XXXrcd: WRONG! */
+	$2 = SvIV($input);
+	$1 = malloc($2);
+}
+%typemap(argout) (uint8_t *HKDF_OUT, int HKDF_OUT_LEN) {
+	$result = newSVpvn($1, $2);
+	argvi++;
+}
+
+%typemap(in) (uint8_t *, int) {
+	$1 = SvPV($input, $2);
+}
+
+
 %perlcode %{
 
 # package _p_krb5_context; sub DESTROY {Krb5Admin::C::my_free_ctx(@_)}

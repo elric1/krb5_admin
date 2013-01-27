@@ -19,6 +19,10 @@
 #include <krb5.h>
 #include <kadm5/admin.h>
 
+/* HKDF include */
+
+#include "sha.h"
+
 #define BAIL(x, y)	do {						\
 		ret = x;						\
 		if (ret) {						\
@@ -1655,4 +1659,32 @@ done:
 		croak("%s", croakstr);
 
 	return kvno;
+}
+
+/*
+ * HKDF functions:
+ *
+ * These are slightly simplified functions that perform HKDF but
+ * are formatted to be a bit more Perl/swig friendly and they do
+ * not allow a choice of hash algorithm, they hardcode SHA512 as
+ * it doesn't seem necessary to provide said choice...
+ */
+
+void
+hkdf_extract(uint8_t *salt, int saltlen, uint8_t *key, int keylen, uint8_t *out)
+{
+	int	ret;
+
+	ret = hkdfExtract(SHA512, salt, saltlen, key, keylen, out);
+	/* XXXrcd: do something with ret */
+}
+
+void
+hkdf_expand(uint8_t *prk, int prklen, uint8_t *info, int infolen,
+	    uint8_t *okm, int okmlen)
+{
+	int	ret;
+
+	ret = hkdfExpand(SHA512, prk, prklen, info, infolen, okm, okmlen);
+	/* XXXrcd: do something with ret */
 }

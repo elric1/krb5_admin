@@ -137,3 +137,9 @@ int		kt_kvno(krb5_context, char *, char *);
 
 char	**curve25519_pass1(krb5_context);
 char	 *curve25519_pass2(krb5_context, char *, char *);
+
+/* The HKDF routines */
+
+void	hkdf_extract(uint8_t *, int, uint8_t *, int, uint8_t *HKDF_OUT_512);
+void	hkdf_expand(uint8_t *, int, uint8_t *, int, uint8_t *HKDF_OUT,
+		    int HKDF_OUT_LEN);

@@ -48,7 +48,8 @@ if (-f "$KRB5DIR/include/krb5/hdb.h") {
 my %args;
 
 $args{NAME}	= 'Krb5Admin::C';
-$args{OBJECT}	= 'C_wrap.o curve25519-donna.o';
+$args{OBJECT}	= 'C_wrap.o curve25519-donna.o hkdf.o hmac.o sha1.o ' .
+		  'sha224-256.o sha384-512.o shatest.o usha.o';
 
 $args{INC}	= "-I${KRB5DIR}/include";
 
@@ -65,11 +66,25 @@ $args{LIBS}	= "-L${KRB5DIR}/lib -Wl,-R${KRB5DIR}/lib ";
 
 $args{LIBS} .= "-lkrb5 -lkadm5srv";
 
-$args{clean} = { FILES => "C_wrap.c C.pm" };
+$args{clean} = { FILES => "C_wrap.c C.pm sha.h sha-private.h hkdf.c " .
+			  "hmac.c sha1.c sha224-256.c sha384-512.c  " .
+			  "shatest.c usha.c" };
 
 WriteMakefile(%args);
 
 sub MY::xs_c {
-	"C.pm: C_wrap.c\n\n" .
-	"C_wrap.c: C.c C.swig C.h \n	swig -perl5 ${HAVE} -const C.swig\n\n";
+	my $rfc6234_files  = "sha.h sha-private.h hkdf.c hmac.c sha1.c ";
+	   $rfc6234_files .= "sha224-256.c sha384-512.c shatest.c usha.c";
+
+return <<EOM
+C.pm: C_wrap.c
+
+C_wrap.c: C.c C.swig C.h
+	swig -perl5 ${HAVE} -const C.swig
+
+$rfc6234_files: rfc6234.txt
+	perl rfc2c < rfc6234.txt
+
+EOM
 }
+

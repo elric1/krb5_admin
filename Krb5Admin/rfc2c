@@ -1,0 +1,28 @@
+
+use IO::File;
+
+my $fn;
+my $fh;
+
+while (<STDIN>) {
+	chomp($_);
+
+	if ($_ =~ /^__BEGIN: (.*)$/) {
+		die "__BEGIN nested"	if defined($fh);
+
+		$fn = $1;
+		$fh = IO::File->new($fn, "w");
+		next;
+	}
+
+	if ($_ =~ /^__END: (.*)$/) {
+		die "__END to wrong __BEGIN"	if $1 ne $fn;
+
+		undef $fh;
+		next;
+	}
+
+	next if !defined($fh);
+
+	print $fh "$_\n";
+}
