@@ -1,14 +1,29 @@
 #!/usr/pkg/bin/perl
 #
 
-use Test::More tests => 1;
+use Test::More tests => 16;
 
 use Data::Dumper;
+
+use CURVE25519_NWAY;
 
 use Krb5Admin::C;
 
 use strict;
 use warnings;
+
+#
+# First test the CURVE25519_NWAY interface which deprecates the older
+# interface [which is still tested] below:
+
+for my $num (2,3,4,5,6,7,8,16,32,64,100,128,200,256,2001) {
+	eval { CURVE25519_NWAY::test_nway($num); };	ok(!$@, "$@");
+}
+
+#
+# For the time being, we continue to test the old curve25519 functions
+# but we expect to transition the existing usage to CURVE25519_NWAY and
+# so these tests will [eventually] disappear.
 
 $ENV{KRB5_CONFIG} = './t/krb5.conf';
 
