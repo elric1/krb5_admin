@@ -6,6 +6,7 @@ Krb5Admin/MYMETA.yml
 Krb5Admin/Makefile
 Krb5Admin/Makefile.old
 Krb5Admin/pm_to_blib
+MYMETA.json
 MYMETA.yml
 Makefile
 Makefile.old
