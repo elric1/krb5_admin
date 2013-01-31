@@ -183,7 +183,7 @@ sub recurse {
 sub do_nway {
 	my ($priv, $hosts) = @_;
 	my $host_end = scalar(@$hosts) -1;
-	my $host_mid = $host_end / 2;
+	my $host_mid = $host_end - 1;
 	my @nonces;
 	my $i;
 
@@ -192,13 +192,10 @@ sub do_nway {
 		($nonces[$i], $pub1) = $hosts->[$i]->curve25519_start($i,$pub1);
 	}
 
-	my $pub2;
-	for ($i=$host_mid+1; $i <= $host_end; $i++) {
-		($nonces[$i], $pub2) = $hosts->[$i]->curve25519_start($i,$pub2);
-	}
+	($nonces[$host_end], my $pub2) =
+	    $hosts->[$host_end]->curve25519_start($i, undef);
 
-	my @pubs = ( recurse($hosts, 0, $host_mid, $pub2),
-		     recurse($hosts, $host_mid + 1, $host_end, $pub1) );
+	my @pubs = (recurse($hosts, 0, $host_mid, $pub2), $pub1);
 
 
 	for ($i=0; $i <= $host_end; $i++) {
