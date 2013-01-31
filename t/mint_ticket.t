@@ -17,7 +17,7 @@ END {
 }
 
 my  $ctx   = Krb5Admin::C::krb5_init_context();
-our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb');
+our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb', undef);
 our $realm = Krb5Admin::C::krb5_get_realm($ctx);
 
 #

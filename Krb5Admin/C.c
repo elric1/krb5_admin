@@ -73,12 +73,11 @@ typedef struct _key *key;
 #include "C.h"
 
 kadm5_handle
-krb5_get_kadm5_hndl(krb5_context ctx, char *dbname)
+krb5_get_kadm5_hndl(krb5_context ctx, char *dbname, const char *princstr)
 {
 	kadm5_config_params	 params;
 	kadm5_ret_t		 ret;
 	kadm5_handle		 hndl;
-	const char		*princstr = "root";
 	char			 croakstr[2048] = "";
 
 	memset((char *) &params, 0, sizeof(params));
@@ -87,6 +86,9 @@ krb5_get_kadm5_hndl(krb5_context ctx, char *dbname)
 		params.mask   = KADM5_CONFIG_DBNAME;
 		params.dbname = dbname;
 	}
+
+	if (!princstr)
+		princstr = "root";
 
 	K5BAIL(KADM5_INIT_WITH_PASSWORD(ctx, (char *)princstr, &params, &hndl));
 

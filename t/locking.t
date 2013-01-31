@@ -48,7 +48,8 @@ sub kid_logic {
 	my ($prefix, $max) = @_;
 
 	my  $ctx   = Krb5Admin::C::krb5_init_context();
-	our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb');
+	our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb',
+	    undef);
 
 	for my $i (1..$max) {
 		Krb5Admin::C::krb5_createkey($ctx, $hndl, "$prefix.$i");
@@ -81,7 +82,7 @@ sub start_kid {
 $ENV{KRB5_CONFIG} = './t/krb5.conf';
 
 my $ctx   = Krb5Admin::C::krb5_init_context();
-my $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb');
+my $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb', undef);
 
 Krb5Admin::C::init_kdb($ctx, $hndl);
 
@@ -111,7 +112,7 @@ while (keys %kids > 0) {
 # out...
 
 $ctx   = Krb5Admin::C::krb5_init_context();
-$hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb');
+$hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb', undef);
 
 my $results = Krb5Admin::C::krb5_list_princs($ctx, $hndl, "concurrency." . "*");
 

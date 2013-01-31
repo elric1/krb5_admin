@@ -37,7 +37,6 @@ sub compare_kdcs_to_expected {
 $ENV{KRB5_CONFIG} = './t/krb5.conf';
 
 my  $ctx   = Krb5Admin::C::krb5_init_context();
-our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, undef);
 our $realm = Krb5Admin::C::krb5_get_realm($ctx);
 
 my $expected = [sort (hostname(), map { "kdc$_.test.realm" } (1..9))];

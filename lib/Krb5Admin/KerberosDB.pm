@@ -330,7 +330,8 @@ sub new {
 	$self->{addr}	  = $args{addr};
 	$self->{hostname} = undef;
 	$self->{ctx}	  = $ctx;
-	$self->{hndl}	  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, $dbname);
+	$self->{hndl}	  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, $dbname,
+	    $self->{client});
 	$self->{acl}	  = $args{acl};
 	$self->{sacls}	  = $args{sacls};
 	$self->{dbh}	  = $dbh;
