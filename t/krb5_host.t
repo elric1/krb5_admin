@@ -216,8 +216,8 @@ ok((grep { $_->{kvno} == 2 } @keys) > 0, "install replaced faulty keys");
 # We also installed a bunch of incorrect keys of kvno == 2 to muddy
 # the waters.  Let's make sure that they are gone...
 
-ok((grep { $_->{kvno} == 2 && $_->{enctype} == 18 } @keys) == 0, "bad etype");
-ok((grep { $_->{kvno} == 2 && $_->{enctype} == 17 } @keys) == 0, "bad etype");
+ok(!(grep { $_->{kvno} == 2 && $_->{enctype} == 17 } @keys), "bad etype: 17");
+ok(!(grep { $_->{kvno} == 2 && $_->{enctype} == 18 } @keys), "bad etype: 18");
 
 #
 # And let's see if we can rotate the keys:
