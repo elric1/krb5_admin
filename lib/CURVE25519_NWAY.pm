@@ -89,6 +89,11 @@ sub curve25519_final {
 	return $prk;
 }
 
+sub curve25519_abort {
+
+	return;
+}
+
 use integer;
 
 sub recurse {
@@ -211,6 +216,13 @@ sub do_nway {
 
 	my @pubs = (recurse($hosts, 0, $host_end - 1, $pub2), $pub1);
 
+	#
+	# XXXrcd: we should also deal with transactions that about by
+	#         calling curve25519_abort() on all nodes on which
+	#         curve25519_final() has been called.  In practice,
+	#         this should not be too much of an issue as the various
+	#         curve25519_start()s should do all of the ACL checking
+	#         and be the most likely time to fail.
 
 	for ($i=0; $i <= $host_end; $i++) {
 		$hosts->[$i]->curve25519_final($priv, $i, \@nonces, $pubs[$i]);
