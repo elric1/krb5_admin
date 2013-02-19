@@ -16,8 +16,9 @@ use warnings;
 # First test the CURVE25519_NWAY interface which deprecates the older
 # interface [which is still tested] below:
 
-for my $num (2,3,4,5,6,7,8,16,32,64,100,128,200,256,2001) {
-	eval { CURVE25519_NWAY::test_nway($num); };	ok(!$@, "$@");
+for my $num (2,3,4,5,6,7,8,16,31,32,65,100,128,200,256) {
+	eval { CURVE25519_NWAY::test_nway($num); };
+	ok(!$@, "$@");
 }
 
 #
