@@ -23,7 +23,7 @@ sub new {
 }
 
 sub curve25519_start {
-	my ($self, $hnum, $pub) = @_;
+	my ($self, $priv, $hnum, $pub) = @_;
 	my $ctx = $self->{ctx};
 
 	#
@@ -50,8 +50,8 @@ sub curve25519_start {
 
 	$self->{CURVE25519_NWAY_hnum} = $hnum;
 
-	return ($nonce, $public) if !defined($pub);
-	return ($nonce, Krb5Admin::C::curve25519_pass2($ctx, $secret, $pub));
+	return [$nonce, $public] if !defined($pub);
+	return [$nonce, Krb5Admin::C::curve25519_pass2($ctx, $secret, $pub)];
 }
 
 sub curve25519_step {
@@ -68,7 +68,7 @@ sub curve25519_step {
 }
 
 sub curve25519_final {
-	my ($self, $privdata, $hnum, $nonces, $pub) = @_;
+	my ($self, $priv, $hnum, $nonces, $pub) = @_;
 	my $ctx = $self->{ctx};
 	my $secret = $self->{CURVE25519_NWAY_secret};
 
@@ -82,8 +82,7 @@ sub curve25519_final {
 	my $prk = Krb5Admin::C::hkdf_extract(join(' ', @$nonces),
 	    Krb5Admin::C::curve25519_pass2($ctx, $secret, $pub));
 
-	if (defined($privdata) && ref($privdata) eq '' &&
-	    $privdata eq 'testing') {
+	if (defined($priv) && ref($priv) eq '' && $priv eq 'testing') {
 		$self->{CURVE25519_NWAY_prk} = $prk;
 	}
 
@@ -183,19 +182,34 @@ sub recurse {
 sub do_nway {
 	my ($priv, $hosts) = @_;
 	my $host_end = scalar(@$hosts) -1;
-	my $host_mid = $host_end - 1;
 	my @nonces;
 	my $i;
+	my $ret;
+
+	#
+	# XXXrcd: ORDERING!  Both of these operations should occur in
+	#         a particular order as curve25519_start() will lock
+	#         and curve25519_final() will instantiate and unlock.
+	#         We should likely do one backwards and the other forwards,
+	#         as well as ensuring that the lists are sorted into a
+	#         deterministic order...  For krb5, we would like to
+	#         ensure that we contact the KDC first as it is the most
+	#         likely to deny us.
+
+	$ret = $hosts->[$host_end]->curve25519_start($priv, $host_end, undef);
+
+	$nonces[$host_end] = $ret->[0];
+	my $pub2 = $ret->[1];
 
 	my $pub1;
-	for ($i=0; $i <= $host_mid; $i++) {
-		($nonces[$i], $pub1) = $hosts->[$i]->curve25519_start($i,$pub1);
+	for ($i=0; $i <= $host_end - 1; $i++) {
+		$ret = $hosts->[$i]->curve25519_start($priv, $i, $pub1);
+
+		$nonces[$i] = $ret->[0];
+		$pub1 = $ret->[1];
 	}
 
-	($nonces[$host_end], my $pub2) =
-	    $hosts->[$host_end]->curve25519_start($i, undef);
-
-	my @pubs = (recurse($hosts, 0, $host_mid, $pub2), $pub1);
+	my @pubs = (recurse($hosts, 0, $host_end - 1, $pub2), $pub1);
 
 
 	for ($i=0; $i <= $host_end; $i++) {
@@ -341,10 +355,9 @@ roughy like this:
 =over 4
 
 	sub curve25519_start {
-		my ($self, $privdata, @rest) = @_;
+		my ($self, $priv, @rest) = @_;
 
-		my $key = $self->SUPER::curve25519_start($privdata,
-		    @rest);
+		my $key = $self->SUPER::curve25519_start($priv, @rest);
 
 		... do something with the key
 
