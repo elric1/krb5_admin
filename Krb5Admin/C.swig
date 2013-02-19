@@ -701,11 +701,11 @@ done:
 }
 
 /* XXXrcd: 512 is hard-coded in the following, this is bad... */
-%typemap(in,numinputs=0) uint8_t *HKDF_OUT_512 (uint8_t tmp[512]) {
+%typemap(in,numinputs=0) uint8_t *HKDF_OUT_512 (uint8_t tmp[64]) {
 	$1 = tmp;
 }
 %typemap(argout) uint8_t *HKDF_OUT_512 {
-	$result = newSVpvn($1, 512);
+	$result = newSVpvn($1, 64);
 	argvi++;
 }
 
