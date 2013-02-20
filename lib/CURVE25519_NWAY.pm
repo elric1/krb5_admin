@@ -217,7 +217,7 @@ sub do_nway {
 	my @pubs = (recurse($hosts, 0, $host_end - 1, $pub2), $pub1);
 
 	#
-	# XXXrcd: we should also deal with transactions that about by
+	# XXXrcd: we should also deal with transactions that abort by
 	#         calling curve25519_abort() on all nodes on which
 	#         curve25519_final() has been called.  In practice,
 	#         this should not be too much of an issue as the various
