@@ -93,7 +93,7 @@
 void	  kinit_kt(krb5_context, char *, char *, char *);
 void	  kinit_anonymous(krb5_context, char *, char *);
 key	  krb5_getkey(krb5_context, kadm5_handle, char *);
-void	  krb5_createkey(krb5_context, kadm5_handle, char *);
+void	  krb5_createkey(krb5_context, kadm5_handle, char *, krb5_keyblock *);
 key	  read_kt(krb5_context, char *);
 void	  write_kt(krb5_context, char *, krb5_keytab_entry *);
 void	  kt_remove_entry(krb5_context, char *, krb5_keytab_entry *);

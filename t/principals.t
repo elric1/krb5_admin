@@ -50,7 +50,7 @@ eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $princ); };
 eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $sprinc); };
 
 eval {
-	Krb5Admin::C::krb5_createkey($ctx, $hndl, $sprinc);
+	Krb5Admin::C::krb5_createkey($ctx, $hndl, $sprinc, []);
 	Krb5Admin::C::krb5_getkey($ctx, $hndl, $sprinc);
 	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $sprinc);
 };
@@ -61,7 +61,7 @@ ok(!$@, "Create, fetch, and delete a service principal") or diag($@);
 eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $sprinc); };
 
 eval {
-	Krb5Admin::C::krb5_createkey($ctx, $hndl, $sprinc);
+	Krb5Admin::C::krb5_createkey($ctx, $hndl, $sprinc, []);
 	Krb5Admin::C::krb5_setkey($ctx, $hndl, $sprinc, 3,
 	   [{enctype => 17, key => '0123456789abcdef'}]);
 
@@ -82,7 +82,7 @@ ok(!$@, "Create, set, test, and delete a service principal") or diag($@);
 eval { Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $sprinc); };
 
 eval {
-	Krb5Admin::C::krb5_createkey($ctx, $hndl, $sprinc);
+	Krb5Admin::C::krb5_createkey($ctx, $hndl, $sprinc, []);
 	Krb5Admin::C::krb5_randkey($ctx, $hndl, $sprinc);
 
 	my @keys = Krb5Admin::C::krb5_getkey($ctx, $hndl, $sprinc);

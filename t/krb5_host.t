@@ -187,14 +187,14 @@ ok(!$@, Dumper($@));
 for my $etype (16, 17, 18, 23) {
 	eval {
 		Krb5Admin::C::write_kt($ctx, "WRFILE:t/keytabs/$me",
-		    mk_kte($ctx, "$me/roofdrak.imrryr.org", 3, $etype));
+		    mk_kte($ctx, "$me/roofdrak.imrryr.org", 2, $etype));
 	};
 	ok(!$@, Dumper($@));
 }
 
 for my $etype (16, 17, 18, 23) {
 	eval {
-		my $key = mk_kte($ctx, "$me/roofdrak.imrryr.org", 4, $etype);
+		my $key = mk_kte($ctx, "$me/roofdrak.imrryr.org", 3, $etype);
 		Krb5Admin::C::write_kt($ctx, "WRFILE:t/keytabs/$me", $key);
 	};
 	ok(!$@, Dumper($@));
@@ -202,7 +202,7 @@ for my $etype (16, 17, 18, 23) {
 
 #
 # We should be able to ``install'' them again which should result
-# in new keys being generated with kvno == 4.
+# in new keys being generated with kvno == 3.
 
 eval { $kt->install_keytab($me, 'mitkrb5/1.3', $me); };
 ok(!$@, Dumper($@));
@@ -210,14 +210,14 @@ ok(!$@, Dumper($@));
 my @keys;
 eval { @keys = Krb5Admin::C::read_kt($ctx, "t/keytabs/$me"); };
 ok(!$@, Dumper($@));
-ok((grep { $_->{kvno} == 4 } @keys) > 0, "install replaced faulty keys");
+ok((grep { $_->{kvno} == 3 } @keys) > 0, "install replaced faulty keys");
 
 #
-# We also installed a bunch of incorrect keys of kvno == 4 to muddy
+# We also installed a bunch of incorrect keys of kvno == 3 to muddy
 # the waters.  Let's make sure that they are gone...
 
-ok(!(grep { $_->{kvno} == 4 && $_->{enctype} == 17 } @keys), "bad etype: 17");
-ok(!(grep { $_->{kvno} == 4 && $_->{enctype} == 18 } @keys), "bad etype: 18");
+ok(!(grep { $_->{kvno} == 3 && $_->{enctype} == 17 } @keys), "bad etype: 17");
+ok(!(grep { $_->{kvno} == 3 && $_->{enctype} == 18 } @keys), "bad etype: 18");
 
 #
 # And let's see if we can rotate the keys:

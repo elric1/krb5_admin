@@ -628,11 +628,12 @@ sub curve25519_final {
 
 	my $keys = $self->SUPER::curve25519_final($priv, $hnum, $nonces, $pub);
 
-	if ($kvno <= 3) {
-		# XXXrcd kvno 3 is wrong, maybe test and create?
-		eval { Krb5Admin::C::krb5_createkey($ctx, $hndl, $name) };
+	if ($kvno <= 2) {
+		# XXXrcd kvno 2 is wrong?? maybe test and create?
+		Krb5Admin::C::krb5_createkey($ctx, $hndl, $name, $keys);
+	} else {
+		Krb5Admin::C::krb5_setkey($ctx, $hndl, $name, $kvno, $keys);
 	}
-	Krb5Admin::C::krb5_setkey($ctx, $hndl, $name, $kvno, $keys);
 
 	if ($op eq 'bootstrap_host_key') {
 		$self->remove_bootbinding($name);
@@ -727,7 +728,7 @@ sub internal_create {
 	# which the KDC serves.
 
 	if (!exists($args{public})) {
-		Krb5Admin::C::krb5_createkey($ctx, $hndl, $name);
+		Krb5Admin::C::krb5_createkey($ctx, $hndl, $name, []);
 		return undef;
 	}
 

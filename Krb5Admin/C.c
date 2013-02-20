@@ -23,6 +23,12 @@
 
 #include "sha.h"
 
+/* Prototypes */
+
+static int	keyblock_num_keys(krb5_keyblock *);
+
+/* Macros */
+
 #define BAIL(x, y)	do {						\
 		ret = x;						\
 		if (ret) {						\
@@ -501,7 +507,8 @@ done:
 }
 
 void
-krb5_createkey(krb5_context ctx, kadm5_handle hndl, char *in)
+krb5_createkey(krb5_context ctx, kadm5_handle hndl, char *in,
+	       krb5_keyblock *keys)
 {
 	kadm5_principal_ent_rec	 dprinc;
 	krb5_key_salt_tuple	 enctypes[8];
@@ -518,36 +525,53 @@ krb5_createkey(krb5_context ctx, kadm5_handle hndl, char *in)
 
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
 
+	/*
+	 * We first the principal disallowing all tickets.  We do this,
+	 * because there is no standard mechanism shared between MIT and
+	 * Heimdal to create a principal directly with keys random or
+	 * otherwise.  We use rc4-hmac only because it has the fastest
+	 * string2key function and as we are not going to ever use the
+	 * passwd that we specify, we prefer to waste as little CPU as
+	 * possible on generating the keys.  In case there is any doubt
+	 * about the utility of doing this, we ran some experiments on
+	 * our laptop and noted that running 1000 krb5_createkey()s before
+	 * our change took 26.45s with 24.18s user time.  After the change
+	 * the same test took 5.80s with 0.40s user.
+	 */
+
 	for (i=0; i < sizeof(dummybuf); i++)
 		dummybuf[i] = 32 + (i % 80);
 
 	dummybuf[i] = '\0';
 
+	enctypes[0].ks_enctype = ENCTYPE_ARCFOUR_HMAC;
+	enctypes[0].ks_salttype = SALTTYPE_NORMAL;
+
 	dprinc.principal = princ;
 	dprinc.attributes = KRB5_KDB_DISALLOW_ALL_TIX;
-	K5BAIL(kadm5_create_principal(hndl, &dprinc, KADM5_PRINCIPAL|
-	     KADM5_ATTRIBUTES, dummybuf));
+	K5BAIL(kadm5_create_principal_3(hndl, &dprinc, KADM5_PRINCIPAL|
+	     KADM5_ATTRIBUTES, 1, enctypes, dummybuf));
 
-#if HAVE_MIT
-	/*
-	 * XXXrcd: for now, hardcode AES, DES3 and RC4, we'll take this
-	 *         out later, when we can update the configuration.
-	 */
-	enctypes[0].ks_enctype  = ENCTYPE_AES256_CTS_HMAC_SHA1_96;
-	enctypes[0].ks_salttype = 0;
-	enctypes[1].ks_enctype  = ENCTYPE_AES128_CTS_HMAC_SHA1_96;
-	enctypes[1].ks_salttype = 0;
-	enctypes[2].ks_enctype  = ENCTYPE_ARCFOUR_HMAC;
-	enctypes[2].ks_salttype = 0;
-	enctypes[3].ks_enctype  = ENCTYPE_DES3_CBC_SHA1;
-	enctypes[3].ks_salttype = 0;
+	if (keyblock_num_keys(keys)) {
+		K5BAIL(kadm5_setkey_principal_3(hndl, princ, FALSE, 0, NULL,
+		    keys, keyblock_num_keys(keys)));
+	} else {
+		/*
+		 * XXXrcd: for now, hardcode AES, DES3 and RC4, we'll take this
+		 *         out later, when we can update the configuration.
+		 */
+		enctypes[0].ks_enctype  = ENCTYPE_AES256_CTS_HMAC_SHA1_96;
+		enctypes[0].ks_salttype = SALTTYPE_NORMAL;
+		enctypes[1].ks_enctype  = ENCTYPE_AES128_CTS_HMAC_SHA1_96;
+		enctypes[1].ks_salttype = SALTTYPE_NORMAL;
+		enctypes[2].ks_enctype  = ENCTYPE_ARCFOUR_HMAC;
+		enctypes[2].ks_salttype = SALTTYPE_NORMAL;
+		enctypes[3].ks_enctype  = ENCTYPE_DES3_CBC_SHA1;
+		enctypes[3].ks_salttype = SALTTYPE_NORMAL;
 
-	K5BAIL(kadm5_randkey_principal_3(hndl, dprinc.principal, 0,
-	    4, enctypes, NULL, NULL));
-#else
-	K5BAIL(kadm5_randkey_principal_3(hndl, dprinc.principal, 0,
-	    0, 0, NULL, NULL));
-#endif
+		K5BAIL(kadm5_randkey_principal_3(hndl, dprinc.principal, 0,
+		    4, enctypes, NULL, NULL));
+	}
 
 	dprinc.attributes &= ~KRB5_KDB_DISALLOW_ALL_TIX;
 	K5BAIL(kadm5_modify_principal(hndl, &dprinc, KADM5_ATTRIBUTES));
@@ -610,6 +634,24 @@ done:
 	return 1;
 }
 
+static int
+keyblock_num_keys(krb5_keyblock *keys)
+{
+	int	i;
+
+#ifdef HAVE_HEIMDAL
+	for (i = 0; KEYBLOCK_CONTENTS(keys[i]) != NULL; i++)
+		;
+#else
+#ifdef HAVE_MIT
+	for (i = 0; keys[i].magic == KV5M_KEYBLOCK; i++)
+		;
+#endif /* HAVE_MIT */
+#endif /* HAVE_HEIMDAL */
+
+	return i;
+}
+
 void
 krb5_setkey(krb5_context ctx, kadm5_handle hndl, char *in, int kvno,
 	    krb5_keyblock *keys)
@@ -617,7 +659,6 @@ krb5_setkey(krb5_context ctx, kadm5_handle hndl, char *in, int kvno,
 	kadm5_config_params	 params;
 	krb5_principal		 princ = NULL;
 	kadm5_ret_t		 ret;
-	int			 n_keys;
 	int			 locked = 0;
 	char			 croakstr[2048] = "";
 
@@ -627,16 +668,6 @@ krb5_setkey(krb5_context ctx, kadm5_handle hndl, char *in, int kvno,
 	 * We expect that our typemap will give us an array of keys that
 	 * is terminated with an extra invalid entry.
 	 */
-
-#ifdef HAVE_HEIMDAL
-	for (n_keys = 0; KEYBLOCK_CONTENTS(keys[n_keys]) != NULL; n_keys++)
-		;
-#else
-#ifdef HAVE_MIT
-	for (n_keys = 0; keys[n_keys].magic == KV5M_KEYBLOCK; n_keys++)
-		;
-#endif /* HAVE_MIT */
-#endif /* HAVE_HEIMDAL */
 
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
 	K5BAIL(kadm5_lock(hndl));
@@ -648,7 +679,7 @@ krb5_setkey(krb5_context ctx, kadm5_handle hndl, char *in, int kvno,
 	}
 
 	K5BAIL(kadm5_setkey_principal_3(hndl, princ, TRUE, 0, NULL,
-	    keys, n_keys));
+	    keys, keyblock_num_keys(keys)));
 
 done:
 	/* XXXrcd: free up used data structures! */

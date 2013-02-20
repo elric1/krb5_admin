@@ -1465,7 +1465,7 @@ sub install_key {
 	#         an fqdn). For other instances, we abort, as the
 	#         key may be shared among the members of a cluster.
 
-	my $kvno = 2;
+	my $kvno = 1;
 	$kvno = max_kvno($ret->{keys})		if defined($ret);
 
 	if (!$err && $action eq 'default') {
@@ -1642,7 +1642,7 @@ sub bootstrap_host_key {
 		$self->vprint("creating: $strprinc\n");
 	}
 
-	my $kvno = 2;
+	my $kvno = 1;
 	$kvno = max_kvno($ret->{keys})		if defined($ret);
 
 	#
@@ -1672,6 +1672,7 @@ sub bootstrap_host_key {
 	return if !$@;
 
 	$self->vprint("bootstrapping host key failed: ". format_err($@) ."\n");
+print STDERR "bootstrapping host key failed: ". format_err($@) ."\n";
 
 	#
 	# so, if we failed then perhaps we do not have
