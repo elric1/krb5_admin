@@ -1,4 +1,5 @@
 #
+# Blame: "Roland C. Dowdeswell" <elric@imrryr.org>
 
 package CURVE25519_NWAY::Kerberos;
 

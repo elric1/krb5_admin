@@ -19,6 +19,9 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				create_bootstrap_id
 				create_host
 				create_user
+				curve25519_start
+				curve25519_step
+				curve25519_final
 				del_acl
 				del_label
 				disable

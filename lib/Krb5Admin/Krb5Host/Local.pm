@@ -3,7 +3,7 @@
 
 package Krb5Admin::Krb5Host::Local;
 
-use base qw/Krb5Admin::Krb5Host/;
+use base qw/Krb5Admin::Krb5Host CURVE25519_NWAY::Kerberos/;
 
 use IO::File;
 use File::Path;
@@ -1397,6 +1397,23 @@ sub reset_hostbased_kmdb {
 	undef($self->{hostbased_kmdb});
 }
 
+#
+# We override the methods in CURVE25519_NWAY::Kerberos to perform the
+# appropriate locking and writing of keytabs.  These functions are passed
+# $priv which is expected to be a list reference documented in:
+# CURVE25519_NWAY::Kerberos.
+
+sub curve25519_final {
+	my ($self, $priv, $hnum, $nonces, $pub) = @_;
+	my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
+
+	my $keys = $self->SUPER::curve25519_final($priv, $hnum, $nonces, $pub);
+
+	$self->write_keys_kt($user, $lib, undef, undef, @$keys);
+
+	return;
+}
+
 sub install_key {
 	my ($self, $action, $lib, $user, $princ) = @_;
 	my $ctx = $self->{ctx};
@@ -1412,6 +1429,9 @@ sub install_key {
 
 	$etypes = $krb5_libs->{$lib} if defined($lib);
 
+	#
+	# XXXrcd: should this be higher?  After all, we've already connected
+	#         to the KDC which we are in some sense trying to avoid...
 	if ($action ne 'change' && $self->{force} < 1) {
 		return if !$self->need_new_key($kt, $strprinc);
 	}
@@ -1445,16 +1465,13 @@ sub install_key {
 	#         an fqdn). For other instances, we abort, as the
 	#         key may be shared among the members of a cluster.
 
-	my $kvno = 0;
-	my @kvno_arg = ();
-	if (defined($ret)) {
-		# Find the max kvno:
-		$kvno = max_kvno($ret->{keys});
-		die "Could not determine max kvno" if $kvno == -1;
-		@kvno_arg = ($kvno + 1);
-	}
+	my $kvno = 2;
+	$kvno = max_kvno($ret->{keys})		if defined($ret);
 
 	if (!$err && $action eq 'default') {
+		#
+		# XXXrcd: hmmm, we've already determined that we need a
+		#         new key here, haven't we?
 		if (!$self->need_new_key($kt, $strprinc, $kvno)) {
 			$self->vprint("The keys for $strprinc already " .
 			    "exist.\n");
@@ -1477,6 +1494,7 @@ sub install_key {
 	}
 
 	if (!defined($etypes) && $action eq 'change') {
+		# XXXrcd: shadows global.
 		my %enctypes;
 
 		for my $i (grep {$_->{kvno} == $kvno} @{$ret->{keys}}) {
@@ -1489,21 +1507,9 @@ sub install_key {
 		$etypes = $krb5_libs->{$default_krb5_lib};
 		$etypes = [map { $revenctypes{$_} } @$etypes];
 	}
-	my $gend = $kmdb->genkeys('change', $strprinc, $kvno + 1, @$etypes);
-	$self->write_keys_kt($user, $lib, undef, undef, @{$gend->{'keys'}});
-	eval {
-		&$func($kmdb, $strprinc, @kvno_arg,
-		    'public' => $gend->{'public'}, 'enctypes' => $etypes);
-	};
 
-	$err = $@;
-	if ($err) {
-		my $kt = $self->get_kt($user);
-		for my $ktent (@{$gend->{'keys'}}) {
-			Krb5Admin::C::kt_remove_entry($ctx, $kt, $ktent);
-		}
-		die $@;
-	}
+	CURVE25519_NWAY::do_nway(['change', $user, $strprinc, $lib,
+	    $kvno + 1, enctypes => $etypes], [$self, $kmdb]);
 
 	return;
 }
@@ -1636,7 +1642,7 @@ sub bootstrap_host_key {
 		$self->vprint("creating: $strprinc\n");
 	}
 
-	my $kvno = 0;
+	my $kvno = 2;
 	$kvno = max_kvno($ret->{keys})		if defined($ret);
 
 	#
@@ -1648,12 +1654,10 @@ sub bootstrap_host_key {
 	}
 	$etypes = [map { $revenctypes{$_} } @$etypes];
 
-	my $gend = $kmdb->genkeys('bootstrap_host_key', $strprinc, $kvno + 1,
-	    @$etypes);
-	$self->write_keys_kt($user, $lib, undef, undef, @{$gend->{keys}});
 	eval {
-		$kmdb->bootstrap_host_key($strprinc, $kvno + 1,
-		    public => $gend->{public}, enctypes => $etypes);
+		CURVE25519_NWAY::do_nway(['bootstrap_host_key', $user,
+		    $strprinc, $lib, $kvno + 1, enctypes => $etypes],
+		    [$self, $kmdb]);
 
 		#
 		# The KDC deleted the bootstrap principal, so we do
@@ -1691,11 +1695,10 @@ sub bootstrap_host_key {
 
 	$self->vprint("Connected as " . $bootprinc . "\n");
 
-	$gend = $kmdb->genkeys('bootstrap_host_key', $strprinc, $kvno + 1,
-	    @$etypes);
-	$self->write_keys_kt($user, $lib, undef, undef, @{$gend->{keys}});
-	$kmdb->bootstrap_host_key($strprinc, $kvno + 1,
-	    public => $gend->{public}, enctypes => $etypes);
+	CURVE25519_NWAY::do_nway(['bootstrap_host_key', $user,
+	    $strprinc, $lib, $kvno + 1, enctypes => $etypes],
+	    [$self, $kmdb]);
+
 	eval { $self->del_kt_princ($bootprinc); };
 
 	return;

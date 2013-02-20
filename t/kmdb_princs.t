@@ -230,6 +230,20 @@ if (!$@) {
 testObjC("remove user", $kmdb, [undef], 'remove', $uprinc);
 testObjC("remove service", $kmdb, [undef], 'remove', $sprinc);
 
+
+# ----------------------------------------------------------------------
+#		BEGIN DEPRECATED TEST FUNCTIONALITY
+#
+#  Below this point, we are testing deprecated functionality which has
+#  not made it into an official release and hence may be removed at a
+#  moment's notice...  We'll continue to support it for the time being
+#  by merely refusing to modify it in the slightest...
+#
+#
+#  NOTE: Well, honestly, this isn't deprecated quite yet, but it is on
+#        its way...
+# ----------------------------------------------------------------------
+
 my $gend;
 eval {
 	my @etypes = (16, 17, 18, 23);

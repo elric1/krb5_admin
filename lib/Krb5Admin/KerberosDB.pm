@@ -3,7 +3,7 @@
 
 package Krb5Admin::KerberosDB;
 
-use base qw/Krb5Admin/;
+use base qw/Krb5Admin CURVE25519_NWAY::Kerberos/;
 
 use DBI;
 use Sys::Hostname;
@@ -594,6 +594,59 @@ sub KHARON_ACL_master { return 1; }
 sub master { undef; }
 
 #
+# We override the methods in CURVE25519_NWAY::Kerberos to perform the
+# writing to the Kerberos database.  These functions are passed $priv
+# which is expected to be a list reference documented in:
+# CURVE25519_NWAY::Kerberos.
+#
+# We also provide ACLs for the functions as they are expected to be
+# called remotely.
+
+sub KHARON_ACL_curve25519_start		{ KHARON_ACL_curve25519_final(@_); }
+sub KHARON_ACL_curve25519_step		{ return 1; }
+
+my @curve25519_ops = qw(change create bootstrap_host_key);
+
+sub KHARON_ACL_curve25519_final {
+	my ($self, $cmd, $priv, $hnum, $nonces, $pub) = @_;
+
+	my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
+	# XXXrcd: SANITY CHECK!
+
+	if ((grep { $op eq $_ } @curve25519_ops) < 1) {
+		return "arg1 must be one of: " . join(', ', @curve25519_ops);
+	}
+
+	return $self->{acl}->check($op, $name);
+}
+
+sub curve25519_final {
+	my ($self, $priv, $hnum, $nonces, $pub) = @_;
+	my $ctx = $self->{ctx};
+	my $hndl = $self->{hndl};
+	my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
+
+	my $keys = $self->SUPER::curve25519_final($priv, $hnum, $nonces, $pub);
+
+	if ($kvno <= 3) {
+		# XXXrcd kvno 3 is wrong, maybe test and create?
+		eval { Krb5Admin::C::krb5_createkey($ctx, $hndl, $name) };
+	}
+	Krb5Admin::C::krb5_setkey($ctx, $hndl, $name, $kvno, $keys);
+
+	if ($op eq 'bootstrap_host_key') {
+		$self->remove_bootbinding($name);
+	}
+
+	return;
+}
+
+
+# -----------------------------------------------------------------
+#		BEGIN DEPRECATED KEY AGREEMENT CODE
+# -----------------------------------------------------------------
+
+#
 # If generate_ecdh_key1() is provided with $operation and $name then it
 # will perform ACL checks based on those.  Otherwise it will simply return
 # a key.  The ACLs will be rechecked later by the method that actually
@@ -645,6 +698,10 @@ sub generate_ecdh_key2 {
 
 	return $ret;
 }
+
+# -----------------------------------------------------------------
+#		END DEPRECATED KEY AGREEMENT CODE
+# -----------------------------------------------------------------
 
 sub KHARON_ACL_create { acl_keytab(@_); }
 
@@ -931,12 +988,6 @@ sub KHARON_ACL_bootstrap_host_key {
 sub bootstrap_host_key {
 	my ($self, $princ, $kvno, %args) = @_;
 	my $ctx  = $self->{ctx};
-	my $hndl = $self->{hndl};
-	my $dbh  = $self->{dbh};
-	my $stmt;
-	my $sth;
-
-	my $binding = $self->{client};
 
 	# XXXrcd: sanity checks?
 
@@ -945,12 +996,24 @@ sub bootstrap_host_key {
 	require_scalar("bootstrap_host_key <princ> <kvno> public=>key " .
 	    "enctypes=>etypes", 2, $kvno);
 
-	my ($realm, $h, $host) = Krb5Admin::C::krb5_parse_name($ctx, $princ);
-
 	#
 	# XXXrcd: any more ACLs?  Fix how we determine the realm.
 
 	$self->internal_create($princ, $kvno, %args);
+	$self->remove_bootbinding($princ);
+	return undef;
+}
+
+sub remove_bootbinding {
+	my ($self, $princ) = @_;
+	my $ctx  = $self->{ctx};
+	my $hndl = $self->{hndl};
+	my $binding = $self->{client};
+	my $dbh  = $self->{dbh};
+	my $stmt;
+	my $sth;
+
+	my ($realm, $h, $host) = Krb5Admin::C::krb5_parse_name($ctx, $princ);
 
 	#
 	# XXXrcd: and then delete the mapping from the host entry in the
