@@ -720,7 +720,10 @@ done:
 }
 
 %typemap(in) (uint8_t *, int) {
-	$1 = SvPV($input, $2);
+	STRLEN len;
+
+	$1 = SvPV($input, len);
+	$2 = (int) len;
 }
 
 
