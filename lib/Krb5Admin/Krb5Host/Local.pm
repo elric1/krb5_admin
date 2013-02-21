@@ -1429,6 +1429,15 @@ sub curve25519_privfunc {
 	return [$op, $user, $name, $lib, $kvno, %args];
 }
 
+sub curve25519_start {
+	my ($self, $priv, $hnum, $pub) = @_;
+	my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
+
+	$self->obtain_lock($user);
+
+	return $self->SUPER::curve25519_start($priv, $hnum, $pub);
+}
+
 sub curve25519_final {
 	my ($self, $priv, $hnum, $nonces, $pub) = @_;
 	my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
@@ -1436,6 +1445,8 @@ sub curve25519_final {
 	my $keys = $self->SUPER::curve25519_final($priv, $hnum, $nonces, $pub);
 
 	$self->write_keys_kt($user, $lib, undef, undef, @$keys);
+
+	$self->release_lock($user);
 
 	return;
 }
