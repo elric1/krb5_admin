@@ -1403,6 +1403,25 @@ sub reset_hostbased_kmdb {
 # $priv which is expected to be a list reference documented in:
 # CURVE25519_NWAY::Kerberos.
 
+sub curve25519_privfunc {
+	my ($priv, $hnum, $fromkdc) = @_;
+
+	#
+	# We only accept this kind of information as a hash ref
+	# from the KDC.
+
+	return undef if $hnum != 0;
+	return undef if ref($fromkdc) ne 'HASH';
+
+	my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
+
+	if (!defined($kvno) && defined($fromkdc->{kvno})) {
+		$kvno = $fromkdc->{kvno};
+	}
+
+	return [$op, $user, $name, $lib, $kvno, %args];
+}
+
 sub curve25519_final {
 	my ($self, $priv, $hnum, $nonces, $pub) = @_;
 	my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
@@ -1465,7 +1484,7 @@ sub install_key {
 	#         an fqdn). For other instances, we abort, as the
 	#         key may be shared among the members of a cluster.
 
-	my $kvno = 1;
+	my $kvno;
 	$kvno = max_kvno($ret->{keys})		if defined($ret);
 
 	if (!$err && $action eq 'default') {
@@ -1508,8 +1527,11 @@ sub install_key {
 		$etypes = [map { $revenctypes{$_} } @$etypes];
 	}
 
+	$kvno += 1 if defined($kvno);
+
 	CURVE25519_NWAY::do_nway(['change', $user, $strprinc, $lib,
-	    $kvno + 1, enctypes => $etypes], [$kmdb, $self]);
+	    undef, enctypes => $etypes], [$kmdb, $self],
+	    privfunc => \&curve25519_privfunc);
 
 	return;
 }
@@ -1656,8 +1678,8 @@ sub bootstrap_host_key {
 
 	eval {
 		CURVE25519_NWAY::do_nway(['bootstrap_host_key', $user,
-		    $strprinc, $lib, $kvno + 1, enctypes => $etypes],
-		    [$kmdb, $self]);
+		    $strprinc, $lib, undef, enctypes => $etypes],
+		    [$kmdb, $self], privfunc => \&curve25519_privfunc);
 
 		#
 		# The KDC deleted the bootstrap principal, so we do
@@ -1696,8 +1718,8 @@ sub bootstrap_host_key {
 	$self->vprint("Connected as " . $bootprinc . "\n");
 
 	CURVE25519_NWAY::do_nway(['bootstrap_host_key', $user,
-	    $strprinc, $lib, $kvno + 1, enctypes => $etypes],
-	    [$kmdb, $self]);
+	    $strprinc, $lib, undef, enctypes => $etypes],
+	    [$kmdb, $self], privfunc => \&curve25519_privfunc);
 
 	eval { $self->del_kt_princ($bootprinc); };
 

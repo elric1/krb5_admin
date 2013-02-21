@@ -625,6 +625,29 @@ sub KHARON_ACL_curve25519_final {
 #         write this key.  We must consider what happens along the way,
 #         though...
 
+sub curve25519_start {
+	my ($self, $priv, $hnum, $pub) = @_;
+	my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
+	my $ctx  = $self->{ctx};
+	my $hndl = $self->{hndl};
+
+	my $rets = $self->SUPER::curve25519_start($priv, $hnum, $pub);
+
+	my $kdcret;
+	if (!defined($kvno)) {
+		my $ret;
+		eval {
+			$ret = Krb5Admin::C::krb5_query_princ($ctx, $hndl,
+			    $name);
+		};
+
+		$kdcret->{kvno} = 2;
+		$kdcret->{kvno} = $ret->{kvno} + 1	if defined($ret);
+	}
+
+	return [@$rets, $kdcret];
+}
+
 sub curve25519_final {
 	my ($self, $priv, $hnum, $nonces, $pub) = @_;
 	my $ctx = $self->{ctx};
