@@ -185,7 +185,7 @@ sub recurse {
 # it other than return it.
 
 sub do_nway {
-	my ($priv, $hosts) = @_;
+	my ($priv, $hosts, %opts) = @_;
 	my $host_end = scalar(@$hosts) -1;
 	my @nonces;
 	my $i;
@@ -205,11 +205,23 @@ sub do_nway {
 
 	$ret = $hosts->[0]->curve25519_start($priv, 0, undef);
 
+	if (defined($opts{privfunc})) {
+		my $newpriv = &{$opts{privfunc}}($priv, 0, $ret->[2]);
+
+		$priv = $newpriv if defined($newpriv);
+	}
+
 	$nonces[0] = $ret->[0];
 	$pub1      = $ret->[1];
 
 	for ($i=1; $i <= $host_end; $i++) {
 		$ret = $hosts->[$i]->curve25519_start($priv, $i, $pub2);
+
+		if (defined($opts{privfunc})) {
+			my $newpriv = &{$opts{privfunc}}($priv, $i, $ret->[2]);
+
+			$priv = $newpriv if defined($newpriv);
+		}
 
 		$nonces[$i] = $ret->[0];
 		$pub2       = $ret->[1];
@@ -229,7 +241,7 @@ sub do_nway {
 		$hosts->[$i]->curve25519_final($priv, $i, \@nonces, $pubs[$i]);
 	}
 
-	return;
+	return $priv;
 }
 
 #
