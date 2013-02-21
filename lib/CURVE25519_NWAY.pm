@@ -208,14 +208,14 @@ sub do_nway {
 	$nonces[0] = $ret->[0];
 	$pub1      = $ret->[1];
 
-	for ($i=1; $i <= $host_end - 1; $i++) {
+	for ($i=1; $i <= $host_end; $i++) {
 		$ret = $hosts->[$i]->curve25519_start($priv, $i, $pub2);
 
 		$nonces[$i] = $ret->[0];
-		$pub1       = $ret->[1];
+		$pub2       = $ret->[1];
 	}
 
-	my @pubs = (recurse($hosts, 1, $host_end, $pub2), $pub1);
+	my @pubs = ($pub2, recurse($hosts, 1, $host_end, $pub1));
 
 	#
 	# XXXrcd: we should also deal with transactions that abort by
