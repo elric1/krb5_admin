@@ -1224,7 +1224,7 @@ sub modify {
 	};
 	if ($@) {
 		$dbh->rollback();
-		die [503, "You cannot relinquish permissions."];
+		die $@;;
 	}
 
 	$dbh->commit();
