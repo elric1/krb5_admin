@@ -1008,14 +1008,21 @@ sub obtain_lock {
 
 	$self->vprint("obtaining lock: $lockfile\n");
 
-	#
-	# XXXrcd: we have the possibility here of deadlocks as there is
-	#         no timeout.  We have a couple of options, set an alarm
-	#         or fall back to another locking method such as fcntl.
-
 	my $lock_fh = new IO::File($lockfile, O_CREAT|O_WRONLY)
 	    or die "Could not open lockfile $lockfile: $!";
-	flock($lock_fh, LOCK_EX) or die "Could not obtain lock: $!";
+
+	#
+	# We attempt to flock() the file and use an alarm timer to
+	# bail if it takes too long (to prevent deadlocks.)
+
+	local $SIG{ALRM} = sub { die "Attempt to lock timed out.\n"; };
+
+	my $fail;
+	alarm(5);
+	flock($lock_fh, LOCK_EX) or $fail = "Could not obtain lock: $!\n";
+	alarm(0);
+
+	die $fail if defined($fail);
 
 	$self->vprint("lock obtained\n");
 
