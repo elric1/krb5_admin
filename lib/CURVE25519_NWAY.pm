@@ -201,20 +201,21 @@ sub do_nway {
 	#         ensure that we contact the KDC first as it is the most
 	#         likely to deny us.
 
-	$ret = $hosts->[$host_end]->curve25519_start($priv, $host_end, undef);
+	my ($pub1, $pub2);
 
-	$nonces[$host_end] = $ret->[0];
-	my $pub2 = $ret->[1];
+	$ret = $hosts->[0]->curve25519_start($priv, 0, undef);
 
-	my $pub1;
-	for ($i=0; $i <= $host_end - 1; $i++) {
-		$ret = $hosts->[$i]->curve25519_start($priv, $i, $pub1);
+	$nonces[0] = $ret->[0];
+	$pub1      = $ret->[1];
+
+	for ($i=1; $i <= $host_end - 1; $i++) {
+		$ret = $hosts->[$i]->curve25519_start($priv, $i, $pub2);
 
 		$nonces[$i] = $ret->[0];
-		$pub1 = $ret->[1];
+		$pub1       = $ret->[1];
 	}
 
-	my @pubs = (recurse($hosts, 0, $host_end - 1, $pub2), $pub1);
+	my @pubs = (recurse($hosts, 1, $host_end, $pub2), $pub1);
 
 	#
 	# XXXrcd: we should also deal with transactions that abort by
@@ -224,7 +225,7 @@ sub do_nway {
 	#         curve25519_start()s should do all of the ACL checking
 	#         and be the most likely time to fail.
 
-	for ($i=0; $i <= $host_end; $i++) {
+	for ($i=$host_end; $i >= 0; $i--) {
 		$hosts->[$i]->curve25519_final($priv, $i, \@nonces, $pubs[$i]);
 	}
 

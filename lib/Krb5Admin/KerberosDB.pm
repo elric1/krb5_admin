@@ -620,6 +620,11 @@ sub KHARON_ACL_curve25519_final {
 	return $self->{acl}->check($op, $name);
 }
 
+#
+# XXXrcd: KDC must check in curve25519_start() whether we are allowed to
+#         write this key.  We must consider what happens along the way,
+#         though...
+
 sub curve25519_final {
 	my ($self, $priv, $hnum, $nonces, $pub) = @_;
 	my $ctx = $self->{ctx};

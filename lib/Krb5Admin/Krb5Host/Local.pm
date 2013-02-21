@@ -1509,7 +1509,7 @@ sub install_key {
 	}
 
 	CURVE25519_NWAY::do_nway(['change', $user, $strprinc, $lib,
-	    $kvno + 1, enctypes => $etypes], [$self, $kmdb]);
+	    $kvno + 1, enctypes => $etypes], [$kmdb, $self]);
 
 	return;
 }
@@ -1657,7 +1657,7 @@ sub bootstrap_host_key {
 	eval {
 		CURVE25519_NWAY::do_nway(['bootstrap_host_key', $user,
 		    $strprinc, $lib, $kvno + 1, enctypes => $etypes],
-		    [$self, $kmdb]);
+		    [$kmdb, $self]);
 
 		#
 		# The KDC deleted the bootstrap principal, so we do
@@ -1698,7 +1698,7 @@ print STDERR "bootstrapping host key failed: ". format_err($@) ."\n";
 
 	CURVE25519_NWAY::do_nway(['bootstrap_host_key', $user,
 	    $strprinc, $lib, $kvno + 1, enctypes => $etypes],
-	    [$self, $kmdb]);
+	    [$kmdb, $self]);
 
 	eval { $self->del_kt_princ($bootprinc); };
 
