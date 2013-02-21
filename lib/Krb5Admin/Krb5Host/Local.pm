@@ -1672,7 +1672,6 @@ sub bootstrap_host_key {
 	return if !$@;
 
 	$self->vprint("bootstrapping host key failed: ". format_err($@) ."\n");
-print STDERR "bootstrapping host key failed: ". format_err($@) ."\n";
 
 	#
 	# so, if we failed then perhaps we do not have
