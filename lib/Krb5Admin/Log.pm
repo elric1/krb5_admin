@@ -14,6 +14,9 @@ sub cmd_log {
 	@args = $args[0]	if $cmd eq 'create_user';
 	@args = $args[0]	if $cmd eq 'change_passwd';
 	@args = @args[0,1]	if $cmd eq 'change';
+	@args = $args[0,1]	if $cmd eq 'curve25519_start';
+	@args = $args[0]	if $cmd eq 'curve25519_step';
+	@args = $args[0,1]	if $cmd eq 'curve25519_final';
 
 	return $self->SUPER::cmd_log($level, $code, $cmd, @args);
 }
