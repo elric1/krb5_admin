@@ -16,6 +16,7 @@ use Time::HiRes qw(gettimeofday);
 
 use Krb5Admin::Client;
 use Krb5Admin::KerberosDB;
+use Krb5Admin::Krb5Host::Client;
 use Krb5Admin::Utils qw/host_list/;
 use Krb5Admin::C;
 
@@ -148,6 +149,22 @@ sub set_opt {
 	}
 }
 
+sub KHARON_SET_CREDS {
+	my ($self, @creds) = @_;
+
+	if (@creds == 0) {
+		die "Must provide a credential to set_creds";
+	}
+
+	if (@creds > 1) {
+		die "Krb5Admin::Krb5Host::Local does not support " .
+		    "multiple credentials"; 
+	}
+
+	$self->{client} = $creds[0];
+}
+
+
 #
 # Basic remote admin:
 
@@ -194,6 +211,12 @@ sub list_keytab {
 
 	return $ret;
 }
+
+#
+# XXXrcd: just for testing...  maybe okay, though, it's not like
+#         you can't just get this information from KDC, anyway.
+
+sub KHARON_ACL_query_keytab { return 1; }
 
 sub query_keytab {
 	my ($self, $user) = @_;
@@ -1429,8 +1452,67 @@ sub curve25519_privfunc {
 	return [$op, $user, $name, $lib, $kvno, %args];
 }
 
+sub KHARON_ACL_curve25519_start		{ KHARON_ACL_curve25519_final(@_); }
+sub KHARON_ACL_curve25519_step		{ return 1; }
+
+my @curve25519_ops = qw(change create);
+
+sub KHARON_ACL_curve25519_final {
+        my ($self, $cmd, $priv) = @_;
+	my $ctx   = $self->{ctx};
+	my $creds = $self->{client};
+	my $me    = hostname();
+
+        my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
+        # XXXrcd: SANITY CHECK!
+
+        if ((grep { $op eq $_ } @curve25519_ops) < 1) {
+                return "arg1 must be one of: " . join(', ', @curve25519_ops);
+        }
+
+	my $defrealm = Krb5Admin::C::krb5_get_realm($ctx);
+
+	my ($crealm, $cservice, $chost) =
+	    Krb5Admin::C::krb5_parse_name($ctx, $creds);
+
+	my ($realm, $service, $logical) = 
+	    Krb5Admin::C::krb5_parse_name($ctx, $name);
+
+	#
+	# XXXrcd: should we enforce restrictions on realm in @pp?  Certainly,
+	#         we can't just as a random KDC whether we're in a cluster
+	#         with some hosts that it administers.  So, we'll enforce
+	#         this for now...
+
+	if ($crealm ne $defrealm) {
+		return "Client must come from default realm.";
+	}
+
+	if ($cservice ne 'host') {
+		return "Only host princs can negotiate keys.";
+	}
+
+	if ($realm ne $defrealm) {
+		return "Cluster logical names must be in the default realm.";
+	}
+
+	my $kmdb = $self->get_hostbased_kmdb($realm, $me);
+	my $cluster = $kmdb->query_hostmap($logical);
+
+	if (!grep { $_ eq $me } @$cluster) {
+		return "host $me is not a member of cluster $logical.";
+	}
+
+	if (!grep { $_ eq $chost } @$cluster) {
+		return "host $me is not a member of cluster $logical.";
+	}
+
+	return 1;
+}
+
 sub curve25519_start {
 	my ($self, $priv, $hnum, $pub) = @_;
+	# XXXrcd: validate args.
 	my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
 
 	$self->obtain_lock($user);
@@ -1545,10 +1627,35 @@ sub install_key {
 		$etypes = [map { $revenctypes{$_} } @$etypes];
 	}
 
-	$kvno += 1 if defined($kvno);
+	my @hosts = ($self);
+
+	#
+	# Deal with clustering.  If we are asking for a cluster princ,
+	# then we calculate the hosts in the cluster and store them in
+	# @hosts.  We sort the list to ensure that we fail more quickly
+	# if we can't obtain locks as any two hosts requesting a change
+	# will try to lock the same host first.  How the sorting is
+	# accomplished is immaterial as long as all hosts sort in the
+	# same way and so we simply lexically sort on hostname.
+
+	if ($princ->[2] ne hostname()) {
+		my $cluster = $kmdb->query_hostmap($princ->[2]);
+
+		for my $h (sort @$cluster) {
+			my $hconn;
+
+			if ($h eq hostname()) {
+				$hconn = $self;
+			} else {
+				$hconn = Krb5Admin::Krb5Host::Client->new($h);
+			}
+
+			push(@hosts, $hconn);
+		}
+	}
 
 	CURVE25519_NWAY::do_nway(['change', $user, $strprinc, $lib,
-	    undef, enctypes => $etypes], [$kmdb, $self],
+	    undef, enctypes => $etypes], [$kmdb, @hosts],
 	    privfunc => \&curve25519_privfunc);
 
 	return;

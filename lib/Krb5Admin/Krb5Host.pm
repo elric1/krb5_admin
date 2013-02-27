@@ -9,6 +9,9 @@ use strict;
 use warnings;
 
 our @KHARON_RW_SC_EXPORT = qw/	change_keytab
+				curve25519_start
+				curve25519_step
+				curve25519_final
 				fetch_tickets
 				install_keytab
 				install_ticket
