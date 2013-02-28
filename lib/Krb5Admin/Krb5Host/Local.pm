@@ -855,19 +855,29 @@ sub get_princs {
 
 #
 # calculate the instances that we may need to fetch.
+#
+# XXXrcd: we replace the prior logic which calculates all of the
+#         instances we could fetch by looking at the host keys as
+#         we have decided to make the fetching of cluster keys
+#         something which must be explicitly requested.  We leave
+#         the prior code as comments for use by those that wish
+#         to revert to such behaviour.
 
 sub get_instances {
 	my ($self, $realm) = @_;
-	my $ctx = $self->{ctx};
-	my @tmp;
-	my %ret;
 
-	@tmp = map {[ parse_princ($ctx, $_->{princ}) ]} ($self->get_keys(''));
+	return hostname();
 
-	for my $i (grep { $_->[1] eq 'host' && $_->[0] eq $realm } @tmp) {
-		$ret{$i->[2]} = 1;
-	}
-	keys %ret;
+#	my $ctx = $self->{ctx};
+#	my @tmp;
+#	my %ret;
+#
+#	@tmp = map {[ parse_princ($ctx, $_->{princ}) ]} ($self->get_keys(''));
+#
+#	for my $i (grep { $_->[1] eq 'host' && $_->[0] eq $realm } @tmp) {
+#		$ret{$i->[2]} = 1;
+#	}
+#	keys %ret;
 }
 
 sub get_defrealm {
