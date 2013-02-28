@@ -1553,17 +1553,14 @@ sub install_key {
 	my $ret;
 	my $etypes;
 
+	if ($action ne 'change' && $self->{force} < 1) {
+		return if !$self->need_new_key($kt, $strprinc);
+	}
+
 	my $kmdb = $self->get_hostbased_kmdb($princ->[0], $princ->[2]);
 	die "Cannot connect to KDC."	if !$kmdb;
 
 	$etypes = $krb5_libs->{$lib} if defined($lib);
-
-	#
-	# XXXrcd: should this be higher?  After all, we've already connected
-	#         to the KDC which we are in some sense trying to avoid...
-	if ($action ne 'change' && $self->{force} < 1) {
-		return if !$self->need_new_key($kt, $strprinc);
-	}
 
 	$kmdb->master();
 
