@@ -866,7 +866,7 @@ sub get_princs {
 sub get_instances {
 	my ($self, $realm) = @_;
 
-	return hostname();
+	return host_list(hostname());
 
 #	my $ctx = $self->{ctx};
 #	my @tmp;
