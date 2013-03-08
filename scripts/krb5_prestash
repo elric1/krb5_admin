@@ -215,7 +215,7 @@ eval {
 		my %args;
 		my $clnt;
 		if ($cmd eq 'fetch') {
-			$clnt = 'host/' .  [host_list(hostname())]->[0];
+			$clnt = 'host/' . [host_list(hostname())]->[0];
 		}
 		$args{realm} = $realm	if defined($realm);
 		$kmdb = Krb5Admin::Client->new($clnt, \%args, @kdcs);
