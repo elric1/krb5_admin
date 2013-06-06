@@ -218,10 +218,15 @@ sub acl_keytab {
 
 	if ($pprinc[1] ne "host") {
 		# OK if subject is the host principal in the same realm
+		# Or a direct sub-domain of that host, if that's enabled.
+		my $basedomain = $pprinc[2];
+		$basedomain =~ s/^[a-z0-9](?:[-]?[a-z0-9]+)*\.//i
+			if $self->{enable_host_subdomain};
 		return 1 if (@sprinc == 3
 			     && $pprinc[0] eq $sprinc[0]
 			     && $sprinc[1] eq "host"
-			     && $sprinc[2] eq $pprinc[2]);
+			     && ($sprinc[2] eq $pprinc[2]
+				 || $sprinc[2] eq $basedomain));
 
 		# OK if the subject is a cluster member of the logical
 		# host named by $pprinc[2].
@@ -348,6 +353,7 @@ sub new {
 	$self->{debug}	= 0			if !defined($self->{debug});
 
 	$self->{allow_fetch}		= $args{allow_fetch};
+	$self->{enable_host_subdomain}	= $args{enable_host_subdomain};
 	$self->{xrealm_bootstrap}	= $args{xrealm_bootstrap};
 	$self->{win_xrealm_bootstrap}	= $args{win_xrealm_bootstrap};
 	$self->{prestash_xrealm}	= $args{prestash_xrealm};

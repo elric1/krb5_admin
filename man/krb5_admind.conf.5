@@ -29,6 +29,11 @@ Also see
 configuration variable
 .Ar $use_fetch .
 This value defaults to false.
+.It Ar $enable_host_subdomain
+is a boolean variable that if true allows hosts to manage keys for services
+whose instance is a direct subdomain of the host.  This supports multiple
+service namespaces on the same machine provided the subdomains all map
+to the same address (as with e.g. a wildcard *.hostname A record).
 .It Ar %xrealm_bootstrap
 is a hash which has keys that are Kerberos realms with values that are
 an array ref of Kerberos realms.

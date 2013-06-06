@@ -66,6 +66,7 @@ sub mk_kmdb {
 		client			=> $args{CREDS},
 		addr			=> $args{REMOTE_IP},
 		allow_fetch		=> $config->{allow_fetch},
+		enable_host_subdomain	=> $config->{enable_host_subdomain},
 		xrealm_bootstrap	=> $config->{xrealm_bootstrap},
 		win_xrealm_bootstrap	=> $config->{win_xrealm_bootstrap},
 		prestash_xrealm		=> $config->{prestash_xrealm},
