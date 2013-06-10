@@ -443,6 +443,12 @@ our %field_desc = (
 		fields		=> [qw/aclgroup acl/],
 		wontgrow	=> 1,
 	},
+	acl_owner	=> {
+		pkey		=> [qw/name/],
+		uniq		=> [qw/name/],
+		fields		=> [qw/name owner/],
+		wontgrow	=> 1,
+	},
 	hosts		=> {
 		pkey		=> 'name',
 		uniq		=> [qw/name ip_addr bootbinding/],
@@ -481,6 +487,7 @@ sub init_db {
 		)
 	});
 
+
 	$dbh->do(qq{
 		CREATE TABLE appid_acls (
 			appid		VARCHAR NOT NULL,
@@ -511,6 +518,15 @@ sub init_db {
 			type		VARCHAR NOT NULL,
 
 			PRIMARY KEY (name)
+		)
+	});
+
+	$dbh->do(qq{
+		CREATE TABLE acl_owner (
+			name		VARCHAR,
+			owner		VARCHAR,
+			PRIMARY KEY (name, owner)
+			FOREIGN KEY (name) REFERENCES acls(name)
 		)
 	});
 
@@ -591,6 +607,7 @@ sub drop_db {
 	$dbh->do('DROP TABLE IF EXISTS aclgroups');
 	$dbh->do('DROP TABLE IF EXISTS appid_cstraints');
 	$dbh->do('DROP TABLE IF EXISTS appid_acls');
+	$dbh->do('DROP TABLE IF EXISTS acl_owner');
 	$dbh->do('DROP TABLE IF EXISTS acls');
 	$dbh->do('DROP TABLE IF EXISTS appids');
 	$dbh->do('DROP TABLE IF EXISTS prestashed');
@@ -2058,20 +2075,6 @@ sub remove_ticket {
 	return undef;
 }
 
-sub add_acl {
-	my ($self, $acl, $type) = @_;
-	my $dbh = $self->{dbh};
-
-	require_scalar("add_acl <acl> <type>", 1, $acl);
-	require_scalar("add_acl <acl> <type>", 2, $type);
-
-	my $stmt = "INSERT INTO acls(name, type) VALUES (?, ?)";
-
-	sql_command($dbh, $stmt, $acl, $type);
-	$dbh->commit();
-	return undef;
-}
-
 sub del_acl {
 	my ($self, $acl) = @_;
 	my $dbh = $self->{dbh};
@@ -2092,6 +2095,23 @@ sub query_acl {
 	my $dbh = $self->{dbh};
 
 	return generic_query($dbh, \%field_desc, 'acls', [keys %query], %query);
+}
+
+
+
+
+
+# Replacements for aclgroup modifications
+# Allows the "owner" to modify the group
+sub KHARON_ACL_insert_aclgroup {
+    my ($self, $command, $acl)  = @_;
+    my $acls = $self->query_acl(name => $acl);    
+
+    if ($acls->{type} eq 'group' && is_owner($self->{dbh}, $self->{client},$acl)) {
+	return 1;
+    }
+
+    return 0;
 }
 
 sub insert_aclgroup {
@@ -2115,6 +2135,10 @@ sub insert_aclgroup {
 
 	return undef;
 }
+
+
+
+sub KHARON_ACL_remove_aclgroup { return KHARON_ACL_insert_aclgroup (@_); }
 
 sub remove_aclgroup {
 	my ($self, @acls) = @_;
@@ -2144,6 +2168,94 @@ sub query_aclgroup {
 	return generic_query($dbh, \%field_desc, 'aclgroups', [keys %args],
 	    %args);
 }
+
+sub add_acl {
+	my ($self, $acl, $type) = @_;
+	my $dbh = $self->{dbh};
+	
+	my $ctx = $self->{ctx};
+	my $princ = $self->{client};
+	
+	
+	Krb5Admin::KerberosDB::require_scalar("add_acl <acl> <type>", 1, $acl);
+	Krb5Admin::KerberosDB::require_scalar("add_acl <acl> <type>", 2, $type);
+	
+	my $stmt = "INSERT INTO acls(name, type) VALUES (?, ?)";
+	sql_command($dbh, $stmt, $acl, $type);
+
+	my $stmt_insert = "INSERT INTO acl_owner(name, owner) VALUES (?,?)";
+	sql_command($dbh, $stmt_insert, $acl, $princ);
+
+	$dbh->commit();
+	
+	return undef;
+}
+
+
+sub KHARON_ACL_del_acl {
+    my ($self, $cmd, $acl)  = @_;
+    my $acls = $self->query_acl(name => $acl);    
+    
+    if ($acls->{type} eq 'group' && is_owner($self->{dbh}, $self->{client},$acls->{name})) {
+	return 1;
+    }
+    return 0;
+}
+
+
+sub KHARON_ACL_add_acl_owner { return KHARON_ACL_del_acl(@_); }
+sub add_acl_owner {
+    my ($self, $acl , $newowner)  = @_;
+    my $acls = $self->query_acl(name => $acl);    
+    my $dbh = $self->{dbh};
+
+    Krb5Admin::KerberosDB::require_scalar("change_acl_owner <acl> <newowner>", 1, $acl);
+    Krb5Admin::KerberosDB::require_scalar("change_acl_owner <acl> <newowner>", 2, $newowner);
+
+    my $princ = Krb5Admin::KerberosDB::canonicalise_fqprinc($self->{ctx}, "add_acl_owner <acl> <newowner>", 2, $newowner);
+
+	my $stmt_insert = "INSERT INTO acl_owner(name, owner) VALUES (?,?)";
+	sql_command($dbh, $stmt_insert, $acl, $princ);
+    $dbh->commit();
+    return undef;
+}
+
+
+sub KHARON_ACL_del_acl_owner { return KHARON_ACL_del_acl(@_); }
+sub del_acl_owner {
+    my ($self, $acl , $owner)  = @_;
+    my $acls = $self->query_acl(name => $acl);    
+    my $dbh = $self->{dbh};
+
+    Krb5Admin::KerberosDB::require_scalar("del_acl_owner <acl> <owner>", 1, $acl);
+    Krb5Admin::KerberosDB::require_scalar("del_acl_owner <acl> <owner>", 2, $owner);
+
+    my $princ = Krb5Admin::KerberosDB::canonicalise_fqprinc($self->{ctx}, "del_acl_owner <acl> <owner>", 2, $owner);
+    
+	my $stmt_insert = "DELETE FROM acl_owner where owner = ? and name = ?";
+	sql_command($dbh, $stmt_insert, $acl, $princ);
+    
+    $dbh->commit();
+    return undef;
+}
+
+
+
+
+sub is_owner {
+	my ($dbconn, $username, $acl) = @_;
+	my $res = generic_query($dbconn, \%field_desc, 'acl_owner', ['name'],
+		name=>$acl, owner=>$username);
+
+	if (defined $res) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+
+
 
 1;
 
