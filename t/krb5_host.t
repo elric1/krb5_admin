@@ -13,6 +13,7 @@ use strict;
 use warnings;
 
 our $KRB5_KEYTAB_CONFIG = './t/krb5_keytab.conf';
+my $hostname = hostname();
 
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
@@ -47,7 +48,9 @@ use warnings;
 my $kdc_pid = fork();
 exit(1) if $kdc_pid == -1;
 if ($kdc_pid == 0) {
-	exec {'/usr/sbin/kdc'} qw/kdc/;
+	my $KRB5DIR = $ENV{KRB5DIR};
+	$KRB5DIR //= "/usr";
+	exec { "$KRB5DIR/libexec/kdc" } qw/kdc/;
 	exit(1);
 }
 ok(1);
@@ -56,7 +59,7 @@ my $krb5_admind_pid = fork();
 exit(1) if $krb5_admind_pid == -1;
 if ($krb5_admind_pid == 0) {
 	$ENV{'KRB5_KTNAME'} = 'FILE:t/keytabs/root';
-	exec {'knc'} qw{knc -l krb5_admin /usr/pkg/bin/perl
+	exec {'knc'} qw{knc -l krb5_admin -- /usr/bin/perl
 			-Iblib/lib -Iblib/arch ./scripts/krb5_admind -M
 			-S t/sqlite.db
 		};
@@ -126,10 +129,10 @@ diag $@ if $@;
 
 my $kt;
 
-$kt = get_kt(local => 1);
+$kt = get_kt(local => 1, kmdb => $kmdb);
 eval {
 	$kt->install_keytab('root', undef,
-	    'krb5_admin/' . hostname() . '@TEST.REALM');
+	    'krb5_admin/' . $hostname . '@TEST.REALM');
 };
 ok(!$@, Dumper($@));
 undef($kt);
@@ -151,8 +154,8 @@ eval {
 ok(!$@, Dumper($@));
 
 eval {
-	$kmdb->create_host(hostname(), realm => 'TEST.REALM');
-	$kmdb->bind_host(hostname(), $binding);
+	$kmdb->create_host($hostname, realm => 'TEST.REALM');
+	$kmdb->bind_host($hostname, $binding);
 };
 ok(!$@, Dumper($@));
 
@@ -187,14 +190,14 @@ ok(!$@, Dumper($@));
 for my $etype (16, 17, 18, 23) {
 	eval {
 		Krb5Admin::C::write_kt($ctx, "WRFILE:t/keytabs/$me",
-		    mk_kte($ctx, "$me/roofdrak.imrryr.org", 2, $etype));
+		    mk_kte($ctx, "$me/$hostname", 2, $etype));
 	};
 	ok(!$@, Dumper($@));
 }
 
 for my $etype (16, 17, 18, 23) {
 	eval {
-		my $key = mk_kte($ctx, "$me/roofdrak.imrryr.org", 3, $etype);
+		my $key = mk_kte($ctx, "$me/$hostname", 3, $etype);
 		Krb5Admin::C::write_kt($ctx, "WRFILE:t/keytabs/$me", $key);
 	};
 	ok(!$@, Dumper($@));
@@ -244,7 +247,7 @@ my $ret;
 eval { $ret = $kt->query_keytab($me); };
 ok(!$@, Dumper($@));
 is_deeply($ret, {
-	$me . '/' . hostname() . '@TEST.REALM' => [['mitkrb5/1.4', 0],
+	$me . '/' . $hostname . '@TEST.REALM' => [['mitkrb5/1.4', 0],
 						   ['mitkrb5/1.3', 1]],
 });
 

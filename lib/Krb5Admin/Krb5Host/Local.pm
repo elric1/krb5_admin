@@ -133,7 +133,7 @@ sub internal_set_opt {
 		return;
 	}
 
-	if (ref($kt_opts{$opt}) ne ref($val)) {
+	if (defined($kt_opts{$opt}) && ref($kt_opts{$opt}) ne ref($val)) {
 		die "Option $opt must be of type " . ref($kt_opts{$opt}) .
 		    " but is of type " . ref($val) . "\n";
 	}

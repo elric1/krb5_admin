@@ -15,7 +15,10 @@ use warnings;
 
 $ENV{KRB5_CONFIG} = './t/krb5.conf';
 
+chomp(my $me = qx{id -nu});
 unlink('t/test-hdb.db');
+unlink("t/keytabs/$me");
+unlink("t/keytabs/root");
 
 my  $ctx   = Krb5Admin::C::krb5_init_context();
 our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb', undef);
