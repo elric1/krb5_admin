@@ -30,6 +30,7 @@ our $DEFAULT_KEYTAB = '/etc/krb5.keytab';
 our $KRB5_KEYTAB_CONFIG = '@@KRB5_KEYTAB_CONF@@';
 our $KINIT    = '@@KRB5DIR@@/bin/kinit';
 our @KINITOPT = qw(@@KINITOPT@@ -l 10m);
+our $hostname = hostname();
 
 #
 # And we define a few lookup tables:
@@ -58,6 +59,7 @@ our %kt_opts = (
 	kadmin			=> 0,
 	invoking_user		=> undef,
 	user2service		=> {},
+	subdomain_prefix	=> '',
 	allowed_enctypes	=> [],
 	admin_users		=> {},
 	kmdb			=> undef,	# XXXrcd: more logic
@@ -83,6 +85,7 @@ sub new {
 	my $self = { %kt_opts };
 
 	$self->{ctx}		= Krb5Admin::C::krb5_init_context();
+	$self->{defrealm}	= Krb5Admin::C::krb5_get_realm($self->{ctx});
 
 	bless($self, $class);
 
@@ -962,6 +965,22 @@ sub expand_princs {
 	return @ret;
 }
 
+sub match_acl_templates {
+    my ($princ, $templates) = @_;
+    
+    return undef if (@$princ != 3);
+    
+    foreach my $t (@$templates) {
+	next if (@$t != 3);
+	my $i = 0;
+	for ($i = 0; $i< 3; $i++) {
+	    next if (!defined $t->[$i]);
+	    last if ($princ->[$i] ne $t->[$i]);
+	}
+	return 1 if ($i == 3);
+    }
+    return undef;
+}
 
 #
 # check_acls takes a single user and a list of principals specified
@@ -986,17 +1005,29 @@ sub expand_princs {
 sub check_acls {
 	my ($self, $user, @services) = @_;
 	my @errs;
-	my %user2service = %{$self->{user2service}};
+	my $user2service = $self->{user2service};
 
 	return if $user eq 'root';
 
-	our %acl_svcs;
-	$user2service{$user} = [$user] if !defined($user2service{$user});
-	%acl_svcs = map { $_ => 1 } @{$user2service{$user}};
+	if (!defined($user2service->{$user})) {
+	    $user2service->{$user} = [];
+	}
 
-	for my $i (grep { !defined($acl_svcs{$_->[1]}) } @services) {
+	# if the user has been "disabled" then we don't assign the implicit
+	# permissions
+	if (!defined $self->{disabled_user_defaults}->{$user}) {
+	    push($user2service->{$user} ,[$self->{defrealm}, $user, $hostname]);
+	    if (defined $self->{subdomain_prefix}) {
+		push($user2service->{$user},
+		     [$self->{defrealm}, undef, sprintf("%s.%s%s",$user,$self->{subdomain_prefix},$hostname)]);
+	    }
+	}
+
+	for my $i (@services) {
+	    if (!match_acl_templates($i, $user2service->{$user})) {
 		push(@errs, "Permission denied: $user can't create " .
 		    unparse_princ($i));
+	    }
 	}
 
 	die \@errs if @errs;
@@ -1410,6 +1441,8 @@ sub get_hostbased_kmdb {
 
 	$kmdb = $self->get_kmdb(realm => $realm);
 	return $kmdb if defined($kmdb);
+	
+	$inst = $self->owner_inst($realm, $inst);
 
 	if (defined($self->{hostbased_kmdb})		&&
 	    $self->{hostbased_kmdb_realm} eq $realm	&&
@@ -1885,15 +1918,12 @@ sub install_host_key {
 	my $kmdb = $self->get_hostbased_kmdb($princ->[0], $princ->[2]);
 
 	if ($kmdb) {
-		#
-		# XXXrcd: should we fail here or should we continue
-		#         to the bootstrapping code because we may
-		#         have lost our association with the KDC?
-
 		$f = \&install_key;
 		$f = \&install_key_fetch	if $use_fetch || $self->{local};
 
-		return &$f(@_);
+		my $result;
+		eval { $result = &$f(@_); };
+		return $result unless ($@);
 	}
 
 	return bootstrap_host_key(@_);
@@ -1927,6 +1957,24 @@ sub install_bootstrap_key {
 	$self->write_keys_kt($user, undef, undef, undef, @{$gend->{keys}});
 
 	return $binding;
+}
+
+# Use host/<primary_hostname> unless the instance requested exactly matches
+# some host/<secondary_name> in the system keytab file.
+#
+sub owner_inst {
+	my ($self, $realm, $host) = @_;
+
+	foreach my $ktent ($self->get_keys()) {
+		my $princ = $ktent->{"princ"};
+		my @princ = parse_princ($self->{ctx}, $princ);
+		next if @princ != 3;
+		next if ($realm ne $princ[0]);
+		next if ($princ[1] ne "host");
+		my $phost = $princ[2];
+		return $host if ($phost eq $host);
+	}
+	return $hostname;
 }
 
 #
