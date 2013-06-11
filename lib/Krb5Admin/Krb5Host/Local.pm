@@ -1004,6 +1004,7 @@ sub check_acls {
 sub mk_kt_dir {
 	my ($self) = @_;
 	my $ktdir = $self->{ktdir};
+	$ktdir //= "/var/spool/keytabs";
 
 	mkdir($ktdir, 022);
 	chmod(0755, $ktdir);
