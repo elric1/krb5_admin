@@ -75,7 +75,7 @@ my %args = (
     PM_FILTER=> qq{sed -e s,\@\@KINIT\@\@,$KRB5DIR/bin/kinit, },
 
     dist     => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
-    clean    => { FILES => 'Kharon-*' },
+    clean    => { FILES => 'Kharon-* t/sqlite.db' },
 #    test     => { TESTS => 't/curve25519.t t/getkdc.t t/getrealm.t'},
 );
 
