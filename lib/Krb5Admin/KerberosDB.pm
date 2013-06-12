@@ -449,6 +449,12 @@ our %field_desc = (
 		fields		=> [qw/name owner/],
 		wontgrow	=> 1,
 	},
+	hostmap_owner	=> {
+		pkey		=> [qw/name/],
+		uniq		=> [qw/name/],
+		fields		=> [qw/name owner/],
+		wontgrow	=> 1,
+	},
 	hosts		=> {
 		pkey		=> 'name',
 		uniq		=> [qw/name ip_addr bootbinding/],
@@ -1711,7 +1717,7 @@ sub remove_hostmap {
 	@hosts = map { lc($_) } @hosts;
 
 	my $stmt = "DELETE FROM hostmap WHERE logical = ? AND physical = ?";
-
+	
 	sql_command($dbh, $stmt, @hosts);
 
 	$dbh->commit();
@@ -2107,7 +2113,7 @@ sub KHARON_ACL_insert_aclgroup {
     my ($self, $command, $acl)  = @_;
     my $acls = $self->query_acl(name => $acl);    
 
-    if ($acls->{type} eq 'group' && is_owner($self->{dbh}, $self->{client},$acl)) {
+    if ($acls->{type} eq 'group' && is_owner($self->{dbh},'acl', $self->{client},$acl)) {
 	return 1;
     }
 
@@ -2196,7 +2202,7 @@ sub KHARON_ACL_del_acl {
     my ($self, $cmd, $acl)  = @_;
     my $acls = $self->query_acl(name => $acl);    
     
-    if ($acls->{type} eq 'group' && is_owner($self->{dbh}, $self->{client},$acls->{name})) {
+    if ($acls->{type} eq 'group' && is_owner($self->{dbh},'acl', $self->{client},$acls->{name})) {
 	return 1;
     }
     return 0;
@@ -2205,46 +2211,80 @@ sub KHARON_ACL_del_acl {
 
 sub KHARON_ACL_add_acl_owner { return KHARON_ACL_del_acl(@_); }
 sub add_acl_owner {
-    my ($self, $acl , $newowner)  = @_;
-    my $acls = $self->query_acl(name => $acl);    
-    my $dbh = $self->{dbh};
+	my ($self, $acl , $newowner)  = @_;
+	my $acls = $self->query_acl(name => $acl);    
+	my $dbh = $self->{dbh};
 
-    Krb5Admin::KerberosDB::require_scalar("change_acl_owner <acl> <newowner>", 1, $acl);
-    Krb5Admin::KerberosDB::require_scalar("change_acl_owner <acl> <newowner>", 2, $newowner);
+	Krb5Admin::KerberosDB::require_scalar("change_acl_owner <acl> <newowner>", 1, $acl);
+	Krb5Admin::KerberosDB::require_scalar("change_acl_owner <acl> <newowner>", 2, $newowner);
 
-    my $princ = Krb5Admin::KerberosDB::canonicalise_fqprinc($self->{ctx}, "add_acl_owner <acl> <newowner>", 2, $newowner);
-
-	my $stmt_insert = "INSERT INTO acl_owner(name, owner) VALUES (?,?)";
-	sql_command($dbh, $stmt_insert, $acl, $princ);
-    $dbh->commit();
-    return undef;
+	my $princ = Krb5Admin::KerberosDB::canonicalise_fqprinc($self->{ctx}, "add_acl_owner <acl> <newowner>", 2, $newowner);
+	add_object_owner($dbh, 'hostmap', $acl, $princ);
 }
 
 
 sub KHARON_ACL_del_acl_owner { return KHARON_ACL_del_acl(@_); }
 sub del_acl_owner {
-    my ($self, $acl , $owner)  = @_;
-    my $acls = $self->query_acl(name => $acl);    
-    my $dbh = $self->{dbh};
+	my ($self, $acl , $owner)  = @_;
+	my $acls = $self->query_acl(name => $acl);    
+	my $dbh = $self->{dbh};
 
-    Krb5Admin::KerberosDB::require_scalar("del_acl_owner <acl> <owner>", 1, $acl);
-    Krb5Admin::KerberosDB::require_scalar("del_acl_owner <acl> <owner>", 2, $owner);
+	Krb5Admin::KerberosDB::require_scalar("del_acl_owner <acl> <owner>", 1, $acl);
+	Krb5Admin::KerberosDB::require_scalar("del_acl_owner <acl> <owner>", 2, $owner);
+	my $princ = Krb5Admin::KerberosDB::canonicalise_fqprinc($self->{ctx}, "del_acl_owner <acl> <owner>", 2, $owner);
 
-    my $princ = Krb5Admin::KerberosDB::canonicalise_fqprinc($self->{ctx}, "del_acl_owner <acl> <owner>", 2, $owner);
-    
-	my $stmt_insert = "DELETE FROM acl_owner where owner = ? and name = ?";
-	sql_command($dbh, $stmt_insert, $acl, $princ);
-    
-    $dbh->commit();
-    return undef;
+	remove_object_owner($dbh, 'acl', $acl, $princ);    
 }
 
 
+sub hostmap_acl {
+	my ($self, $cmd, $logical, @r) =@_;
+	if (is_owner($self->{dbh},'hostmap', $self->{client}, $logical)) { return 1; }
+	return 0;
+}
 
+sub remove_object_owner {
+	my ($dbh, $obj_type, $objname, $ownerprinc) = @_;
+	my $stmt = "DELETE FROM ".$obj_type."_owner where owner = ? and name = ?";
+	sql_command($dbh, $stmt, $ownerprinc, $objname);
+	$dbh->commit();
+}
+
+sub add_object_owner {
+	my ($dbh, $obj_type, $objname, $ownerprinc) = @_;
+	my $stmt= "INSERT INTO ".$obj_type."_owner(name, owner) VALUES (?,?)";
+	sql_command($dbh, $stmt, $objname, $ownerprinc);
+	$dbh->commit();
+}
+
+sub KHARON_ACL_del_hostmap_owner { return hostmap_acl(@_); }
+sub del_hostmap_owner {
+	my ($self, $hostmap , $owner)  = @_;
+	my $dbh = $self->{dbh};
+
+	Krb5Admin::KerberosDB::require_scalar("del_hostmap_owner <hostmap> <owner>", 1, $hostmap);
+	Krb5Admin::KerberosDB::require_scalar("del_hostmap_owner <hostmap> <owner>", 2, $owner);
+	my $princ = Krb5Admin::KerberosDB::canonicalise_fqprinc($self->{ctx}, "del_hostmap_owner <hostmap> <owner>", 2, $owner);
+
+	remove_object_owner($dbh, 'hostmap', $hostmap, $princ);
+}
+
+sub KHARON_ACL_add_hostmap_owner { return hostmap_acl(@_); }
+sub add_hostmap_owner {
+	my ($self, $hostmap , $newowner)  = @_;
+	# XXX - validate hostmap exists
+	my $dbh = $self->{dbh};
+
+	Krb5Admin::KerberosDB::require_scalar("add_hostmap_owner <hostmap> <newowner>", 1, $hostmap);
+	Krb5Admin::KerberosDB::require_scalar("add_hostmap_owner <hostmap> <newowner>", 2, $newowner);
+	my $princ = Krb5Admin::KerberosDB::canonicalise_fqprinc($self->{ctx}, "add_hostmap_owner <hostmap> <newowner>", 2, $newowner);
+
+	add_object_owner($dbh, 'hostmap', $hostmap, $princ);
+}
 
 sub is_owner {
-	my ($dbconn, $username, $acl) = @_;
-	my $res = generic_query($dbconn, \%field_desc, 'acl_owner', ['name'],
+	my ($dbconn, $obj_type, $username, $acl) = @_;
+	my $res = generic_query($dbconn, \%field_desc, '$obj_type_owner', ['name'],
 		name=>$acl, owner=>$username);
 
 	if (defined $res) {
