@@ -58,6 +58,7 @@ our %kt_opts = (
 	local			=> 0,
 	kadmin			=> 0,
 	invoking_user		=> undef,
+	disabled_user_defaults  => {},
 	user2service		=> {},
 	subdomain_prefix	=> '',
 	allowed_enctypes	=> [],
@@ -1342,14 +1343,19 @@ sub get_kmdb {
 	# Below, all of the mechanisms require administrative access, so we
 	# enforce it here:
 
-	if (!$self->is_admin() && $self->{invoking_user} ne 'root') {
-		die "-A, -Z, and -l require administrative access.";
+	if ($self->{invoking_user} ne 'root') {
+		if ($self->{local}) { 
+			die "Local access requires root";
+		}	
+		if (defined($self->{winprinc})) {
+			die "Windows bootstrapping requires root"; 
+		}
 	}
 
 	#
 	# Are we configured to use the local Kerberos DB?
 
-	if ($self->{local}) {
+	if ($self->{local}) { 
 		$self->{kmdb} = Krb5Admin::KerberosDB->new(local => 1);
 		return $self->{kmdb};
 	}

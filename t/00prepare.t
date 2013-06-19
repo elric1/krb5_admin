@@ -78,6 +78,13 @@ $kmdb->sacls_add('modify', $creds);
 $kmdb->sacls_add('remove', $creds);
 $kmdb->sacls_add('remove_aclgroup', $creds);
 
+$kmdb->sacls_add('remove_acl_owner', $creds);
+$kmdb->sacls_add('remove_hostmap_owner', $creds);
+$kmdb->sacls_add('add_acl_owner', $creds);
+$kmdb->sacls_add('add_hostmap_owner', $creds);
+
+$kmdb->sacls_add('query_hostmap_owner', $creds);
+
 $kmdb->create('krbtgt/TEST.REALM@TEST.REALM');
 $kmdb->create('WELLKNOWN/ANONYMOUS@TEST.REALM');
 $kmdb->create('krb5_admin/' . $hostname . '@TEST.REALM');
