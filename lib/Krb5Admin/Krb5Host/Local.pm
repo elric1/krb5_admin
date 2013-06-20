@@ -1204,6 +1204,8 @@ sub write_keys_kt {
 	my $oldkt;
 	my $kt = $self->get_kt($user);
 
+	die "Empty key list write_keys_kt\n" if @keys == 0;
+
 	for my $i (@keys) {
 		$i->{princ} = $princ	if defined($princ);
 		$i->{kvno}  = $kvno	if defined($kvno);

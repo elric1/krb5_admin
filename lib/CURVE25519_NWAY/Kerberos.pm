@@ -79,6 +79,9 @@ sub curve25519_final {
 
 	my $counter = 0;
 	my @keys;
+	
+	die "No enctypes\n" if @{$args{enctypes}} == 0;
+
 	for my $enctype (@{$args{enctypes}}) {
 		# Make sure we've got a numeric enctype... XXXrcd ???
 		my $etype = $revenctypes{$enctype};
