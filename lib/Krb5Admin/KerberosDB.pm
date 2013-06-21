@@ -857,14 +857,22 @@ sub create_appid {
 
 	$appid = canonicalise_fqprinc($ctx, "insert <appid>", 1, $appid);
 
-	if (defined(my $vr = $self->{realms})) {
-		my ($user, $realm) = ($appid =~ m{^(.+)\@(.+)$});
-		if (!defined($realm)) {
-			die [503, q{appid must be of the form <user>@<REALM>}];
-		}
-		if (!grep($_ eq $realm, @$vr)) {
-			die [503, q{appid realm invalid, should be one of: } .
-			    join(", ", @$vr)];
+	my @app_name = Krb5Admin::C::krb5_parse_name($ctx, $appid);
+	if (@app_name != 2) {
+		die [503, "$appid is an invalid appid\n"];
+	}
+	$appid = unparse_princ(\@app_name);
+
+	if (0) { # This is dead
+		if (defined(my $vr = $self->{realms})) {
+			my ($user, $realm) = ($appid =~ m{^(.+)\@(.+)$});
+			if (!defined($realm)) {
+				die [503, q{appid must be of the form <user>@<REALM>}];
+			}
+			if (!grep($_ eq $realm, @$vr)) {
+				die [503, q{appid realm invalid, should be one of: } .
+					join(", ", @$vr)];
+			}
 		}
 	}
 
@@ -2195,6 +2203,14 @@ sub query_aclgroup {
 	    %args);
 }
 
+sub KHARON_ACL_add_acl {
+    my ($self, $cmd, $acl, $type)  = @_;
+    if ($type eq 'group') {
+	return 1;
+    }
+    return undef;
+}
+
 sub add_acl{
 	my ($self, $acl, $type) = @_;
 	my $dbh = $self->{dbh};
@@ -2204,7 +2220,19 @@ sub add_acl{
 	
 	Krb5Admin::KerberosDB::require_scalar("add_acl <acl> <type>", 1, $acl);
 	Krb5Admin::KerberosDB::require_scalar("add_acl <acl> <type>", 2, $type);
-	
+
+	if ($type eq 'group' ) {
+		if ($acl !~ m/^[A-Za-z0-9][-_A-Za-z0-9]*$/) {
+			die [503, "Invalid acl name"];
+		}
+	} elsif ($type eq 'krb5') {
+		my @x = Krb5Admin::C::krb5_parse_name($ctx, $acl);
+		$acl = unparse_princ(\@x);
+	} else {
+		die [503, "ACL type invalid."];
+	}
+
+
 	my $stmt = "INSERT INTO acls(name, type) VALUES (?, ?)";
 	sql_command($dbh, $stmt, $acl, $type);
 
@@ -2221,7 +2249,7 @@ sub KHARON_ACL_del_acl {
     my ($self, $cmd, $acl)  = @_;
     my $acls = $self->query_acl(name => $acl);    
     
-    if ($acls->{type} eq 'group' && is_owner($self->{dbh},'acls', $self->{client},$acls->{name})) {
+    if ($acls->{type} eq 'group' && is_owner($self->{dbh},'acls', $self->{client},$acl)) {
 	return 1;
     }
     return undef;
