@@ -28,7 +28,8 @@ our $config = KRB5_ADMIND_CONFIG;
 our $dbname;
 our $sqlite;
 our $allow_fetch;
-our $enable_host_subdomain;
+# If defined it should end in a dot
+our $subdomain_prefix;
 our $master;
 our $kmdb_class;
 our %xrealm_bootstrap;
@@ -60,7 +61,7 @@ $config{config}			= $config;
 $config{dbname}			= $dbname;
 $config{sqlite}			= $sqlite;
 $config{allow_fetch}		= $allow_fetch;
-$config{enable_host_subdomain}	= $enable_host_subdomain;
+$config{subdomain_prefix}	= $subdomain_prefix;
 $config{master}			= $master;
 $config{kmdb_class}		= $kmdb_class;
 $config{xrealm_bootstrap}	= \%xrealm_bootstrap;
