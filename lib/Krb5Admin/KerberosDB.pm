@@ -774,8 +774,20 @@ sub internal_create {
 	my $passwd = $self->generate_ecdh_key2($args{public});
 
 	if ($kvno == 1) {
-		Krb5Admin::C::krb5_createprinc($ctx, $hndl,
-		    {principal => $name}, $args{enctypes}, $passwd);
+		my @pprinc = Krb5Admin::C::krb5_parse_name($ctx, $name);
+		if (@pprinc == 3 && $pprinc[1] eq "host") {
+			# Because host keys are highly privileged we want
+			# to ensure that they are not forwarded 
+			Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
+				   principal => $name,
+				   policy=>'default',
+				   attributes=>DISALLOW_FORWARDABLE,
+				   }, $args{enctypes}, $passwd);
+		} else {
+			Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
+				   principal => $name,
+				   }, $args{enctypes}, $passwd);
+		}
 	} else {
 		Krb5Admin::C::krb5_setpass($ctx, $hndl, $name, $kvno,
 		    $args{enctypes}, $passwd);
