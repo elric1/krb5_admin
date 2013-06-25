@@ -858,7 +858,7 @@ sub create_appid {
 	$appid = canonicalise_fqprinc($ctx, "insert <appid>", 1, $appid);
 
 	my @app_name = Krb5Admin::C::krb5_parse_name($ctx, $appid);
-	if (@app_name != 2) {
+	if (@app_name != 2 || $app_name[1] !~ m{[A-Z][-A-Z0-9_]*}i) {
 		die [503, "$appid is an invalid appid\n"];
 	}
 	$appid = unparse_princ(\@app_name);
