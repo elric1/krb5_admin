@@ -2297,6 +2297,10 @@ sub owner_del_f {
 	Krb5Admin::KerberosDB::require_scalar($cmdline, 2, $owner);
 	my $princ = Krb5Admin::KerberosDB::canonicalise_fqprinc($self->{ctx},$cmdline, 2, $owner);
 
+	if ($princ eq $self->{client}) {
+		die [503, "You can't delete your ownership"];
+	}
+
 	return	remove_object_owner($dbh, $type_name, $obj, $princ);
 }
 
