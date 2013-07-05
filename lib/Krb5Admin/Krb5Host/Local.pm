@@ -1017,10 +1017,11 @@ sub check_acls {
 	# if the user has been "disabled" then we don't assign the implicit
 	# permissions
 	if (!defined $self->{disabled_user_defaults}->{$user}) {
-	    push($user2service->{$user} ,[$self->{defrealm}, $user, $hostname]);
+	    push(@{$user2service->{$user}} ,[$self->{defrealm}, $user, $hostname]);
 	    if (defined $self->{subdomain_prefix}) {
-		push($user2service->{$user},
-		     [$self->{defrealm}, undef, sprintf("%s.%s%s",$user,$self->{subdomain_prefix},$hostname)]);
+		push(@{$user2service->{$user}},
+		    [$self->{defrealm}, undef, sprintf("%s.%s%s", $user,
+			    $self->{subdomain_prefix},$hostname)]);
 	    }
 	}
 

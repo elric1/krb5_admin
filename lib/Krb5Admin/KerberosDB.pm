@@ -2343,7 +2343,8 @@ sub is_owner {
 	my $results = $sth->fetchall_arrayref({});
 	
 	foreach my $r (@$results) {
-		return 1;
+	    $sth->finish;
+	    return 1;
 	}
 	return 0;
 }

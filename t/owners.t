@@ -137,6 +137,8 @@ testMustDie("Add user to non existant hostmap", $kmdb, "add_hostmap_owner",
 my $kmdb_user = create_normal_user_connect();
 testMustDie("Normal User Attempts to add", $kmdb_user, "insert_hostmap",
 		qw/cname.test.realm c.test.realm/);
+undef $kmdb_user;
+
 testObjC("Add normal_user to hostmap owners", $kmdb, [1],"add_hostmap_owner", 
 	qw/cname.test.realm normal_user@TEST.REALM/);
 
@@ -147,6 +149,7 @@ $kmdb_user = create_normal_user_connect();
 testMustNotDie("normal_user should be able to add hostmap now", $kmdb_user, "insert_hostmap",
 		qw/cname.test.realm c.test.realm/);
 
+undef $kmdb_user;
 
 testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group1 group/);
 testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group2 group/);
@@ -154,15 +157,19 @@ testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group3 group/);
 testMustNotDie("add a group", $kmdb, "add_acl", qw/normal_user@TEST.REALM krb5/);
 
 
+$kmdb_user = create_normal_user_connect();
 testMustDie("normal user should not modify aclgroup", 
 	$kmdb_user, "insert_aclgroup",
 	qw/test_group1 normal_user@TEST.REALM/);
+undef $kmdb_user;
 
 testMustNotDie("add owner of test_group1", $kmdb, "add_acl_owner",
 	qw/test_group3 normal_user@TEST.REALM/);
 
 $kmdb_user = create_normal_user_connect();
 testMustNotDie("add a group", $kmdb_user, "insert_aclgroup", qw/test_group3 normal_user@TEST.REALM/);
+undef $kmdb_user;
+
 testMustNotDie("add a owner", $kmdb, "add_acl_owner", qw/test_group3 normal_user@TEST.REALM/);
 testMustDie("delete self owner", $kmdb, "remove_acl_owner", qw/test_group3 admin_user@TEST.REALM/);
 testMustNotDie("delete self owner", $kmdb, "remove_acl_owner", qw/test_group3 normal_user@TEST.REALM/);
