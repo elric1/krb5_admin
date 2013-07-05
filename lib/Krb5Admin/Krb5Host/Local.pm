@@ -28,7 +28,7 @@ use warnings;
 
 our $DEFAULT_KEYTAB = '/etc/krb5.keytab';
 our $KRB5_KEYTAB_CONFIG = '@@KRB5_KEYTAB_CONF@@';
-our $KINIT    = '@@KINIT@@';
+our $KINIT    = '@@KRB5DIR@@/bin/kinit';
 our @KINITOPT = qw(@@KINITOPT@@ -l 10m);
 
 #

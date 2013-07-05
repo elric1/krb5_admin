@@ -15,6 +15,32 @@ use warnings;
 our $KRB5_KEYTAB_CONFIG = './t/krb5_keytab.conf';
 my $hostname = hostname();
 
+# Find Kerberos binaries
+#
+my $KRB5TYPE = "heimdal";	# Heimdal by default!
+$KRB5TYPE = $ENV{KRB5TYPE}	if defined($ENV{KRB5TYPE});
+my $KRB5DIR;
+$KRB5DIR = $ENV{KRB5DIR}	if defined($ENV{KRB5DIR});
+for my $dir (qw{/usr /usr/local /usr/pkg /opt/heimdal}) {
+	last	if defined($KRB5DIR);
+
+	if ($KRB5TYPE eq "mit" && -f "$dir/lib/libgssapi_krb5.so") {
+		$KRB5DIR = $dir;
+	}
+
+	if ($KRB5TYPE eq "heimdal" && -f "$dir/lib/libgssapi.so") {
+		$KRB5DIR = $dir;
+	}
+}
+if (!defined($KRB5DIR)) {
+	die "Can't find the Kerberos libraries.\n";
+}
+if ($KRB5TYPE != 'heimdal' && $KRB5TYPE != 'mit') {
+	die "Unrecognised Kerberos type: " . $KRB5TYPE .
+	    ".  Must be mit or heimdal.\n";
+}
+$ENV{'PATH'} = "$KRB5DIR/bin:$KRB5DIR/sbin:".$ENV{PATH};
+
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
 #
@@ -48,8 +74,6 @@ use warnings;
 my $kdc_pid = fork();
 exit(1) if $kdc_pid == -1;
 if ($kdc_pid == 0) {
-	my $KRB5DIR = $ENV{KRB5DIR};
-	$KRB5DIR //= "/usr";
 	exec { "$KRB5DIR/libexec/kdc" } qw/kdc/;
 	exit(1);
 }

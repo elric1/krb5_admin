@@ -8,9 +8,8 @@ use ExtUtils::MakeMaker;
 #		KRB5DIR		the directory to find Kerberos.
 #				If not specified, we will look for
 #				libgssapi{,_krb5}.so in /usr, /usr/pkg,
-#				and /usr/local.
-#		KRB5TYPE	either mit or heimdal.  We'll try to
-#				figure it out if not specified.
+#				/usr/local and /opt/heimdal.
+#		KRB5TYPE	either mit or heimdal.
 #
 # NOTE: we do not allow the user to pass KRB5DIR and KRB5TYPE on the
 # command line as ExtUtils::MakeMaker will complain if we do that.
@@ -18,18 +17,31 @@ use ExtUtils::MakeMaker;
 # NOTE: Krb5Admin/Makefile.PL does more autodiscovery because it needs
 # to know a bit more about Kerberos than does this Makefile.PL.
 
+my $KRB5TYPE = "heimdal";	# Heimdal by default!
+$KRB5TYPE = $ENV{KRB5TYPE}	if defined($ENV{KRB5TYPE});
+
 my $KRB5DIR;
 $KRB5DIR = $ENV{KRB5DIR}	if defined($ENV{KRB5DIR});
+
+my $KINITOPT = "";		# Additional kinit options
+$KINITOPT = $ENV{KINITOPT}	if defined($ENV{KINITOPT});
+
+my $KRB5_KEYTAB_CONF = "/etc/krb5/krb5_keytab.conf";
+$KRB5_KEYTAB_CONF = $ENV{KRB5_KEYTAB_CONF} if defined $ENV{KRB5_KEYTAB_CONF};
 
 #
 # XXXrcd: we look for the .so rather than .so.X or .so.X.Y because we
 #         are building and we therefore expect that the symlinks will
 #         be installed.
 
-for my $dir (qw{/usr /usr/local /usr/pkg}) {
+for my $dir (qw{/usr /usr/local /usr/pkg /opt/heimdal}) {
 	last	if defined($KRB5DIR);
 
-	if (-f "$dir/lib/libgssapi.so" || -f "$dir/lib/libgssapi_krb5.so") {
+	if ($KRB5TYPE eq "mit" && -f "$dir/lib/libgssapi_krb5.so") {
+		$KRB5DIR = $dir;
+	}
+
+	if ($KRB5TYPE eq "heimdal" && -f "$dir/lib/libgssapi.so") {
 		$KRB5DIR = $dir;
 	}
 }
@@ -38,24 +50,8 @@ if (!defined($KRB5DIR)) {
 	die "Can't find the Kerberos libraries.\n";
 }
 
+$ENV{KRB5TYPE} = $KRB5TYPE;
 $ENV{KRB5DIR} = $KRB5DIR;
-
-#
-# XXXrcd: here we take a rather heuristic approach for now.  We're just
-#         looking for known differences between the two alternatives.
-
-if (!defined($ENV{KRB5TYPE})) {
-	if (-f "$KRB5DIR/lib/libheimbase.so") {
-		$ENV{KRB5TYPE} = 'heimdal';
-	}
-	if (-f "$KRB5DIR/lib/libkrb5support.so") {
-		$ENV{KRB5TYPE} = 'mit';
-	}
-}
-
-if (!defined($ENV{KRB5TYPE})) {
-	die "Could not determine Kerberos type.\n";
-}
 
 if ($ENV{KRB5TYPE} != 'heimdal' && $ENV{KRB5TYPE} != 'mit') {
 	die "Unrecognised Kerberos type: " . $ENV{KRB5TYPE} .
@@ -72,7 +68,7 @@ my %args = (
     EXE_FILES=> ['scripts/krb5_admind', 'scripts/krb5_admin',
 		 'scripts/krb5_prestash'],
 
-    PM_FILTER=> qq{sed -e s,\@\@KINIT\@\@,$KRB5DIR/bin/kinit, },
+    PM_FILTER=> qq{sed -e "s,\@\@KRB5DIR\@\@,$KRB5DIR," -e "s,\@\@KINITOPT\@\@,$KINITOPT," -e "s,\@\@KRB5_KEYTAB_CONF\@\@,$KRB5_KEYTAB_CONF," },
 
     dist     => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean    => { FILES => 'Kharon-* t/sqlite.db' },
@@ -126,7 +122,7 @@ sub installbin {
 	return "INST_SBIN_SCRIPT = \$(INST_SCRIPT)/../sbin\n\n" . $txt . "\n" .
 	    "\$(INST_SBIN_SCRIPT)\$(DFSEP).exists :: Makefile.PL\n" .
 	    "	\$(NOECHO) \$(MKPATH) \$(INST_SBIN_SCRIPT)\n" .
-	    "	\$(NOECHO) \$(CHMOD) \$(PERM_DIR) \$(INST_SBIN_SCRIPT)\n" .
+	    "	\$(NOECHO) \$(CHMOD) \$(PERM_RWX) \$(INST_SBIN_SCRIPT)\n" .
 	    "	\$(NOECHO) \$(TOUCH) \$(INST_SBIN_SCRIPT)\$(DFSEP).exists\n";
 }
 
