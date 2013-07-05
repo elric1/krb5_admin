@@ -13,6 +13,13 @@ use Krb5Admin::KerberosDB;
 use strict;
 use warnings;
 
+my $hostname = hostname();
+
+#
+# Create our custom krb5.conf:
+
+system("sed s/__HOSTNAME__/$hostname/g < t/krb5.conf.in > t/krb5.conf");
+
 $ENV{KRB5_CONFIG} = './t/krb5.conf';
 
 chomp(my $me = qx{id -nu});
@@ -71,17 +78,10 @@ $kmdb->sacls_add('modify', $creds);
 $kmdb->sacls_add('remove', $creds);
 $kmdb->sacls_add('remove_aclgroup', $creds);
 
-my $hostname = hostname();
-
 $kmdb->create('krbtgt/TEST.REALM@TEST.REALM');
 $kmdb->create('WELLKNOWN/ANONYMOUS@TEST.REALM');
 $kmdb->create('krb5_admin/' . $hostname . '@TEST.REALM');
 $kmdb->create('default');
-
-#
-# Create our custom krb5.conf:
-
-system("sed s/__HOSTNAME__/$hostname/g < t/krb5.conf.in > t/krb5.conf");
 
 ok(1);
 
