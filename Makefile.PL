@@ -1,6 +1,18 @@
 use strict;
 use ExtUtils::MakeMaker;
 
+my $KRB5TYPE = "heimdal";	# Heimdal by default!
+$KRB5TYPE = $ENV{KRB5TYPE}	if defined($ENV{KRB5TYPE});
+
+my $KRB5DIR;
+$KRB5DIR = $ENV{KRB5DIR}	if defined($ENV{KRB5DIR});
+
+my $KINITOPT = "";		# Additional kinit options
+$KINITOPT = $ENV{KINITOPT}	if defined($ENV{KINITOPT});
+
+my $KRB5_KEYTAB_CONF = "/etc/krb5/krb5_keytab.conf";
+$KRB5_KEYTAB_CONF = $ENV{KRB5_KEYTAB_CONF} if defined $ENV{KRB5_KEYTAB_CONF};
+
 #
 # First, we find the Kerberos libraries.  The builder can specify a
 # number of environment variables to help us:
@@ -17,17 +29,10 @@ use ExtUtils::MakeMaker;
 # NOTE: Krb5Admin/Makefile.PL does more autodiscovery because it needs
 # to know a bit more about Kerberos than does this Makefile.PL.
 
-my $KRB5TYPE = "heimdal";	# Heimdal by default!
-$KRB5TYPE = $ENV{KRB5TYPE}	if defined($ENV{KRB5TYPE});
-
-my $KRB5DIR;
-$KRB5DIR = $ENV{KRB5DIR}	if defined($ENV{KRB5DIR});
-
-my $KINITOPT = "";		# Additional kinit options
-$KINITOPT = $ENV{KINITOPT}	if defined($ENV{KINITOPT});
-
-my $KRB5_KEYTAB_CONF = "/etc/krb5/krb5_keytab.conf";
-$KRB5_KEYTAB_CONF = $ENV{KRB5_KEYTAB_CONF} if defined $ENV{KRB5_KEYTAB_CONF};
+if ($KRB5TYPE ne 'heimdal' && $KRB5TYPE ne 'mit') {
+    die sprintf("Unrecognised Kerberos type: %s.  Must be mit or heimdal.\n",
+		$KRB5TYPE);
+}
 
 #
 # XXXrcd: we look for the .so rather than .so.X or .so.X.Y because we
@@ -53,11 +58,6 @@ if (!defined($KRB5DIR)) {
 $ENV{KRB5TYPE} = $KRB5TYPE;
 $ENV{KRB5DIR} = $KRB5DIR;
 
-if ($ENV{KRB5TYPE} != 'heimdal' && $ENV{KRB5TYPE} != 'mit') {
-	die "Unrecognised Kerberos type: " . $ENV{KRB5TYPE} .
-	    ".  Must be mit or heimdal.\n";
-}
-
 my %args = (
     NAME     => 'Krb5Admin',
     AUTHOR   => 'Roland C. Dowdeswell <elric@imrryr.org>',
@@ -68,7 +68,10 @@ my %args = (
     EXE_FILES=> ['scripts/krb5_admind', 'scripts/krb5_admin',
 		 'scripts/krb5_prestash'],
 
-    PM_FILTER=> qq{sed -e "s,\@\@KRB5DIR\@\@,$KRB5DIR," -e "s,\@\@KINITOPT\@\@,$KINITOPT," -e "s,\@\@KRB5_KEYTAB_CONF\@\@,$KRB5_KEYTAB_CONF," },
+    PM_FILTER=> qq{sed} .
+	qq{ -e "s,\@\@KRB5DIR\@\@,$KRB5DIR,"} .
+	qq{ -e "s,\@\@KINITOPT\@\@,$KINITOPT,"} .
+	qq{ -e "s,\@\@KRB5_KEYTAB_CONF\@\@,$KRB5_KEYTAB_CONF," },
 
     dist     => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean    => { FILES => 'Kharon-* t/sqlite.db' },
@@ -78,7 +81,7 @@ my %args = (
 #
 # XXXrcd: For MIT Kerberos, we only support a subset of the tests, currently.
 
-if ($ENV{KRB5TYPE} eq 'mit') {
+if ($KRB5TYPE eq 'mit') {
 	$args{test} = { TESTS => 't/curve25519.t t/getkdc.t t/getrealm.t'};
 }
 

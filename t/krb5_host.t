@@ -19,6 +19,10 @@ my $hostname = hostname();
 #
 my $KRB5TYPE = "heimdal";	# Heimdal by default!
 $KRB5TYPE = $ENV{KRB5TYPE}	if defined($ENV{KRB5TYPE});
+if ($KRB5TYPE ne 'heimdal' && $KRB5TYPE ne 'mit') {
+	die "Unrecognised Kerberos type: " . $KRB5TYPE .
+	    ".  Must be mit or heimdal.\n";
+}
 my $KRB5DIR;
 $KRB5DIR = $ENV{KRB5DIR}	if defined($ENV{KRB5DIR});
 for my $dir (qw{/usr /usr/local /usr/pkg /opt/heimdal}) {
@@ -34,10 +38,6 @@ for my $dir (qw{/usr /usr/local /usr/pkg /opt/heimdal}) {
 }
 if (!defined($KRB5DIR)) {
 	die "Can't find the Kerberos libraries.\n";
-}
-if ($KRB5TYPE != 'heimdal' && $KRB5TYPE != 'mit') {
-	die "Unrecognised Kerberos type: " . $KRB5TYPE .
-	    ".  Must be mit or heimdal.\n";
 }
 $ENV{'PATH'} = "$KRB5DIR/bin:$KRB5DIR/sbin:".$ENV{PATH};
 
