@@ -656,10 +656,11 @@ sub curve25519_final {
 
 	my $keys = $self->SUPER::curve25519_final($priv, $hnum, $nonces, $pub);
 
-	if ($kvno <= 2) {
-		# XXXrcd kvno 2 is wrong?? maybe test and create?
-		Krb5Admin::C::krb5_createkey($ctx, $hndl, $name, $keys);
-	} else {
+	if ($kvno < 2) {
+		die [500, "can't create pricipals with kvno ($kvno) < 2"];
+	}
+	if ($kvno > 2 || ! eval {
+		Krb5Admin::C::krb5_createkey($ctx, $hndl, $name, $keys); 1}) {
 		Krb5Admin::C::krb5_setkey($ctx, $hndl, $name, $kvno, $keys);
 	}
 
