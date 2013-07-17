@@ -5,13 +5,15 @@ use Sys::Hostname;
 use Sys::Syslog;
 
 use Kharon::Engine::Server;
-
 use Krb5Admin::Krb5Host::Daemon;
 
 use strict;
 use warnings;
 
-our $KRB5_KEYTAB_CONFIG = './t/krb5_keytab.conf';
+use constant {
+	KRB5_KEYTAB_CONFIG	=> '/etc/krb5/krb5_hostd.conf',
+	ACL_FILE                => '/etc/krb5/krb5_host.acl', # XXX TODO
+};
 
 #
 # These variables are expected to be set in the configuration file:
@@ -36,7 +38,7 @@ sub usage {
 
 openlog('krb5_hostd', 'pid', 'auth');
 
-do $KRB5_KEYTAB_CONFIG if -f $KRB5_KEYTAB_CONFIG;
+do KRB5_KEYTAB_CONFIG if -f KRB5_KEYTAB_CONFIG;
 # XXXrcd: fail if we can't read the configuration, I think.
 
 my %config;
