@@ -65,8 +65,12 @@ my %args = (
     ABSTRACT => 'Framework for building Kerberos Administration Infrastructure',
 
     OPTIMIZE => '-g',
-    EXE_FILES=> ['scripts/krb5_admind', 'scripts/krb5_admin',
-		 'scripts/krb5_prestash'],
+    EXE_FILES=> [qw(
+		    scripts/krb5_admind
+		    scripts/krb5_admin
+		    scripts/krb5_hostd
+		    scripts/krb5_prestash
+		)],
 
     PM_FILTER=> qq{sed} .
 	qq{ -e "s,\@\@KRB5DIR\@\@,$KRB5DIR,"} .
