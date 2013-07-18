@@ -124,6 +124,9 @@ sub installbin {
 	    s#\$\(INST_SCRIPT\)/krb5_admind#\$(INST_SBIN_SCRIPT)/krb5_admind#g;
 
 	$txt =~
+	    s#\$\(INST_SCRIPT\)/krb5_hostd#\$(INST_SBIN_SCRIPT)/krb5_hostd#g;
+
+	$txt =~
 	    s#^(..INST_SBIN.*)#$1 \$(INST_SBIN_SCRIPT)\$(DFSEP).exists#m;
 
 	return "INST_SBIN_SCRIPT = \$(INST_SCRIPT)/../sbin\n\n" . $txt . "\n" .
