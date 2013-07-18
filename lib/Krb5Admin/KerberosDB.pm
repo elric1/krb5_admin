@@ -226,7 +226,9 @@ sub acl_keytab {
 		# OK if the subject is a cluster member of the logical
 		# host named by $pprinc[2].
 		#
-		return $self->is_cluster_member($pprinc[2], $sprinc[2]);
+		return 1 if $self->is_cluster_member($pprinc[2], $sprinc[2]);
+
+		return undef;
 	}
 
 	#
