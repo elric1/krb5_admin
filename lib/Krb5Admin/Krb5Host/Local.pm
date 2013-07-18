@@ -90,6 +90,7 @@ sub new {
 	# Take the configuration parameters passed in:
 
 	$self->set_opt(%args);
+	$self->{myname} //= hostname();
 
 	return $self;
 }
@@ -431,7 +432,7 @@ sub fetch_tickets {
 
 	$self->use_private_krb5ccname();
 
-	my $clnt = 'host/' .  [host_list(hostname())]->[0];
+	my $clnt = 'host/' .  [host_list($self->{myname})]->[0];
 
 	@realms = ($self->get_defrealm())	if @realms == 0;
 
@@ -866,7 +867,7 @@ sub get_princs {
 sub get_instances {
 	my ($self, $realm) = @_;
 
-	return host_list(hostname());
+	return host_list($self->{myname});
 
 #	my $ctx = $self->{ctx};
 #	my @tmp;
@@ -940,7 +941,7 @@ sub expand_princs {
 		if (!defined($pr->[2]) || $pr->[2] eq '') {
 			if ($pr->[1] eq 'host') {
 				if (@hostinsts == 0) {
-					@hostinsts = host_list(hostname());
+					@hostinsts = host_list($self->{myname});
 				}
 				@insts = @hostinsts;
 			} else {
@@ -1474,7 +1475,6 @@ sub KHARON_ACL_curve25519_final {
         my ($self, $cmd, $priv) = @_;
 	my $ctx   = $self->{ctx};
 	my $creds = $self->{client};
-	my $me    = hostname();
 
         my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
         # XXXrcd: SANITY CHECK!
@@ -1509,15 +1509,17 @@ sub KHARON_ACL_curve25519_final {
 		return "Cluster logical names must be in the default realm.";
 	}
 
-	my $kmdb = $self->get_hostbased_kmdb($realm, $me);
+	my $kmdb = $self->get_hostbased_kmdb($realm, $self->{myname});
 	my $cluster = $kmdb->query_hostmap($logical);
 
-	if (!grep { $_ eq $me } @$cluster) {
-		return "host $me is not a member of cluster $logical.";
+	if (!grep { $_ eq $self->{myname} } @$cluster) {
+		return sprintf("host %s is not a member of cluster %s.",
+			       $self->{myname}, $logical);
 	}
 
 	if (!grep { $_ eq $chost } @$cluster) {
-		return "host $me is not a member of cluster $logical.";
+		return sprintf("host %s is not a member of cluster %s.",
+			       $chost, $logical);
 	}
 
 	return 1;
@@ -1612,7 +1614,7 @@ sub install_key {
 		# just change the key, it should not be shared
 		# with other hosts.
 
-		if ($princ->[2] ne hostname()) {
+		if ($princ->[2] ne $self->{myname}) {
 			die "The kvno for $strprinc is less than".
 			    " the KDCs, aborting as the key may".
 			    " be shared with other hosts. If the".
@@ -1637,8 +1639,6 @@ sub install_key {
 		$etypes = [map { $revenctypes{$_} } @$etypes];
 	}
 
-	my @hosts = ($self);
-
 	#
 	# Deal with clustering.  If we are asking for a cluster princ,
 	# then we calculate the hosts in the cluster and store them in
@@ -1648,20 +1648,24 @@ sub install_key {
 	# accomplished is immaterial as long as all hosts sort in the
 	# same way and so we simply lexically sort on hostname.
 
-	if ($princ->[2] ne hostname()) {
-		my $cluster = $kmdb->query_hostmap($princ->[2]);
+	my $cluster;
+	my @hosts;
 
+	if ($princ->[2] ne $self->{myname}
+	    && defined($cluster = $kmdb->query_hostmap($princ->[2]))
+	    && @$cluster > 0) {
+		die sprintf("host %s is not a member of cluster %s.\n",
+		            $self->{myname}, $princ->[2])
+			unless (grep($_ eq $self->{myname}, @$cluster));
 		for my $h (sort @$cluster) {
-			my $hconn;
-
-			if ($h eq hostname()) {
-				$hconn = $self;
-			} else {
-				$hconn = Krb5Admin::Krb5Host::Client->new($h);
+			if ($h eq $self->{myname}) {
+				push(@hosts, $self);
+				next;
 			}
-
-			push(@hosts, $hconn);
+			push(@hosts, Krb5Admin::Krb5Host::Client->new($h));
 		}
+	} else {
+		@hosts = ($self);
 	}
 
 	CURVE25519_NWAY::do_nway(['change', $user, $strprinc, $lib,
