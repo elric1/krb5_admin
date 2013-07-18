@@ -975,7 +975,7 @@ sub match_acl_templates {
 	next if (@$t != 3);
 	my $i = 0;
 	for ($i = 0; $i< 3; $i++) {
-	    next if (!defined $t->[$i] || $t eq "");
+	    next if (!defined $t->[$i] || $t->[$i] eq "");
 	    last if ($princ->[$i] ne $t->[$i]);
 	}
 	return 1 if ($i == 3);
