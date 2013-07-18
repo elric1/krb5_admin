@@ -222,7 +222,11 @@ sub acl_keytab {
 			     && $pprinc[0] eq $sprinc[0]
 			     && $sprinc[1] eq "host"
 			     && $sprinc[2] eq $pprinc[2]);
-		return undef;
+
+		# OK if the subject is a cluster member of the logical
+		# host named by $pprinc[2].
+		#
+		return $self->is_cluster_member($pprinc[2], $sprinc[2]);
 	}
 
 	#
@@ -1662,6 +1666,14 @@ sub query_hostmap {
 	}
 
 	return generic_query($dbh, \%field_desc, 'hostmap', []);
+}
+
+sub is_cluster_member {
+	my ($self, $logical, $physical) = @_;
+	my $dbh = $self->{dbh};
+
+	my %w = ( "logical" => $logical, "physical" => $physical );
+	return generic_query($dbh, \%field_desc, 'hostmap', [keys %w], %w);
 }
 
 sub remove_hostmap {
