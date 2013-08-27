@@ -850,6 +850,21 @@ sub internal_create {
 #
 # XXXrcd: this needs to be fixed...
 
+# Everyone is allowed to create_appids
+sub KHARON_ACL_create_appid { 
+    my ($self, $act, $appid, %args) = @_;
+    
+    if ($self->{local}) { return undef; }
+    my $uacl = generic_query($self->{dbh}, \%field_desc, 'acls', ['name', "type"], name=>$self->{client}, type=>"krb5");
+    if (defined $uacl) {
+	if (!exists($args{owner}) || $args{owner} eq $self->{client}) {
+	    return 1;
+	}
+    }
+   
+    return undef;
+    }
+
 sub create_appid {
 	my ($self, $appid, %args) = @_;
 	my $dbh = $self->{dbh};
@@ -862,19 +877,6 @@ sub create_appid {
 		die [503, "$appid is an invalid appid\n"];
 	}
 	$appid = unparse_princ(\@app_name);
-
-	if (0) { # This is dead
-		if (defined(my $vr = $self->{realms})) {
-			my ($user, $realm) = ($appid =~ m{^(.+)\@(.+)$});
-			if (!defined($realm)) {
-				die [503, q{appid must be of the form <user>@<REALM>}];
-			}
-			if (!grep($_ eq $realm, @$vr)) {
-				die [503, q{appid realm invalid, should be one of: } .
-					join(", ", @$vr)];
-			}
-		}
-	}
 
 	if (!$self->{local} && !exists($args{owner})) {
 		$args{owner} = [$self->{client}];
@@ -1304,21 +1306,34 @@ sub modify {
 
 	generic_modify($dbh, \%field_desc, 'appids', $name, %mods);
 
-# XXXrcd: FIX THIS TEST!
-#	eval {
-#		$self->check_acl('modify', $appid);
-#	};
-#	if ($@) {
-#		$dbh->rollback();
-#		die [503, "You cannot relinquish permissions."];
-#	}
+	my $is_appid_owner_mod = 0;
+	my @actions = qw{owner add_owner del_owner};
+	
+	# Did we modify the ownership of the appid 
+	for my $act (@actions) {
+	    if (exists $mods{$act}) {
+		$is_appid_owner_mod = 1;
+		last;
+	    }
+	}
+
+	# Ensure we aren't giving away our access
+	if ($is_appid_owner_mod && defined($self->{acl})) {
+	    eval {
+		$self->{acl}->check('modify', $name);
+	    };
+	    if ($@) {
+		$dbh->rollback();
+		die [503, "You cannot relinquish permissions."];
+	    }
+	}
 
 	eval {
 		$self->internal_modify($name, \%mods);
 	};
 	if ($@) {
 		$dbh->rollback();
-		die $@;;
+		die $@;
 	}
 
 	$dbh->commit();
@@ -1700,13 +1715,26 @@ sub insert_hostmap {
 
 	@hosts = map { lc($_) } @hosts;
 
-	my $stmt = "INSERT INTO hostmap (logical, physical) VALUES (?, ?)";
+	my $phost = $self->query_host($hosts[1]);
+	if (!defined $phost) {
+	    die [500, "Physical host doesn't exist\n"];
+	}
 
+	my $lhost = $self->query_host($hosts[0]);
+	# It seems mean to make people create a host entry for a logical map entry
+	# lets create one for them
+	if (!defined $lhost) {
+	    my $drealm = Krb5Admin::C::krb5_get_realm($self->{ctx});
+	    my $ret = $self->create_host($hosts[0], ("realm" => $drealm)); 
+	}
+
+	my $stmt = "INSERT INTO hostmap (logical, physical) VALUES (?, ?)";
 	sql_command($dbh, $stmt, @hosts);
 
-	# this is really inefficient
-	$self->add_hostmap_owner( $hosts[0], $self->{client});
-
+	# It has to be here because of FK constraints?
+	if (!defined $lhost) {
+	    $self->add_hostmap_owner($hosts[0], $self->{client});
+	}
 	$dbh->commit();
 
 	return undef;
@@ -1744,9 +1772,8 @@ sub remove_hostmap {
 	require_scalar("remove_hostmap <logical> <physical>", 2, $hosts[1]);
 
 	@hosts = map { lc($_) } @hosts;
-
-	my $stmt = "DELETE FROM hostmap WHERE logical = ? AND physical = ?";
 	
+	my $stmt = "DELETE FROM hostmap WHERE logical = ? AND physical = ?";
 	sql_command($dbh, $stmt, @hosts);
 
 	remove_object_owner($dbh, 'hostmap', @hosts);
@@ -2268,8 +2295,10 @@ sub hostmap_acl {
 	
 	my $res = generic_query($self->{dbh}, \%field_desc, 'hostmap', ['logical'],
 		logical=>$logical);
-	
-	return undef if (!defined($res));
+
+	# We allow anyone to create hostmaps
+	# require krb5 acl lookup
+	return 1 if (!defined($res));
 
 	if (is_owner($self->{dbh},'hostmap', $self->{client}, $logical)) { return 1; }
 	return undef; 

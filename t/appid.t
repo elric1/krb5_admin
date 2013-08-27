@@ -26,6 +26,30 @@ sub testObjC {
 	}
 }
 
+
+
+sub testMustDie {
+	my ($testname, $obj, $method, @args) = @_;
+
+	my @ret;
+	eval {
+		my $code = $obj->can($method) or die "no method $method.";
+		@ret = &$code($obj, @args);
+	};
+
+	if ($@) {
+		#diag(Dumper($@));
+		ok(1, $testname);
+	} else { 
+		ok(0, $testname);
+	}
+
+}
+
+
+
+
+
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
 my $kmdb = Krb5Admin::ForkClient->new({
@@ -108,6 +132,9 @@ testObjC("Assign ACL: assign owner", $kmdb, [undef], 'modify',
 
 testObjC("Assign ACL: add_owner", $kmdb, [undef], 'modify',
     'appid0', add_owner => ['yyrkoon@IMRRYR.ORG']);
+
+
+
 #testObjC("Query appid0", $kmdb,
 #    [{owner=>['elric@IMRRYR.ORG','yyrkoon@IMRRYR.ORG'], desc=>undef,
 #      cstraint=>[]}], 'query', 'appid0');
@@ -141,6 +168,26 @@ testObjC("Is owner #6?", $kmdb, [1], 'is_appid_owner', 'elric@IMRRYR.ORG',
     'appid3');
 testObjC("Is owner #7?", $kmdb, [1], 'is_appid_owner', 'sadric@IMRRYR.ORG',
     'appid3');
+
+$kmdb = Krb5Admin::ForkClient->new({
+    dbname	=> 'db:t/test-hdb',
+    sqlite	=> 't/sqlite.db',
+}, CREDS => 'yyrkoon@IMRRYR.ORG');
+
+
+
+testMustDie("Assign ACL: assign owner", $kmdb, 'modify',
+    'appid0', owner => ['admin_user@TEST.REALM']);
+
+
+undef $kmdb;
+
+
+$kmdb = Krb5Admin::ForkClient->new({
+    dbname	=> 'db:t/test-hdb',
+    sqlite	=> 't/sqlite.db',
+}, CREDS => 'admin_user@TEST.REALM');
+
 
 for $i (0..3) {
 	$kmdb->remove("appid$i");

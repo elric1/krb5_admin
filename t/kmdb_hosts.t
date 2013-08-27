@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 36;
+use Test::More tests => 38;
 
 use Krb5Admin::ForkClient;
 
@@ -25,6 +25,26 @@ sub testObjC {
 		is_deeply(\@ret, $result, $testname) or diag(Dumper(\@ret));
 	}
 }
+
+sub testMustDie {
+	my ($testname, $obj, $method, @args) = @_;
+
+	my @ret;
+	eval {
+		my $code = $obj->can($method) or die "no method $method.";
+		@ret = &$code($obj, @args);
+	};
+
+	if ($@) {
+		#diag(Dumper($@));
+		ok(1, $testname);
+	} else { 
+		ok(0, $testname);
+	}
+
+}
+
+
 
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
@@ -63,16 +83,9 @@ testObjC("Query the host", $kmdb, [{realm => 'TEST.REALM',
 	ip_addr => '3.3.3.3', bootbinding => undef, label => []}],
 	'query_host', 'baz.test.realm');
 
-#
-# Now we create a ``logical host''.  This is basically the same as a
-# regular host but we'll use it differently below.
-
-testObjC("Create a host", $kmdb, [undef], 'create_host', 'logical.test.realm',
-	ip_addr => '3.3.3.3', realm => 'TEST.REALM');
-testObjC("Query the logical host", $kmdb,
-	[{ip_addr => '3.3.3.3', realm => 'TEST.REALM', bootbinding => undef,
-	label => []}], 'query_host', 'logical.test.realm');
-
+testObjC("Query the hostmap", $kmdb,
+	[undef],
+	'query_hostmap', 'logical.test.realm');
 #
 # Now, we will map the logical host onto ba{r,z}.
 
@@ -80,9 +93,22 @@ testObjC("Create a mapping", $kmdb, [undef], 'insert_hostmap',
 	qw/logical.test.realm bar.test.realm/);
 testObjC("Create a mapping", $kmdb, [undef], 'insert_hostmap',
 	qw/logical.test.realm baz.test.realm/);
+
 testObjC("Query the hostmap", $kmdb,
 	[[qw/bar.test.realm baz.test.realm/]],
 	'query_hostmap', 'logical.test.realm');
+
+testMustDie("Create a mapping to a bogus physical host", $kmdb, 'insert_hostmap',
+	qw/logical.test.realm bdfdfda.est.realm/);
+
+testMustDie("Don't create a physical host named the same as a logical host", $kmdb, 
+    'create_host', 'logical.test.realm',
+    ip_addr => '3.3.3.3', realm => 'TEST.REALM');
+
+testObjC("Query the logical host", $kmdb,
+	[{ip_addr => undef, realm => 'TEST.REALM', bootbinding => undef,
+	label => []}], 'query_host', 'logical.test.realm');
+
 
 #
 # And finally, the prestashed tickets.  First, we insert a reasonable list

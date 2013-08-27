@@ -118,10 +118,10 @@ my @x = [
                'owner' => 'admin_user@TEST.REALM',
                'name' => 'logical.test.realm'
              },
-             {
-               'owner' => 'admin_user@TEST.REALM',
-               'name' => 'cname.test.realm'
-             },
+#             {
+#               'owner' => 'admin_user@TEST.REALM',
+#               'name' => 'cname.test.realm'
+#             },
              {
                'owner' => 'normal_user@TEST.REALM',
                'name' => 'cname.test.realm'
@@ -174,6 +174,11 @@ testMustNotDie("add a owner", $kmdb, "add_acl_owner", qw/test_group3 normal_user
 testMustDie("delete self owner", $kmdb, "remove_acl_owner", qw/test_group3 admin_user@TEST.REALM/);
 testMustNotDie("delete self owner", $kmdb, "remove_acl_owner", qw/test_group3 normal_user@TEST.REALM/);
 
+
+
+testMustNotDie("add a host", $kmdb, "create_host", "a.testfqdn.com", realm => 'TEST.REALM');    
+testMustDie("add a host", $kmdb, "create_host", "a.testfqdn.com", realm => 'TEST.REALM');    
+testMustNotDie("add a host", $kmdb, "create_host", "b.testfqdn.com", realm => 'TEST.REALM');    
 
 done_testing();
 
