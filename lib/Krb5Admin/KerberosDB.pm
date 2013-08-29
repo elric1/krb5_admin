@@ -538,6 +538,8 @@ sub init_db {
 			owner		VARCHAR,
 			PRIMARY KEY (name, owner)
 			FOREIGN KEY (name) REFERENCES acls(name)
+				ON DELETE CASCADE
+			FOREIGN KEY (owner) REFERENCES acls(name)
 		)
 	});
 
@@ -548,7 +550,9 @@ sub init_db {
 
 			PRIMARY KEY (aclgroup, acl)
 			FOREIGN KEY (aclgroup) REFERENCES acls(name)
+				ON DELETE CASCADE
 			FOREIGN KEY (acl)      REFERENCES acls(name)
+				ON DELETE CASCADE
 		)
 	});
 
@@ -594,6 +598,8 @@ sub init_db {
 			owner		VARCHAR,
 			PRIMARY KEY (name, owner)
 			FOREIGN KEY (name) REFERENCES hosts(name)
+				ON DELETE CASCADE
+			FOREIGN KEY (owner) REFERENCES acls(name)
 		)
 	});
 
