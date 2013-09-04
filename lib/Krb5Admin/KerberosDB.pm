@@ -463,7 +463,7 @@ our %field_desc = (
 	hosts		=> {
 		pkey		=> 'name',
 		uniq		=> [qw/name ip_addr bootbinding/],
-		fields		=> [qw/name realm ip_addr bootbinding/],
+		fields		=> [qw/name realm ip_addr bootbinding is_logical/],
 		lists		=> [[qw/host_labels host label/]],
 		wontgrow	=> 0,
 	},
@@ -565,7 +565,8 @@ sub init_db {
 			name		VARCHAR NOT NULL PRIMARY KEY,
 			realm		VARCHAR NOT NULL,
 			ip_addr		VARCHAR,
-			bootbinding	VARCHAR
+			bootbinding	VARCHAR,
+			is_logical	BOOLEAN 
 		)
 	});
 
@@ -1713,37 +1714,44 @@ sub remove_host {
 
 sub KHARON_ACL_insert_hostmap { return hostmap_acl(@_); }
 sub insert_hostmap {
-	my ($self, @hosts) = @_;
-	my $dbh = $self->{dbh};
+    my ($self, @hosts) = @_;
+    my $dbh = $self->{dbh};
 
-	require_scalar("insert_hostmap <logical> <physical>", 1, $hosts[0]);
-	require_scalar("insert_hostmap <logical> <physical>", 2, $hosts[1]);
+    require_scalar("insert_hostmap <logical> <physical>", 1, $hosts[0]);
+    require_scalar("insert_hostmap <logical> <physical>", 2, $hosts[1]);
 
-	@hosts = map { lc($_) } @hosts;
+    @hosts = map { lc($_) } @hosts;
 
-	my $phost = $self->query_host($hosts[1]);
-	if (!defined $phost) {
-	    die [500, "Physical host doesn't exist\n"];
-	}
+    my $phost = $self->query_host($hosts[1]);
+    if (!defined $phost) {
+	die [500, "Physical host doesn't exist\n"];
+    }
 
-	my $lhost = $self->query_host($hosts[0]);
-	# It seems mean to make people create a host entry for a logical map entry
-	# lets create one for them
-	if (!defined $lhost) {
-	    my $drealm = Krb5Admin::C::krb5_get_realm($self->{ctx});
-	    my $ret = $self->create_host($hosts[0], ("realm" => $drealm)); 
-	}
+    my $lhost = $self->query_host($hosts[0]);
+    # It seems mean to make people create a host entry for a logical map entry
+    # lets create one for them
+    if (!defined $lhost) {
+	my $drealm = Krb5Admin::C::krb5_get_realm($self->{ctx});
+	my $ret = $self->create_host($hosts[0], ("realm" => $drealm, "is_logical" => 1)); 
+    } 
+
+    my $lhost2 = $self->query_host($hosts[0]);
+    if (defined $lhost2 && $lhost2->{is_logical}) {
 
 	my $stmt = "INSERT INTO hostmap (logical, physical) VALUES (?, ?)";
 	sql_command($dbh, $stmt, @hosts);
 
-	# It has to be here because of FK constraints?
-	if (!defined $lhost) {
-	    $self->add_hostmap_owner($hosts[0], $self->{client});
-	}
 	$dbh->commit();
 
-	return undef;
+	# Its not FK constraints, its the precondition check in add_hostmap_owner
+	# add hostmap owner checks to see that the hostmap object exsits
+	if( !defined $lhost) {
+	    $self->add_hostmap_owner($hosts[0], $self->{client});
+	}
+    } else {
+	die [504, "There was a problem creating the logical name (likely a physical host named the samed)"];
+    }
+    return undef;
 }
 
 sub KHARON_ACL_query_hostmap { return 1; }
@@ -2297,17 +2305,27 @@ sub KHARON_ACL_remove_acl_owner { return KHARON_ACL_del_acl(@_); }
 sub remove_acl_owner { return owner_del_f('acls',@_); }
 
 sub hostmap_acl {
+	# If a host exists but no hostmap owners then 
+	# return 0
 	my ($self, $cmd, $logical, @r) =@_;
-	
-	my $res = generic_query($self->{dbh}, \%field_desc, 'hostmap', ['logical'],
-		logical=>$logical);
+#	my $res = query_hostmap_owner($self, $logical);
+	my $lhost = $self->query_host($logical);
 
-	# We allow anyone to create hostmaps
-	# require krb5 acl lookup
-	return 1 if (!defined($res));
 
-	if (is_owner($self->{dbh},'hostmap', $self->{client}, $logical)) { return 1; }
-	return undef; 
+	# if a logical host exists 
+	# and there is an owner on the hostmap
+	# and that owner is the client then allow
+	#
+	# also if there is no hostname named logical then we can allow
+	# anyone
+	if (defined $lhost && $lhost->{is_logical}) {
+	    if (is_owner($self->{dbh},'hostmap', $self->{client}, $logical)) { return 1; }
+	} else {
+	    if (!defined $lhost) { return 1; }
+	}
+	return undef;
+
+
 }
 
 sub remove_object_owner {
@@ -2384,13 +2402,14 @@ sub is_owner {
 	return 0;
 }
 
+
 sub query_owner_f {
 	my ($obj_type, $self, @r)  = @_;
-	my $sql = "SELECT * from ".$obj_type."_owner"; 
-	my $sth = sql_command($self->{dbh}, $sql);
+	my $sql = "SELECT * from ".$obj_type."_owner where name=?"; 
+	my $sth = sql_command($self->{dbh}, $sql, @r);
 	
 	my $ret =  $sth->fetchall_arrayref({});
-	$self->{dbh}->commit();
+#	$self->{dbh}->commit();
 	return $ret; 
 
 }

@@ -69,14 +69,16 @@ sub testMustDie {
 
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
-my $kmdb;
-
-$kmdb = Krb5Admin::ForkClient->new({
-    dbname	=> 'db:t/test-hdb',
-    sqlite	=> 't/sqlite.db',
-}, CREDS => 'admin_user@TEST.REALM');
 
 
+sub admin_user_connect {
+    my $kmdb = Krb5Admin::ForkClient->new({
+	    dbname	=> 'db:t/test-hdb',
+	    sqlite	=> 't/sqlite.db',
+	}, CREDS => 'admin_user@TEST.REALM');
+    return $kmdb;
+}
+my $kmdb = admin_user_connect();
 
 testMustNotDie("normal_user create", $kmdb, 
 	'create_user', 'normal_user@TEST.REALM') ;
@@ -85,19 +87,23 @@ my @physical_hosts = ("a","b","c","d","e");
 
 
 foreach my $h (@physical_hosts) {
-	testMustNotDie("Create a logical host $h", $kmdb, 'create_host', "$h.test.realm", 
+	testMustNotDie("Create a physical host $h", $kmdb, 'create_host', "$h.test.realm", 
 		'ip_addr'=> '6.6.6.6', 'realm'=>'TEST.REALM');
 	testObjC("Query the logical host $h", $kmdb,
-		[{ip_addr => '6.6.6.6', realm => 'TEST.REALM', bootbinding => undef,
-		label => []}], 'query_host', "$h.test.realm");
+		[{ip_addr => '6.6.6.6', realm => 'TEST.REALM', bootbinding => undef, 
+		is_logical=>undef, label => []}], 'query_host', "$h.test.realm");
 }
-my $h = 'cname';
+my $h = 'cname1';
 testMustNotDie("Create a logical host $h", $kmdb, 'create_host', "$h.test.realm", 
-		'ip_addr'=> '6.6.6.6', 'realm'=>'TEST.REALM');
+		 'ip_addr'=> '6.6.6.6', 'realm'=>'TEST.REALM');
 testObjC("Query the logical host $h", $kmdb,
 		[{ip_addr => '6.6.6.6', realm => 'TEST.REALM', bootbinding => undef,
-		label => []}], 'query_host', "$h.test.realm");
+		is_logical=>undef, label => []}], 'query_host', "$h.test.realm");
 
+testMustDie("Can't steal a physical host to be a cluster name", $kmdb, "insert_hostmap",
+		qw/cname1.test.realm b.test.realm/);
+
+# This should fail instead
 testObjC("Create logical host map", $kmdb, [undef], 'insert_hostmap',
 	qw/cname.test.realm a.test.realm/);
 testObjC("Create logical host map", $kmdb, [undef], 'insert_hostmap',
@@ -114,14 +120,14 @@ sub create_normal_user_connect {
 
 my @x = [
            [
-             {
-               'owner' => 'admin_user@TEST.REALM',
-               'name' => 'logical.test.realm'
-             },
 #             {
 #               'owner' => 'admin_user@TEST.REALM',
-#               'name' => 'cname.test.realm'
+#               'name' => 'logical.test.realm'
 #             },
+             {
+               'owner' => 'admin_user@TEST.REALM',
+               'name' => 'cname.test.realm'
+             },
              {
                'owner' => 'normal_user@TEST.REALM',
                'name' => 'cname.test.realm'
@@ -143,13 +149,16 @@ testObjC("Add normal_user to hostmap owners", $kmdb, [1],"add_hostmap_owner",
 	qw/cname.test.realm normal_user@TEST.REALM/);
 
 testObjC("Query hostmap must show correct", $kmdb, @x,"query_hostmap_owner", 
-	qw/cname.test.realm normal_user@TEST.REALM/);
+	qw/cname.test.realm/);
+undef $kmdb;
 
 $kmdb_user = create_normal_user_connect();
 testMustNotDie("normal_user should be able to add hostmap now", $kmdb_user, "insert_hostmap",
 		qw/cname.test.realm c.test.realm/);
 
 undef $kmdb_user;
+
+$kmdb = admin_user_connect();
 
 testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group1 group/);
 testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group2 group/);
