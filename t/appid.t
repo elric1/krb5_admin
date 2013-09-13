@@ -63,6 +63,7 @@ my $kmdb = Krb5Admin::ForkClient->new({
 
 our $acls = {
 	'admin_user@TEST.REALM'	=> { type => 'krb5' },
+	'normal_user@TEST.REALM'=> { type => 'krb5' },
 	'elric@IMRRYR.ORG'	=> { type => 'krb5' },
 	'yyrkoon@IMRRYR.ORG'	=> { type => 'krb5' },
 	'cymoril@IMRRYR.ORG'	=> { type => 'krb5' },
@@ -77,6 +78,7 @@ for $i (keys %$acls) {
 	my $type = $acls->{$i}->{type};
 
 	next if $i eq 'admin_user@TEST.REALM';	# now create in 00prepare.t.
+	next if $i eq 'normal_user@TEST.REALM';	# now create in 00prepare.t.
 
 	testObjC("Create ACL: $i", $kmdb, [undef], 'add_acl', $i, $type);
 }

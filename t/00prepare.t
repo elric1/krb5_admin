@@ -33,6 +33,7 @@ Krb5Admin::C::init_kdb($ctx, $hndl);
 undef $hndl;
 
 my $creds = 'admin_user@TEST.REALM';
+my $creds_normal = 'normal_user@TEST.REALM';
 
 my $kmdb;
 
@@ -56,6 +57,7 @@ $kmdb->drop_db();
 $kmdb->init_db();
 
 $kmdb->add_acl($creds, 'krb5');
+$kmdb->add_acl($creds_normal, 'krb5');
 
 $kmdb->sacls_add('sacls_add', $creds);
 $kmdb->sacls_add('sacls_del', $creds);

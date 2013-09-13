@@ -635,12 +635,12 @@ sub drop_db {
 	$dbh->do('DROP TABLE IF EXISTS appid_cstraints');
 	$dbh->do('DROP TABLE IF EXISTS appid_acls');
 	$dbh->do('DROP TABLE IF EXISTS acls_owner');
-	$dbh->do('DROP TABLE IF EXISTS acls');
 	$dbh->do('DROP TABLE IF EXISTS appids');
 	$dbh->do('DROP TABLE IF EXISTS prestashed');
 	$dbh->do('DROP TABLE IF EXISTS hostmap_owner');
 	$dbh->do('DROP TABLE IF EXISTS hostmap');
 	$dbh->do('DROP TABLE IF EXISTS host_labels');
+	$dbh->do('DROP TABLE IF EXISTS acls');
 	$dbh->do('DROP TABLE IF EXISTS hosts');
 	$dbh->do('DROP TABLE IF EXISTS labels');
 	$dbh->{AutoCommit} = 0;
@@ -2277,8 +2277,13 @@ sub add_acl{
 	my $stmt = "INSERT INTO acls(name, type) VALUES (?, ?)";
 	sql_command($dbh, $stmt, $acl, $type);
 
-	my $stmt_insert = "INSERT INTO acls_owner(name, owner) VALUES (?,?)";
-	sql_command($dbh, $stmt_insert, $acl, $princ);
+	eval {
+	    my $owner = $princ;
+	    if (!$self->{local} && !exists($args{owner})) {
+		$owner = $args{owner};
+	    }
+	    $self->add_acl_owner($acl, $princ);
+	};
 
 	$dbh->commit();
 	
@@ -2365,9 +2370,14 @@ sub owner_add_f {
 	Krb5Admin::KerberosDB::require_scalar($cmdline, 2, $owner);
 	my $princ = Krb5Admin::KerberosDB::canonicalise_fqprinc($self->{ctx},$cmdline, 2, $owner);
 
-
 	my $res = generic_query($dbh, \%field_desc, $type_name, [$type_key],
 		$type_key=>$obj);
+
+	my $owner_res = generic_query($dbh, \%field_desc, "acls", ["name"], name=>$princ );
+	if (!defined $owner_res) {
+	    die [504, $princ. " doesn't exists"];
+	}
+
 
 	# The object must exist
 	# also we must we don't want to create extras 
@@ -2414,7 +2424,14 @@ sub query_owner_f {
 
 }
 
+
+sub KHARON_ACL_query_hostmap_owner { return 1; }
 sub query_hostmap_owner { return query_owner_f('hostmap', @_); }
+
+
+sub KHARON_ACL_query_acl_owner { return 1; }
+sub query_acl_owner { return query_owner_f('acls', @_); }
+
 
 
 

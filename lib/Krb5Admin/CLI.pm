@@ -42,12 +42,22 @@ our %appid_hmap = (
 	cstraint	=> [],
 );
 
+our %hostmap_hmap = ( 
+	owner		=> undef
+    );
+
+our %acl_hmap = ( 
+	owner		=> undef
+    );
+
 sub KHARON_HASHIFY_COMMANDS {
 	return {
 		create_appid	=> [1, \%appid_hmap],
 		create_host	=> [1, \%host_hmap],
 		modify		=> [1, {%princ_hmap, %appid_hmap}],
 		modify_host	=> [1, \%host_hmap],
+		add_acl		=> [1, \%acl_hmap],
+		insert_hostmap	=> [1, \%hostmap_hmap],
 	};
 }
 

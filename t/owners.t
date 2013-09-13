@@ -163,7 +163,8 @@ $kmdb = admin_user_connect();
 testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group1 group/);
 testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group2 group/);
 testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group3 group/);
-testMustNotDie("add a group", $kmdb, "add_acl", qw/normal_user@TEST.REALM krb5/);
+# XXX - this was moved to 00prepare.t
+# testMustNotDie("add a group", $kmdb, "add_acl", qw/normal_user@TEST.REALM krb5/);
 
 
 $kmdb_user = create_normal_user_connect();
@@ -189,6 +190,9 @@ testMustNotDie("add a host", $kmdb, "create_host", "a.testfqdn.com", realm => 'T
 testMustDie("add a host", $kmdb, "create_host", "a.testfqdn.com", realm => 'TEST.REALM');    
 testMustNotDie("add a host", $kmdb, "create_host", "b.testfqdn.com", realm => 'TEST.REALM');    
 
+$kmdb_user = create_normal_user_connect();
+testMustNotDie("remove hostmap", $kmdb_user, "remove_hostmap", 
+		qw/cname.test.realm c.test.realm/);
 done_testing();
 
 

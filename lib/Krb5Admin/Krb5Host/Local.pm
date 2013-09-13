@@ -1252,7 +1252,8 @@ sub write_keys_kt {
 	}
 
 	$self->write_keys_internal($lib, $kt, @keys);
-
+	#XXX - chown/chmod here
+	
 	my @ktkeys;
 	eval { @ktkeys = Krb5Admin::C::read_kt($ctx, $kt); };
 
@@ -1517,6 +1518,7 @@ sub KHARON_ACL_curve25519_step		{ return 1; }
 
 my @curve25519_ops = qw(change create);
 
+# XXX - validate user is a user
 sub KHARON_ACL_curve25519_final {
         my ($self, $cmd, $priv) = @_;
 	my $ctx   = $self->{ctx};
