@@ -1515,6 +1515,7 @@ mint_ticket(krb5_context ctx, kadm5_handle hndl, char *princ, int lifetime,
 	copy_PrincipalName(&client->name, &et.cname);
 	copy_Realm(&client->realm, &et.crealm);
 	et.endtime = now + lifetime;
+	et.flags.forwardable = 1;	/* XXX: check principal flags? */
 	if (renew_till > 0) {
 		ALLOC(et.renew_till);
 		*et.renew_till = now + renew_till;
@@ -1553,6 +1554,7 @@ mint_ticket(krb5_context ctx, kadm5_handle hndl, char *princ, int lifetime,
 	creds->times.authtime = now;
 	creds->times.starttime = now;
 	creds->times.endtime = now + lifetime;
+	creds->flags.b.forwardable = 1;	/* XXX: check principal flags? */
 	if (renew_till) {
 		creds->flags.b.renewable = 1;
 		creds->times.renew_till = now + renew_till;
