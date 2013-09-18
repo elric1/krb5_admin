@@ -388,20 +388,20 @@ sub install_ticket {
 		die "Tickets sent for non-existent user %user.\n";
 	}
 
+	# Install new tickets atomically by writing to a temporary ccache,
+	# and moving it into place.
 	#
 	# XXXrcd: may not always be able to create $tixdir?
 
 	mkdir($tixdir);
 	chmod(0755, $tixdir);
 	my $ccache_fn = "$tixdir/$user";
-	my $ccache = "FILE:$ccache_fn";
-
+	my $ccache_tmp = "$tixdir/.$user";
+	my $ccache = "FILE:$ccache_tmp";
 	Krb5Admin::C::init_store_creds($ctx, $ccache, $tix->{$princstr});
-
-	#
-	# XXXrcd: chown() may fail in test mode.
-
-	chown($uid, 0, $ccache_fn);
+	chown($uid, 0, $ccache_tmp); # XXXrcd: chown() may fail in test mode.
+	rename($ccache_tmp, $ccache_fn) or
+		die "$0: rename($ccache_tmp, $ccache_fn): $!\n";
 	return;
 }
 
