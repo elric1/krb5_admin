@@ -1252,8 +1252,16 @@ sub write_keys_kt {
 	}
 
 	$self->write_keys_internal($lib, $kt, @keys);
-	#XXX - chown/chmod here
-	
+
+	if (!$self->{testing}) {
+	    my ($uid, $gid) = get_ugid($user);
+	    (my $ktfile = $kt) =~ s/WRFILE://;
+	    chmod(0400, $ktfile)	or die "chmod(0400, $ktfile): $!";
+	    chown($uid, $gid, $ktfile)	or die "chown($uid, $gid, $ktfile): $!";
+	}
+
+
+
 	my @ktkeys;
 	eval { @ktkeys = Krb5Admin::C::read_kt($ctx, $kt); };
 
