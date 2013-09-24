@@ -89,6 +89,10 @@ testObjC("Query the hostmap", $kmdb,
 #
 # Now, we will map the logical host onto ba{r,z}.
 
+testObjC("Create Logical host", $kmdb, [undef], 'create_logical_host',
+	qw/logical.test.realm/);
+	
+
 testObjC("Create a mapping", $kmdb, [undef], 'insert_hostmap',
 	qw/logical.test.realm bar.test.realm/);
 testObjC("Create a mapping", $kmdb, [undef], 'insert_hostmap',

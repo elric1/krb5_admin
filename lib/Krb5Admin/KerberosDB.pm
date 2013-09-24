@@ -1712,6 +1712,30 @@ sub remove_host {
 	return;
 }
 
+
+sub KHARON_ACL_create_logical_host { return hostmap_acl(@_); }
+sub create_logical_host {
+    my ($self, @hosts) = @_;
+    my $dbh = $self->{dbh};
+
+    require_scalar("create_logical_host <logical>" , 1, $hosts[0]);
+ 
+    my $lhost = $self->query_host($hosts[0]);
+    # It seems mean to make people create a host entry for a logical map entry
+    # lets create one for them
+    if (!defined $lhost) {
+	my $drealm = Krb5Admin::C::krb5_get_realm($self->{ctx});
+	my $ret = $self->create_host($hosts[0], ("realm" => $drealm, "is_logical" => 1)); 
+	$self->add_host_owner($hosts[0], $self->{client});
+    } else {
+	die [406, $hosts[0] . " already exists.\n"];	
+    }
+
+
+
+    return undef;
+}
+
 sub KHARON_ACL_insert_hostmap { return hostmap_acl(@_); }
 sub insert_hostmap {
     my ($self, @hosts) = @_;
@@ -1726,17 +1750,13 @@ sub insert_hostmap {
     if (!defined $phost) {
 	die [500, "Physical host doesn't exist\n"];
     }
-
+ 
     my $lhost = $self->query_host($hosts[0]);
-    # It seems mean to make people create a host entry for a logical map entry
-    # lets create one for them
     if (!defined $lhost) {
-	my $drealm = Krb5Admin::C::krb5_get_realm($self->{ctx});
-	my $ret = $self->create_host($hosts[0], ("realm" => $drealm, "is_logical" => 1)); 
-    } 
+	die [404, "Logical host ". $hosts[0] ." doesn't exist"];
+    }
 
-    my $lhost2 = $self->query_host($hosts[0]);
-    if (defined $lhost2 && $lhost2->{is_logical}) {
+    if ($lhost->{is_logical}) {
 
 	my $stmt = "INSERT INTO hostmap (logical, physical) VALUES (?, ?)";
 	sql_command($dbh, $stmt, @hosts);
@@ -1755,7 +1775,6 @@ sub insert_hostmap {
 }
 
 sub KHARON_ACL_query_hostmap { return 1; }
-
 sub query_hostmap {
 	my ($self, $host) = @_;
 	my $dbh = $self->{dbh};
@@ -2253,7 +2272,7 @@ sub KHARON_ACL_add_acl {
 }
 
 sub add_acl{
-	my ($self, $acl, $type) = @_;
+	my ($self, $acl, $type, %args) = @_;
 	my $dbh = $self->{dbh};
 	
 	my $ctx = $self->{ctx};

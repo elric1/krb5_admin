@@ -94,8 +94,9 @@ foreach my $h (@physical_hosts) {
 		is_logical=>undef, label => []}], 'query_host', "$h.test.realm");
 }
 my $h = 'cname1';
-testMustNotDie("Create a logical host $h", $kmdb, 'create_host', "$h.test.realm", 
+testMustNotDie("Create a host $h", $kmdb, 'create_host', "$h.test.realm", 
 		 'ip_addr'=> '6.6.6.6', 'realm'=>'TEST.REALM');
+
 testObjC("Query the logical host $h", $kmdb,
 		[{ip_addr => '6.6.6.6', realm => 'TEST.REALM', bootbinding => undef,
 		is_logical=>undef, label => []}], 'query_host', "$h.test.realm");
@@ -103,7 +104,13 @@ testObjC("Query the logical host $h", $kmdb,
 testMustDie("Can't steal a physical host to be a cluster name", $kmdb, "insert_hostmap",
 		qw/cname1.test.realm b.test.realm/);
 
-# This should fail instead
+	
+testMustDie("Can't steal a physical host to be a cluster name", $kmdb, "insert_hostmap",
+		qw/cname.test.realm b.test.realm/);
+	    
+$h = 'cname';
+testMustNotDie("Create a host $h", $kmdb, 'create_logical_host', "$h.test.realm", 
+		 'ip_addr'=> '6.6.6.6', 'realm'=>'TEST.REALM');
 testObjC("Create logical host map", $kmdb, [undef], 'insert_hostmap',
 	qw/cname.test.realm a.test.realm/);
 testObjC("Create logical host map", $kmdb, [undef], 'insert_hostmap',
