@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 38;
+use Test::More tests => 39;
 
 use Krb5Admin::ForkClient;
 

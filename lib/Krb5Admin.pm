@@ -41,11 +41,12 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				reset_passwd
 				sacls_add
 				sacls_del
-				add_hostmap_owner
-				remove_hostmap_owner
+				add_host_owner
+				remove_host_owner
 				add_acl_owner
 				remove_acl_owner
-				query_hostmap_owner
+				query_host_owner
+				create_logical_host
 			     /;
 
 our @KHARON_RO_SC_EXPORT = qw/	is_appid_owner

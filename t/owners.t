@@ -128,27 +128,29 @@ my @x = [
                'owner' => 'admin_user@TEST.REALM',
                'name' => 'cname.test.realm'
              },
-             {
+	    {
                'owner' => 'normal_user@TEST.REALM',
                'name' => 'cname.test.realm'
-             }
+             },
+
            ]
          ];
 
 
 
 
-testMustDie("Add user to non existant hostmap", $kmdb, "add_hostmap_owner",
-		qw/a.test.realm normal_user@TEST.REALM/);
+testMustDie("Add user to non existant hostmap", $kmdb, "add_host_owner",
+		qw/a1111.test.realm normal_user@TEST.REALM/);
+
 my $kmdb_user = create_normal_user_connect();
 testMustDie("Normal User Attempts to add", $kmdb_user, "insert_hostmap",
 		qw/cname.test.realm c.test.realm/);
 undef $kmdb_user;
 
-testObjC("Add normal_user to hostmap owners", $kmdb, [1],"add_hostmap_owner", 
+testObjC("Add normal_user to hostmap owners", $kmdb, [1],"add_host_owner", 
 	qw/cname.test.realm normal_user@TEST.REALM/);
 
-testObjC("Query hostmap must show correct", $kmdb, @x,"query_hostmap_owner", 
+testObjC("Query host owner must show correct", $kmdb, @x,"query_host_owner", 
 	qw/cname.test.realm/);
 undef $kmdb;
 

@@ -454,7 +454,7 @@ our %field_desc = (
 		fields		=> [qw/name owner/],
 		wontgrow	=> 1,
 	},
-	hostmap_owner	=> {
+	hosts_owner	=> {
 		pkey		=> [qw/name/],
 		uniq		=> [qw/name/],
 		fields		=> [qw/name owner/],
@@ -594,7 +594,7 @@ sub init_db {
 	});
 
 	$dbh->do(qq{
-		CREATE TABLE hostmap_owner (
+		CREATE TABLE hosts_owner (
 			name		VARCHAR,
 			owner		VARCHAR,
 			PRIMARY KEY (name, owner)
@@ -637,7 +637,7 @@ sub drop_db {
 	$dbh->do('DROP TABLE IF EXISTS acls_owner');
 	$dbh->do('DROP TABLE IF EXISTS appids');
 	$dbh->do('DROP TABLE IF EXISTS prestashed');
-	$dbh->do('DROP TABLE IF EXISTS hostmap_owner');
+	$dbh->do('DROP TABLE IF EXISTS hosts_owner');
 	$dbh->do('DROP TABLE IF EXISTS hostmap');
 	$dbh->do('DROP TABLE IF EXISTS host_labels');
 	$dbh->do('DROP TABLE IF EXISTS acls');
@@ -1743,10 +1743,10 @@ sub insert_hostmap {
 
 	$dbh->commit();
 
-	# Its not FK constraints, its the precondition check in add_hostmap_owner
-	# add hostmap owner checks to see that the hostmap object exsits
+	# Its not FK constraints, its the precondition check in add_host_owner
+	# add hostmap owner checks to see that the host object exsits
 	if( !defined $lhost) {
-	    $self->add_hostmap_owner($hosts[0], $self->{client});
+	    $self->add_host_owner($hosts[0], $self->{client});
 	}
     } else {
 	die [504, "There was a problem creating the logical name (likely a physical host named the samed)"];
@@ -1790,7 +1790,7 @@ sub remove_hostmap {
 	my $stmt = "DELETE FROM hostmap WHERE logical = ? AND physical = ?";
 	sql_command($dbh, $stmt, @hosts);
 
-	remove_object_owner($dbh, 'hostmap', @hosts);
+	remove_object_owner($dbh, 'hosts', @hosts);
 	
 	$dbh->commit();
 
@@ -2324,7 +2324,7 @@ sub hostmap_acl {
 	# also if there is no hostname named logical then we can allow
 	# anyone
 	if (defined $lhost && $lhost->{is_logical}) {
-	    if (is_owner($self->{dbh},'hostmap', $self->{client}, $logical)) { return 1; }
+	    if (is_owner($self->{dbh},'hosts', $self->{client}, $logical)) { return 1; }
 	} else {
 	    if (!defined $lhost) { return 1; }
 	}
@@ -2392,11 +2392,11 @@ sub owner_add_f {
 }
 
 
-sub KHARON_ACL_remove_hostmap_owner { return hostmap_acl(@_); }
-sub remove_hostmap_owner { return owner_del_f('hostmap',@_); }
+sub KHARON_ACL_remove_host_owner { return hostmap_acl(@_); }
+sub remove_host_owner { return owner_del_f('hosts',@_); }
 
-sub KHARON_ACL_add_hostmap_owner { return hostmap_acl(@_); }
-sub add_hostmap_owner { return owner_add_f('hostmap', 'logical', @_); }
+sub KHARON_ACL_add_host_owner { return hostmap_acl(@_); }
+sub add_host_owner { return owner_add_f('hosts', 'name', @_); }
 
 sub is_owner {
 	my ($dbconn, $obj_type, $username, $acl) = @_;
@@ -2425,8 +2425,8 @@ sub query_owner_f {
 }
 
 
-sub KHARON_ACL_query_hostmap_owner { return 1; }
-sub query_hostmap_owner { return query_owner_f('hostmap', @_); }
+sub KHARON_ACL_query_host_owner { return 1; }
+sub query_host_owner { return query_owner_f('hosts', @_); }
 
 
 sub KHARON_ACL_query_acl_owner { return 1; }
