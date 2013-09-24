@@ -385,7 +385,7 @@ sub install_ticket {
 	my ($name, $passwd, $uid, $gid) = getpwnam($user);
 
 	if (!defined($name) || $name ne $user) {
-		die "Tickets sent for non-existent user %user.\n";
+		die sprintf("Tickets sent for non-existent user %s.\n", $user);
 	}
 
 	# Install new tickets atomically by writing to a temporary ccache,
