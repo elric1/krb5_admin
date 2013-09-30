@@ -2296,14 +2296,15 @@ sub add_acl{
 	my $stmt = "INSERT INTO acls(name, type) VALUES (?, ?)";
 	sql_command($dbh, $stmt, $acl, $type);
 
-	eval {
+
+	if ($type eq 'group') {
 	    my $owner = $princ;
-	    if (!$self->{local} && !exists($args{owner})) {
+	    if (exists($args{owner})) {
 		$owner = $args{owner};
 	    }
-	    $self->add_acl_owner($acl, $princ);
-	};
 
+	    $self->add_acl_owner($acl, $owner);
+	} 
 	$dbh->commit();
 	
 	return undef;

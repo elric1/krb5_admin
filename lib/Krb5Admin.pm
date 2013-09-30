@@ -45,6 +45,7 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				remove_host_owner
 				add_acl_owner
 				remove_acl_owner
+				query_acl_owner
 				query_host_owner
 				create_logical_host
 			     /;

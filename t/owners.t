@@ -172,6 +172,12 @@ $kmdb = admin_user_connect();
 testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group1 group/);
 testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group2 group/);
 testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group3 group/);
+testMustNotDie("add a group with odd different", $kmdb, "add_acl", qw/test_group4 group/, owner=>'normal_user@TEST.REALM');
+
+testObjC("acl_owner", $kmdb, [[{owner=>'normal_user@TEST.REALM', name=>'test_group4'}]],"query_acl_owner", qw/test_group4/);
+
+
+
 # XXX - this was moved to 00prepare.t
 # testMustNotDie("add a group", $kmdb, "add_acl", qw/normal_user@TEST.REALM krb5/);
 
