@@ -872,6 +872,22 @@ sub KHARON_ACL_create_appid {
     return undef;
     }
 
+
+sub can_user_act {
+    my ($self, $msg, $name, $act, @r) = @_;
+    my $dbh = $self->{dbh};
+    if (defined($self->{acl})) {
+	eval {
+	    $self->{acl}->check($act, @r);
+	};
+	if ($@) {
+	    $dbh->rollback();
+	    die [503, $msg];
+	}
+    }
+}
+
+
 sub create_appid {
 	my ($self, $appid, %args) = @_;
 	my $dbh = $self->{dbh};
@@ -895,6 +911,8 @@ sub create_appid {
 
 	generic_modify($dbh, \%field_desc, 'appids', $appid, %args);
 
+	$self->can_user_act("Can't create appid's you don't own", $self->{client}, "modify" , $appid, %args);
+	
 	$dbh->commit();
 
 	$self->create($appid);
@@ -1611,11 +1629,9 @@ sub list_labels {
 	return generic_query($dbh, \%field_desc, 'labels', []);
 }
 
-sub create_host {
+sub create_host_internal {
 	my ($self, $host, %args) = @_;
 	my $dbh = $self->{dbh};
-
-	require_scalar("create_host <host> [args]", 1, $host);
 
 	my %fields = map { $_ => 1 } @{$field_desc{hosts}->{fields}};
 
@@ -1637,8 +1653,19 @@ sub create_host {
 
 	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
 
-	$dbh->commit();
 	return undef;
+}
+
+sub create_host {
+    my ($self, $host, %args) = @_;
+    my $dbh = $self->{dbh};
+
+    require_scalar("create_host <host> [args]", 1, $host);
+
+    create_host_internal(@_);
+
+    $dbh->commit();
+    return undef;
 }
 
 sub modify_host {
@@ -1713,26 +1740,31 @@ sub remove_host {
 }
 
 
-sub KHARON_ACL_create_logical_host { return hostmap_acl(@_); }
+sub KHARON_ACL_create_logical_host { return 1; }
 sub create_logical_host {
-    my ($self, @hosts) = @_;
+    my ($self, $host, %args) = @_;
     my $dbh = $self->{dbh};
 
-    require_scalar("create_logical_host <logical>" , 1, $hosts[0]);
+    require_scalar("create_logical_host <logical>" , 1, $host);
  
-    my $lhost = $self->query_host($hosts[0]);
-    # It seems mean to make people create a host entry for a logical map entry
-    # lets create one for them
+    my $lhost = $self->query_host($host);
     if (!defined $lhost) {
 	my $drealm = Krb5Admin::C::krb5_get_realm($self->{ctx});
-	my $ret = $self->create_host($hosts[0], ("realm" => $drealm, "is_logical" => 1)); 
-	$self->add_host_owner($hosts[0], $self->{client});
+	my $ret = $self->create_host_internal($host, ("realm" => $drealm, "is_logical" => 1)); 
+	my $owner = $self->{client};
+	if (exists($args{owner})) {
+	    $owner = $args{owner};
+	}
+
+	my $res = owner_add_f('hosts', 'name', $self, $host, $owner);
+	$self->can_user_act("Can't create logical hosts' you don't own", 
+	    $self->{client}, "add_host_owner", $host);
+
+	$dbh->commit();
     } else {
-	die [406, $hosts[0] . " already exists.\n"];	
+	$dbh->rollback();
+	die [406, $host . " already exists.\n"];	
     }
-
-
-
     return undef;
 }
 
@@ -1757,19 +1789,11 @@ sub insert_hostmap {
     }
 
     if ($lhost->{is_logical}) {
-
 	my $stmt = "INSERT INTO hostmap (logical, physical) VALUES (?, ?)";
 	sql_command($dbh, $stmt, @hosts);
-
 	$dbh->commit();
-
-	# Its not FK constraints, its the precondition check in add_host_owner
-	# add hostmap owner checks to see that the host object exsits
-	if( !defined $lhost) {
-	    $self->add_host_owner($hosts[0], $self->{client});
-	}
     } else {
-	die [504, "There was a problem creating the logical name (likely a physical host named the samed)"];
+	die [504, "There was a problem creating the logical name (likely a physical host named the same)."];
     }
     return undef;
 }
@@ -1809,7 +1833,7 @@ sub remove_hostmap {
 	my $stmt = "DELETE FROM hostmap WHERE logical = ? AND physical = ?";
 	sql_command($dbh, $stmt, @hosts);
 
-	remove_object_owner($dbh, 'hosts', @hosts);
+	# remove_object_owner($dbh, 'hosts', @hosts);
 	
 	$dbh->commit();
 
@@ -2302,7 +2326,6 @@ sub add_acl{
 	    if (exists($args{owner})) {
 		$owner = $args{owner};
 	    }
-
 	    $self->add_acl_owner($acl, $owner);
 	} 
 	$dbh->commit();
@@ -2323,34 +2346,31 @@ sub KHARON_ACL_del_acl {
 
 
 sub KHARON_ACL_add_acl_owner { return KHARON_ACL_del_acl(@_); }
-sub add_acl_owner { return owner_add_f('acls', 'name', @_); }
+sub add_acl_owner { 
+    my ($self)  = @_;
+    my $res = owner_add_f('acls', 'name', @_); 
+    $self->{dbh}->commit();
+    return $res;
+}
 
 
 sub KHARON_ACL_remove_acl_owner { return KHARON_ACL_del_acl(@_); }
 sub remove_acl_owner { return owner_del_f('acls',@_); }
 
 sub hostmap_acl {
-	# If a host exists but no hostmap owners then 
-	# return 0
-	my ($self, $cmd, $logical, @r) =@_;
-#	my $res = query_hostmap_owner($self, $logical);
+	# If the logical host exists and the user is an owner of that "host" then
+	# allow the user to perform the action
+	# fallthrough otherwise
+	my ($self, $cmd, $logical, @r) = @_;
 	my $lhost = $self->query_host($logical);
 
 
-	# if a logical host exists 
-	# and there is an owner on the hostmap
-	# and that owner is the client then allow
-	#
-	# also if there is no hostname named logical then we can allow
-	# anyone
-	if (defined $lhost && $lhost->{is_logical}) {
-	    if (is_owner($self->{dbh},'hosts', $self->{client}, $logical)) { return 1; }
-	} else {
-	    if (!defined $lhost) { return 1; }
+	if (defined $lhost && $lhost->{is_logical}  
+	    && is_owner($self->{dbh}, 'hosts', $self->{client}, $logical)) {
+	    return 1;
 	}
+	
 	return undef;
-
-
 }
 
 sub remove_object_owner {
@@ -2364,7 +2384,6 @@ sub add_object_owner {
 	my ($dbh, $obj_type, $objname, $ownerprinc) = @_;
 	my $stmt= "INSERT INTO ".$obj_type."_owner(name, owner) VALUES (?,?)";
 	sql_command($dbh, $stmt, $objname, $ownerprinc);
-	$dbh->commit();
 }
 
 sub owner_del_f {
@@ -2416,7 +2435,12 @@ sub KHARON_ACL_remove_host_owner { return hostmap_acl(@_); }
 sub remove_host_owner { return owner_del_f('hosts',@_); }
 
 sub KHARON_ACL_add_host_owner { return hostmap_acl(@_); }
-sub add_host_owner { return owner_add_f('hosts', 'name', @_); }
+sub add_host_owner {
+    my ($self)  = @_;
+    my $res = owner_add_f('hosts', 'name', @_); 
+    $self->{dbh}->commit();
+    return $res;
+}   
 
 sub is_owner {
 	my ($dbconn, $obj_type, $username, $acl) = @_;
@@ -2424,11 +2448,12 @@ sub is_owner {
 	my $sth = sql_command($dbconn, $sql, $username, $acl);
 	
 	my $results = $sth->fetchall_arrayref({});
-	
+
 	foreach my $r (@$results) {
 	    $sth->finish;
 	    return 1;
 	}
+
 	return 0;
 }
 

@@ -176,13 +176,28 @@ testMustNotDie("add a group with odd different", $kmdb, "add_acl", qw/test_group
 
 testObjC("acl_owner", $kmdb, [[{owner=>'normal_user@TEST.REALM', name=>'test_group4'}]],"query_acl_owner", qw/test_group4/);
 
+testObjC("create logical for someone else", $kmdb, [[{owner=>'normal_user@TEST.REALM', name=>'test_group4'}]],"query_acl_owner", qw/test_group4/);
 
+$kmdb_user = create_normal_user_connect();
+
+testMustDie("Can't create a logical for someone else", $kmdb_user, "create_logical_host",
+		"cname10.test.realm", owner=>'admin_user@TEST.REALM');
+
+testMustNotDie("normal_user should be able to create logicals", $kmdb_user, "create_logical_host", qw/cname102.test.realm/);
+
+undef $kmdb_user;
+
+
+
+$kmdb = admin_user_connect();
 
 # XXX - this was moved to 00prepare.t
 # testMustNotDie("add a group", $kmdb, "add_acl", qw/normal_user@TEST.REALM krb5/);
 
 
 $kmdb_user = create_normal_user_connect();
+	
+	
 testMustDie("normal user should not modify aclgroup", 
 	$kmdb_user, "insert_aclgroup",
 	qw/test_group1 normal_user@TEST.REALM/);
