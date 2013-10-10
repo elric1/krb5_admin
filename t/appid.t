@@ -61,16 +61,18 @@ my $kmdb = Krb5Admin::ForkClient->new({
 # First, we create a few ACLs.  They must be created before the appids
 # because appids will always reference at least one ACL.
 
+my @owner_grp = (owner => ['admin_user@TEST.REALM']); 
+my @owner_user = (owner => []); 
 our $acls = {
-	'admin_user@TEST.REALM'	=> { type => 'krb5' },
-	'normal_user@TEST.REALM'=> { type => 'krb5' },
-	'elric@IMRRYR.ORG'	=> { type => 'krb5' },
-	'yyrkoon@IMRRYR.ORG'	=> { type => 'krb5' },
-	'cymoril@IMRRYR.ORG'	=> { type => 'krb5' },
-	'sadric@IMRRYR.ORG'	=> { type => 'krb5' },
-	'group1'		=> { type => 'group' },
-	'group2'		=> { type => 'group' },
-	'master_group'		=> { type => 'group' },
+	'admin_user@TEST.REALM'	=> { type => 'krb5', @owner_user},
+	'normal_user@TEST.REALM'=> { type => 'krb5', @owner_user},
+	'elric@IMRRYR.ORG'	=> { type => 'krb5', @owner_user},
+	'yyrkoon@IMRRYR.ORG'	=> { type => 'krb5', @owner_user},
+	'cymoril@IMRRYR.ORG'	=> { type => 'krb5', @owner_user},
+	'sadric@IMRRYR.ORG'	=> { type => 'krb5', @owner_user},
+	'group1'		=> { type => 'group', @owner_grp},
+	'group2'		=> { type => 'group', @owner_grp},
+	'master_group'		=> { type => 'group', @owner_grp},
     };
 
 my $i;

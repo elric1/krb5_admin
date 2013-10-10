@@ -440,6 +440,7 @@ our %field_desc = (
 		pkey		=> [qw/name/],
 		uniq		=> [qw/name/],
 		fields		=> [qw/name type/],
+		lists		=> [ [qw/acls_owner name owner owner/],],
 		wontgrow	=> 0,
 	},
 	aclgroups	=> {
@@ -453,6 +454,7 @@ our %field_desc = (
 		uniq		=> [qw/name/],
 		fields		=> [qw/name owner/],
 		wontgrow	=> 1,
+		fkey		=> [[qw/owner acls name/]],
 	},
 	hosts_owner	=> {
 		pkey		=> [qw/name/],
@@ -464,7 +466,8 @@ our %field_desc = (
 		pkey		=> 'name',
 		uniq		=> [qw/name ip_addr bootbinding/],
 		fields		=> [qw/name realm ip_addr bootbinding is_logical/],
-		lists		=> [[qw/host_labels host label/]],
+		lists		=> [[qw/host_labels host label/],
+				    [qw/hosts_owner name owner owner/]],
 		wontgrow	=> 0,
 	},
 	hostmap		=> {
@@ -1751,12 +1754,14 @@ sub create_logical_host {
     if (!defined $lhost) {
 	my $drealm = Krb5Admin::C::krb5_get_realm($self->{ctx});
 	my $ret = $self->create_host_internal($host, ("realm" => $drealm, "is_logical" => 1)); 
-	my $owner = $self->{client};
-	if (exists($args{owner})) {
-	    $owner = $args{owner};
+	if (!exists($args{owner})) {
+	    $args{owner} = [$self->{client}];
 	}
 
-	my $res = owner_add_f('hosts', 'name', $self, $host, $owner);
+#	my $res = owner_add_f('hosts', 'name', $self, $host, $owner);
+	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);		
+
+
 	$self->can_user_act("Can't create logical hosts' you don't own", 
 	    $self->{client}, "add_host_owner", $host);
 

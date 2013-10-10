@@ -23,6 +23,7 @@ our %host_hmap = (
 	ip_addr		=> undef,
 	bootbinding	=> undef,
 	label		=> [],
+	owner		=> undef
 );
 
 our %princ_hmap = (
@@ -42,22 +43,23 @@ our %appid_hmap = (
 	cstraint	=> [],
 );
 
-our %hostmap_hmap = ( 
-	owner		=> undef
-    );
 
-our %acl_hmap = ( 
-	owner		=> undef
-    );
+our %acl_hmap (
+    owner =>[]
+);
+
+our %logical_host_hmap = ( 
+    owner		=> []
+);
 
 sub KHARON_HASHIFY_COMMANDS {
 	return {
 		create_appid	=> [1, \%appid_hmap],
 		create_host	=> [1, \%host_hmap],
+		create_logical_host	=> [1, \%logical_host_hmap],
 		modify		=> [1, {%princ_hmap, %appid_hmap}],
 		modify_host	=> [1, \%host_hmap],
-		add_acl		=> [1, \%acl_hmap],
-		insert_hostmap	=> [1, \%hostmap_hmap],
+		add_acl		=> [2, \%acl_hmap],
 	};
 }
 
