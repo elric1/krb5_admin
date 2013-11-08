@@ -2021,7 +2021,9 @@ sub install_keys {
 		my $f = \&install_key;
 
 		$f = \&install_key_fetch	if $use_fetch || $self->{local};
-		$f = \&install_host_key		if $princ->[1] eq 'host';
+		# Host keys are only special for root.
+		$f = \&install_host_key		if ($princ->[1] eq 'host'
+						    && $user eq 'root');
 
 		if ($princ->[1] eq 'bootstrap' && $princ->[2] eq 'RANDOM') {
 			$f = \&install_bootstrap_key;
