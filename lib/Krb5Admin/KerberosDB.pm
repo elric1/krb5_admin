@@ -219,20 +219,20 @@ sub acl_keytab {
 	# pprinc is the requested principal
 	# sprinc is the connected principal
 
-	if ($pprinc[1] ne "host") {
-		# OK if subject is the host principal in the same realm
-		# Or a direct sub-domain of that host, if that's enabled.
-		my $basedomain = $pprinc[2];
-		my $sdp = '';
-		$sdp = $self->{subdomain_prefix} if defined $self->{subdomain_prefix};
-		$basedomain =~ s/^[a-z0-9](?:[-]?[a-z0-9]+)*\.//i;
-		
-		return 1 if (@sprinc == 3
-			     && $pprinc[0] eq $sprinc[0]
-			     && $sprinc[1] eq "host"
-			     && ($sprinc[2] eq $pprinc[2]
-				 || $sdp.$sprinc[2] eq $basedomain));
+	# OK if subject is the host principal in the same realm
+	# Or a direct sub-domain of that host, if that's enabled.
+	my $basedomain = $pprinc[2];
+	my $sdp = '';
+	$sdp = $self->{subdomain_prefix} if defined $self->{subdomain_prefix};
+	$basedomain =~ s/^[a-z0-9](?:[-]?[a-z0-9]+)*\.//i;
+	
+	return 1 if (@sprinc == 3
+		     && $pprinc[0] eq $sprinc[0]
+		     && $sprinc[1] eq "host"
+		     && ($sprinc[2] eq $pprinc[2]
+			 || $sdp.$sprinc[2] eq $basedomain));
 
+	if ($pprinc[1] ne "host") {
 		# OK if the subject is a cluster member of the logical
 		# host named by $pprinc[2].
 		#
