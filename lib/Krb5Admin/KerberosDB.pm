@@ -1671,16 +1671,40 @@ sub create_host {
     return undef;
 }
 
+sub KHARON_ACL_modify_host { 
+    my ($self, $cmd, $logical, %mods) = @_;
+    my $lhost = $self->query_host($logical);
+    my @actions = qw{owner add_owner del_owner
+		     label add_label del_label};
+    
+    if (defined $lhost && $lhost->{is_logical}  
+	&& is_owner($self->{dbh}, 'hosts', $self->{client}, $logical)) {
+
+	for my $mod (keys %mods) {
+	    return undef if !grep {$_ eq $mod} @actions;
+	}
+
+	return 1;
+    }
+
+    return undef;
+
+}
+
 sub modify_host {
-	my ($self, $host, %args) = @_;
-	my $dbh = $self->{dbh};
+    my ($self, $host, %args) = @_;
+    my $dbh = $self->{dbh};
 
-	require_scalar("modify_host <host> [args]", 1, $host);
+    require_scalar("modify_host <host> [args]", 1, $host);
 
-	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
-	$dbh->commit();
 
-	return undef;
+    generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
+
+$self->can_user_act("Can't create logical hosts' you don't own", 
+    $self->{client}, "modify_host", $host);
+
+$dbh->commit();
+return undef;
 }
 
 sub KHARON_ACL_query_host { return 1; }
@@ -1754,13 +1778,12 @@ sub create_logical_host {
     if (!defined $lhost) {
 	my $drealm = Krb5Admin::C::krb5_get_realm($self->{ctx});
 	my $ret = $self->create_host_internal($host, ("realm" => $drealm, "is_logical" => 1)); 
-	if (!exists($args{owner})) {
+	if (!exists($args{owner})){
 	    $args{owner} = [$self->{client}];
 	}
 
 #	my $res = owner_add_f('hosts', 'name', $self, $host, $owner);
 	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);		
-
 
 	$self->can_user_act("Can't create logical hosts' you don't own", 
 	    $self->{client}, "add_host_owner", $host);
@@ -2366,9 +2389,8 @@ sub hostmap_acl {
 	# If the logical host exists and the user is an owner of that "host" then
 	# allow the user to perform the action
 	# fallthrough otherwise
-	my ($self, $cmd, $logical, @r) = @_;
+	my ($self, $cmd, $logical ) = @_;
 	my $lhost = $self->query_host($logical);
-
 
 	if (defined $lhost && $lhost->{is_logical}  
 	    && is_owner($self->{dbh}, 'hosts', $self->{client}, $logical)) {
@@ -2412,7 +2434,7 @@ sub owner_add_f {
 	my $cmdline =  "add_".$type_name."_owner <".$type_name."> <owner>";
 	Krb5Admin::KerberosDB::require_scalar($cmdline, 1, $obj);
 	Krb5Admin::KerberosDB::require_scalar($cmdline, 2, $owner);
-	my $princ = Krb5Admin::KerberosDB::canonicalise_fqprinc($self->{ctx},$cmdline, 2, $owner);
+	my $princ = $owner; #Krb5Admin::KerberosDB::canonicalise_fqprinc($self->{ctx},$cmdline, 2, $owner);
 
 	my $res = generic_query($dbh, \%field_desc, $type_name, [$type_key],
 		$type_key=>$obj);
@@ -2448,19 +2470,50 @@ sub add_host_owner {
 }   
 
 sub is_owner {
-	my ($dbconn, $obj_type, $username, $acl) = @_;
-	my $sql = "SELECT * from ".$obj_type."_owner where owner=? and name=?;";
-	my $sth = sql_command($dbconn, $sql, $username, $acl);
-	
-	my $results = $sth->fetchall_arrayref({});
+	my ($dbconn, $obj_type, $princ, $obj_id) = @_;
 
-	foreach my $r (@$results) {
-	    $sth->finish;
-	    return 1;
+	#my $dbh = $self->{dbh};
+	#my $ctx = $self->{ctx};
+
+	#
+	# We implement here a single SQL statement that will deal
+	# with recursive groups up to N levels.	 After this, we give
+	# up...	 XXXrcd: should we deal with more recursion than this
+	# or simply define N as being a hard limit?
+
+	my @joins = ('LEFT JOIN acls ON '.$obj_type.'_owner.owner = acls.name');
+	my @where = ('acls.name = ?');
+	my @bindv = ($princ);
+
+	for (my $i=0; $i < GROUP_RECURSION; $i++) {
+		my $join = "LEFT JOIN aclgroups AS aclgroups$i ";
+		if ($i) {
+			$join .= "ON aclgroups$i.aclgroup = aclgroups" .
+			    ($i - 1) . ".acl";
+		} else {
+			$join .= "ON aclgroups$i.aclgroup = acls.name";
+		}
+
+		push(@joins, $join);
+		push(@where, "aclgroups$i.acl = ?");
+		push(@bindv, $princ);
 	}
 
-	return 0;
+	my $stmt = q{SELECT COUNT(}.$obj_type.q{_owner.name) FROM }.$obj_type .'_owner '.
+	    join(' ', @joins) . ' WHERE '.$obj_type.'_owner.name = ? AND (' .
+	    join(' OR ', @where) . ")";
+
+	my $sth = sql_command($dbconn, $stmt, $obj_id, @bindv);
+
+	my $res = $sth->fetch()->[0] ? 1 : 0;
+	
+	$sth->finish;
+	return $res; 
 }
+
+
+
+
 
 
 sub query_owner_f {
@@ -2469,6 +2522,7 @@ sub query_owner_f {
 	my $sth = sql_command($self->{dbh}, $sql, @r);
 	
 	my $ret =  $sth->fetchall_arrayref({});
+	$sth->finish;
 #	$self->{dbh}->commit();
 	return $ret; 
 
@@ -2480,7 +2534,12 @@ sub query_host_owner { return query_owner_f('hosts', @_); }
 
 
 sub KHARON_ACL_query_acl_owner { return 1; }
-sub query_acl_owner { return query_owner_f('acls', @_); }
+sub query_acl_owner {
+    my $self = $_[0];
+    my $r = query_owner_f('acls', @_);
+    $self->{dbh}->commit();
+    return $r;
+}
 
 
 
