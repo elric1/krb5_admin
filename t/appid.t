@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More;
+use Test::More tests => 54;
 
 use Krb5Admin::ForkClient;
 
@@ -199,6 +199,6 @@ for $i (0..3) {
 
 undef $kmdb;
 
-done_testing();
+#done_testing();
 
 exit(0);

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-use Test::More;# tests => 30;
+use Test::More tests => 48;
 
 use Sys::Hostname;
 
@@ -223,7 +223,34 @@ testMustNotDie("add a host", $kmdb, "create_host", "b.testfqdn.com", realm => 'T
 $kmdb_user = create_normal_user_connect();
 testMustNotDie("remove hostmap", $kmdb_user, "remove_hostmap", 
 		qw/cname.test.realm c.test.realm/);
-done_testing();
+
+testMustNotDie("logical multi owner", $kmdb_user, "create_logical_host",
+	"cluster1.testfqdn.com", owner => ['normal_user@TEST.REALM', 'admin_user@TEST.REALM']);
+
+testMustNotDie("modify owner host", $kmdb_user, "modify_host",
+	"cluster1.testfqdn.com", del_owner => ['admin_user@TEST.REALM']);
+
+testMustDie("modify owner host del self must fail", $kmdb_user, "modify_host",
+	"cluster1.testfqdn.com", del_owner => ['normal_user@TEST.REALM']);
+
+
+testMustNotDie('attach group owner', $kmdb_user, "modify_host",
+	'cluster1.testfqdn.com', add_owner =>['test_group3']);
+
+testMustNotDie('remove non group owner', $kmdb_user, "modify_host",
+	'cluster1.testfqdn.com', del_owner =>['normal_user@TEST.REALM']);
+
+testMustDie('dont allow invalid action', $kmdb_user, "modify_host",
+	'cluster1.testfqdn.com', name =>'cluster2.testfqdn.com');
+
+
+testMustNotDie("normal_user should still be able to add hostmap now", $kmdb_user, 
+	"insert_hostmap", qw/cluster1.testfqdn.com c.test.realm/);
+
+undef $kmdb_user;
+	    
+	    
+#done_testing();
 
 
 

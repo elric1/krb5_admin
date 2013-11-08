@@ -1,7 +1,7 @@
 #!/usr/pkg/bin/perl
 #
 
-use Test::More;
+use Test::More tests=> 7;
 
 use Krb5Admin::C;
 
@@ -110,6 +110,6 @@ test_keytab($ctx, $realm, '/tmp/foo.kt', \@keys);
 
 test_keytab($ctx, $realm, '/tmp/foo.kt', \@keys);
 
-done_testing();
+#done_testing();
 
 exit(0);
