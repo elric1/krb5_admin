@@ -23,7 +23,7 @@ our %host_hmap = (
 	ip_addr		=> undef,
 	bootbinding	=> undef,
 	label		=> [],
-	owner		=> undef
+	owner		=> []
 );
 
 our %princ_hmap = (
@@ -44,7 +44,7 @@ our %appid_hmap = (
 );
 
 
-our %acl_hmap (
+our %acl_hmap = (
     owner =>[]
 );
 
