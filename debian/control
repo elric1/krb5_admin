@@ -11,3 +11,9 @@ Architecture: any
 Depends: ${perl:Depends}, ${shlibs:Depends}, ${misc:Depends}, perl-modules, libdbi-perl, libdbd-sqlite3-perl, knc, libkharon-perl
 Description: Kerberos administration framework
  Kerberos administration framework
+
+Package: libkrb5admin-perl-kdc
+Architecture: any
+Depends: ${perl:Depends}, ${shlibs:Depends}, ${misc:Depends}, perl-modules, libdbi-perl, libdbd-sqlite3-perl, knc, libkharon-perl
+Description: Kerberos administration framework code for only the kdc
+ Kerberos administration framework the parts that go on the kdc 

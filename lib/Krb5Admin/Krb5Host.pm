@@ -22,6 +22,7 @@ our @KHARON_RO_SC_EXPORT = qw/	query_keytab
 				generate_keytab
 				test_keytab
 				show_krb5_conf
+				do_update
 			     /;
 
 1;

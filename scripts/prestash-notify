@@ -1,0 +1,53 @@
+#!/usr/bin/perl
+use Krb5Admin::Krb5Host::Client;
+
+use strict;
+use warnings;
+use Env;
+use Sys::Hostname;
+use IO::Pipe;
+
+
+sub exec_stdout { 
+    my $pw;
+    my $p = IO::Pipe->new();
+    $p->reader(@_);
+    local $_;
+    while (<$p>) {
+    	$pw = $_;
+	last;
+    }
+    $p->close(); 
+    chomp($pw);
+    return $pw;
+}
+
+
+my $uname = getpwuid($<);
+my $fqdn = exec_stdout(qw{uname -n});
+
+my $KINIT="/opt/heimdal/bin/kinit";
+my $KTAB ="/var/spool/keytabs/$uname";
+my $PRINC="$uname/$fqdn";
+
+
+if (!defined $ENV{'KRB5CCNAME'}) {
+    print "Execing\n";
+    exec($KINIT, "-kt", $KTAB, $PRINC, $0, @ARGV); 
+} else {
+    if($#ARGV != 0) {
+	print "Missing hostname\n";
+	print "usage: " . $0 . " <hostname>\n";
+	exit(1);
+    }
+
+    my $clnt = Krb5Admin::Krb5Host::Client->new($ARGV[0]);
+    eval {
+	my $resp = $clnt->do_update();
+    };
+
+    if ($@) {
+	exit(70);
+    }
+
+}

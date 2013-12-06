@@ -2138,4 +2138,24 @@ sub install_all_keys {
 	return @ret;
 }
 
+
+sub KHARON_ACL_do_update {
+    my ($self) = @_;
+    # Allow admin users
+    return 1 if ($self->{client} =~ m/^([-a-zA-Z0-9])+\/admin@.+$/);
+    # and any user named krb5notify/
+    return 1 if ($self->{client} =~ m{^krb5notify/[-_a-zA-Z0-9\.]+\@.+$}); 
+    # to do_update
+    # or fall through
+    return undef;   
+}
+
+sub do_update {
+    my ($self) = @_;
+    my $ctx = $self->{ctx};
+    $self->fetch_tickets();
+    return "OK";
+}
+
+
 1;

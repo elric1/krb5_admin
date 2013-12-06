@@ -70,6 +70,8 @@ my %args = (
 		    scripts/krb5_admin
 		    scripts/krb5_hostd
 		    scripts/krb5_prestash
+		    scripts/prestash-notify
+		    scripts/krb5_setup_postfix
 		)],
 
     PM_FILTER=> qq{sed} .

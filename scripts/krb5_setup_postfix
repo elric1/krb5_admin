@@ -1,0 +1,71 @@
+#! /bin/bash
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+if [[ -d /etc/postfix-prestash ]]; then 
+    echo "Already configured"
+    exit 1
+fi
+
+
+set -e
+
+# Fix Debian breakage, their dynamicmaps support does not work with
+# multi-instance postfix
+#
+patch /usr/lib/postfix/postmulti-script << 'ZZZ_END_PATCH'
+--- /usr/lib/postfix/postmulti-script   2013-11-25 18:51:38.999839484 +0000
++++ /usr/lib/postfix/postmulti-script   2013-11-25 18:46:43.815839450 +0000
+@@ -139,6 +139,7 @@
+tmpdir=$config_directory/.tmp
+(umask 077; mkdir -p $tmpdir) || exit 1
+cp -p $daemon_directory/main.cf $tmpdir/main.cf || exit 1
++       cp -p /etc/postfix/dynamicmaps.cf $tmpdir/dynamicmaps.cf || exit 1
+
+# Shared install parameters are cloned from user-specified values in
+# the default instance, but only if explicitly set there. Otherwise,
+@@ -186,6 +187,7 @@
+cp -p $daemon_directory/master.cf $tmpdir/master.cf || exit 1
+mv $tmpdir/main.cf $config_directory/main.cf || exit 1
+mv $tmpdir/master.cf $config_directory/master.cf || exit 1
++       mv $tmpdir/dynamicmaps.cf $config_directory/dynamicmaps.cf || exit 1
+rmdir $tmpdir 2>/dev/null
+}
+
+@@ -272,7 +274,7 @@
+
+# In the configuration directory remove just the main.cf and master.cf
+# files.
+-    $DEBUG rm -f -- "$config_directory/master.cf" "$config_directory/main.cf" 2>/dev/null
++    $DEBUG rm -f -- "$config_directory/master.cf" "$config_directory/main.cf" "$config_directory/dynamicmaps.cf" 2>/dev/null
+$DEBUG rmdir -- "$config_directory" ||
+$WARN $config_directory: please verify contents and remove by hand
+;;
+ZZZ_END_PATCH
+
+# Enable multi-instance support.
+#
+postmulti -e init
+
+# Create and configure slave instance
+#
+postmulti -e create -I postfix-prestash
+postmulti -i prestash -x postconf -e 'authorized_submit_users = root'
+postmulti -i prestash -x postconf -e 'mydestination ='
+postmulti -i prestash -x postconf -e 'alias_maps ='
+postmulti -i prestash -x postconf -e 'alias_database ='
+postmulti -i prestash -x postconf -e 'local_recipient_maps ='
+postmulti -i prestash -x postconf -e 'local_transport = error:5.1.1 Mailbox invalid'
+postmulti -i prestash -x postconf -e 'default_transport = prestash:$myhostname'
+
+# Add prestash transport
+#
+printf 'prestash   unix  -       n       n       -       -       pipe\n  flags=hu user=krb5notify argv=/usr/bin/prestash-notify ${domain}' >> /etc/postfix-prestash/master.cf
+useradd krb5notify -m
+su krb5notify -c /usr/sbin/krb5_keytab $(id -un)/$(uname -n)
+
+
+# Start the second instance.
+#
+postmulti -e enable -i prestash
+postmulti -i prestash -p start

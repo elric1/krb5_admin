@@ -10,6 +10,7 @@ use Sys::Hostname;
 use Sys::Syslog;
 
 use Krb5Admin::Utils qw/reverse_the host_list/;
+use Krb5Admin::NotifyClient;
 use Krb5Admin::C;
 use Kharon::Entitlement::ACLFile;
 use Kharon::Entitlement::Equals;
@@ -2001,6 +2002,12 @@ sub insert_ticket {
 			" WHERE host = ?", $host);
 
 		my ($count) = $sth->fetchrow_array();
+		eval {
+		    Krb5Admin::NotifyClient::notify_update_required($host);
+		}; 
+		if ($@) {
+		    print STDERR "$@";		    
+		}
 		die [500, 'limit exceeded: you can only prestash ' .
 			  MAX_TIX_PER_HOST .
 			  ' tickets on a single host or service address']
