@@ -10,22 +10,28 @@ use IO::Pipe;
 use Krb5Admin::Krb5Host::Client;
 
 my $SENDMAIL="/usr/sbin/sendmail";
-
+my $CF="/etc/postfix-prestash";
 
 # This should fork exec maybe?
 # host to specify the client cred
 sub notify_update_required {
     my ($host) = @_;
     my $host_email = "notify\@$host"; 
-    my @sendmail = ($SENDMAIL, "-i", "-f" ,'', "-C" , "/test/postfix-prestash", $host_email );
-    my $p = IO::Pipe->new();
-    $p->reader(@sendmail);
-    local $_;
-    while (<$p>) {
-    	$pw = $_;
-	last;
+    my @sendmail = ($SENDMAIL, "-i", "-f" ,'', "-C" , "$CF", $host_email );
+
+    my $pid = fork();
+    if ($pid == 0) {
+	close(STDIN);
+	exec(@sendmail);
     }
-    $p->close(); 
+    
+    if (!defined $pid) {
+	die [500, "Error with sendmail exec"];
+    } else {
+	waitpid($pid, 0);
+
+    }
+
 }
 
 1;
