@@ -41,13 +41,18 @@ if (!defined $ENV{'KRB5CCNAME'}) {
 	exit(1);
     }
 
-    my $clnt = Krb5Admin::Krb5Host::Client->new($ARGV[0]);
     eval {
+	my $clnt = Krb5Admin::Krb5Host::Client->new($ARGV[0]);
 	my $resp = $clnt->do_update();
     };
 
+
+    # Maybe handle this a little better
+    # right now we just assume that all errors are recoverable
+    # and then we tell postfix to try again soon
+    # maybe not that great of an approach
     if ($@) {
-	exit(70);
+	exit(75);
     }
 
 }
