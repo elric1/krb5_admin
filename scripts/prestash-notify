@@ -35,7 +35,7 @@ if (!defined $ENV{'KRB5CCNAME'}) {
     print "Execing\n";
     exec($KINIT, "-kt", $KTAB, $PRINC, $0, @ARGV); 
 } else {
-    if($#ARGV != 0) {
+    if (@ARGV != 1) {
 	print "Missing hostname\n";
 	print "usage: " . $0 . " <hostname>\n";
 	exit(1);
