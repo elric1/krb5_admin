@@ -44,6 +44,9 @@ use constant {
 	MAX_TIX_PER_HOST	=> 1024,
 };
 
+our @KRB5_ALL_COMMANDS=@Krb5Admin::KRB5_USER_COMMANDS;
+
+
 our %flag_map = (
 	allow_postdated			=>	[DISALLOW_POSTDATED,   1],
 	allow_forwardable		=>	[DISALLOW_FORWARDABLE, 1],
@@ -1821,6 +1824,18 @@ sub insert_hostmap {
 	my $stmt = "INSERT INTO hostmap (logical, physical) VALUES (?, ?)";
 	sql_command($dbh, $stmt, @hosts);
 	$dbh->commit();
+
+	# A cluster member has been added, its important for the new member
+	# to fetch its tickets now
+	eval {
+	    Krb5Admin::NotifyClient::notify_update_required($self, $hosts[1]);
+	}; 
+	if ($@) {
+	    print STDERR "$@";		    
+	}
+
+
+
     } else {
 	die [504, "There was a problem creating the logical name (likely a physical host named the same)."];
     }
@@ -2003,7 +2018,8 @@ sub insert_ticket {
 
 		my ($count) = $sth->fetchrow_array();
 		eval {
-		    Krb5Admin::NotifyClient::notify_update_required($host);
+
+		    Krb5Admin::NotifyClient::notify_update_required($self, $host);
 		}; 
 		if ($@) {
 		    print STDERR "$@";		    
@@ -2550,6 +2566,12 @@ sub query_acl_owner {
 
 
 
+sub KHARON_ACL_list_commands { return 1; }
+sub list_commands {
+    return @KRB5_ALL_COMMANDS; 
+
+}
+
 
 
 1;
@@ -2630,5 +2652,7 @@ All of the user-visible methods are inherited from Krb5Admin and are
 documented there as well.
 
 =head1 SEE ALSO
+
+krb5_admin list_commands
 
 L<Krb5Admin>

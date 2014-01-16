@@ -75,6 +75,8 @@ sub CMD_help {
 	my $out = $self->{out};
 
 	$self->print( <<EOM );
+Show a list of available commands:
+       list_commands
 
 Commands that operate on principals:
 

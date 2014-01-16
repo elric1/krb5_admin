@@ -6,6 +6,7 @@ use warnings;
 use Env;
 use Sys::Hostname;
 use IO::Pipe;
+use Data::Dumper;
 
 
 sub exec_stdout { 
@@ -52,6 +53,8 @@ if (!defined $ENV{'KRB5CCNAME'}) {
     # and then we tell postfix to try again soon
     # maybe not that great of an approach
     if ($@) {
+	#print STDERR $@; 
+	print STDERR Dumper($@);
 	exit(75);
     }
 

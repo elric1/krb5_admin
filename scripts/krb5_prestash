@@ -45,6 +45,11 @@ sub qualify_princ {
 
 sub fetch {
 	my ($kmdb, @realms) = @_;
+	
+	if ($> != 0) { 
+	    die "Only root can run fetch.\n";
+	}
+
 
 	my $khost = Krb5Admin::Krb5Host::Local->new(kmdb => $kmdb,
 	    invoking_user => 'root');

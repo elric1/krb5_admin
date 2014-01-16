@@ -13,35 +13,22 @@ set -e
 # Fix Debian breakage, their dynamicmaps support does not work with
 # multi-instance postfix
 #
-patch /usr/lib/postfix/postmulti-script << 'ZZZ_END_PATCH'
---- /usr/lib/postfix/postmulti-script   2013-11-25 18:51:38.999839484 +0000
-+++ /usr/lib/postfix/postmulti-script   2013-11-25 18:46:43.815839450 +0000
-@@ -139,6 +139,7 @@
-tmpdir=$config_directory/.tmp
-(umask 077; mkdir -p $tmpdir) || exit 1
-cp -p $daemon_directory/main.cf $tmpdir/main.cf || exit 1
-+       cp -p /etc/postfix/dynamicmaps.cf $tmpdir/dynamicmaps.cf || exit 1
 
-# Shared install parameters are cloned from user-specified values in
-# the default instance, but only if explicitly set there. Otherwise,
-@@ -186,6 +187,7 @@
-cp -p $daemon_directory/master.cf $tmpdir/master.cf || exit 1
-mv $tmpdir/main.cf $config_directory/main.cf || exit 1
-mv $tmpdir/master.cf $config_directory/master.cf || exit 1
-+       mv $tmpdir/dynamicmaps.cf $config_directory/dynamicmaps.cf || exit 1
-rmdir $tmpdir 2>/dev/null
-}
 
-@@ -272,7 +274,7 @@
-
-# In the configuration directory remove just the main.cf and master.cf
-# files.
--    $DEBUG rm -f -- "$config_directory/master.cf" "$config_directory/main.cf" 2>/dev/null
-+    $DEBUG rm -f -- "$config_directory/master.cf" "$config_directory/main.cf" "$config_directory/dynamicmaps.cf" 2>/dev/null
-$DEBUG rmdir -- "$config_directory" ||
-$WARN $config_directory: please verify contents and remove by hand
-;;
-ZZZ_END_PATCH
+openssl base64 -d  << 'PATCH' | gunzip -c | patch /usr/lib/postfix/postmulti-script
+H4sIAAXuqFIAA62TS4/TMBSF1+2vuOp0AUqdV0vTh0AFgdBsBgmEWCLXuZmasZ3I
+dspUGv47TtKEtunAhiiKa9+ec+3vJIQQCEqjA8G3QZEbm/HHepSlsJwYpnlh/Vzz
++0EcRlMSunsOUbIKZ6sw9MP2Aq96Dj3P+7dd4xTFJIogjlez6Woa+eFysYwXSfTq
+6LTZAImmy8kcvGpIYLMZwsDKIuX69ZjlKuP3391vZDbXh8B3FVd/UUpqHiBMkjXI
+B1cGUsC4Ub2EpyfAR24hcv9kRV1KKcpcnRhJypXPslbUzf9ovaM2QMu6M6YHRSVn
+khbmVH2xfLIBt4Ub+LKjGlPgylgqBBRUU4kWtQG3DkzkylUznUsoDWpiCmQ8425t
+T0WJxglrG7tDSDGjjnHjpRhOYFtayJU4AM9c10Jwxq2bGbSVQKMPn6rxJzc4aXAv
+5jXuRdLifh6Scbs8x9SunEKW+x7HfnR9whfCrtcVab+rdyq+jKXn8HxAAy2r9+fo
+BPGbIMV9oEohhlBdv1yGFbU4iR0uL05mR2pN+QZuVR1M07LU1PJcQdcZtGO6R/hR
+mjoPaDFQlUJ3rtYr4wKNPyTVbPz+w7uvH0FLIBm4z3f0Fy6j69W60+jsTN7/tb5S
+O0c96hPtutff7bXuoyogF83429vPd/00V1AIpAZhj5pnhwq9RWVNzfTIe3uAnZs2
+Hdfr4W8CyjSnAQUAAA==
+PATCH
 
 # Enable multi-instance support.
 #
@@ -61,8 +48,12 @@ postmulti -i prestash -x postconf -e 'default_transport = prestash:$myhostname'
 # Add prestash transport
 #
 printf 'prestash   unix  -       n       n       -       -       pipe\n  flags=hu user=krb5notify argv=/usr/bin/prestash-notify ${domain}' >> /etc/postfix-prestash/master.cf
+
+postconf -e -c /etc/postfix-prestash/ export_environment="TZ MAIL_CONFIG LANG KRB5CCNAME=/var/spool/tickets/krb5notify"
 useradd krb5notify -m
 su krb5notify -c /usr/sbin/krb5_keytab $(id -un)/$(uname -n)
+krb5_prestash fetch
+
 
 
 # Start the second instance.
