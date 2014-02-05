@@ -867,15 +867,6 @@ sub internal_create {
 # Everyone is allowed to create_appids
 sub KHARON_ACL_create_appid { 
     my ($self, $act, $appid, %args) = @_;
-    
-    if ($self->{local}) { return undef; }
-    my $uacl = generic_query($self->{dbh}, \%field_desc, 'acls', ['name', "type"], name=>$self->{client}, type=>"krb5");
-    if (defined $uacl) {
-	if (!exists($args{owner}) || $args{owner} eq $self->{client}) {
-	    return 1;
-	}
-    }
-   
     return undef;
     }
 

@@ -441,9 +441,8 @@ sub fetch_tickets {
 	@realms = ($self->get_defrealm())	if @realms == 0;
 
 	for my $realm (@realms) {
-		eval { $self->fetch_tickets_realm($clnt, $realm); };
-
-		push(@errs, @{$@}) if $@;
+	    eval { $self->fetch_tickets_realm($clnt, $realm); };
+	    push(@errs, $@) if $@;
 	}
 
 	$self->reset_krb5ccname();
@@ -2153,6 +2152,9 @@ sub KHARON_ACL_do_update {
 sub do_update {
     my ($self) = @_;
     my $ctx = $self->{ctx};
+    my @princ = parse_princ($ctx, $self->{client});
+    my $kmdb = $self->get_hostbased_kmdb($princ[0], $princ[2]);
+    $kmdb->master();
     $self->fetch_tickets();
     return "OK";
 }
