@@ -2151,11 +2151,17 @@ sub KHARON_ACL_do_update {
 
 sub do_update {
     my ($self) = @_;
+
+    # Refresh tickets from the realm of the requesting KDC
+    #
+    # XXX: We're assuming the KDC handles only one realm, ideally the KDC
+    # should provide the desired realm.
+    #
     my $ctx = $self->{ctx};
-    my @princ = parse_princ($ctx, $self->{client});
-    my $kmdb = $self->get_hostbased_kmdb($princ[0], $princ[2]);
+    my ($realm, @dummy) = parse_princ($ctx, $self->{client});
+    my $kmdb = $self->get_hostbased_kmdb($realm, $self->{myname});
     $kmdb->master();
-    $self->fetch_tickets();
+    $self->fetch_tickets($realm);
     return "OK";
 }
 
