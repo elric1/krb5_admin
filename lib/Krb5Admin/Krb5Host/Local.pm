@@ -1419,7 +1419,6 @@ sub get_kmdb {
 	#
 	# And, finally, we try to obtain admin tickets if we are so
 	# configured.
-
 	return if !$self->{kadmin};
 
 	if (!$self->{interactive}) {
@@ -2159,8 +2158,15 @@ sub do_update {
     #
     my $ctx = $self->{ctx};
     my ($realm, @dummy) = parse_princ($ctx, $self->{client});
-    my $kmdb = $self->get_hostbased_kmdb($realm, $self->{myname});
-    $kmdb->master();
+    
+    my $kmdb = $self->get_hostbased_kmdb($realm, $self->{client});
+    
+    # We slap the get_hostbased_kmdb handle on to the global kmdb handle here 
+    # to make master work. This should be OK, because nothing else in this
+    # execution of the hostd will try to use this kmdb.
+    
+    $self->{kmdb} = $kmdb;
+    $self->{kmdb}->master();
     $self->fetch_tickets($realm);
     return "OK";
 }
