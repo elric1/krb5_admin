@@ -362,6 +362,7 @@ sub new {
 	$self->{debug}	= 0			if !defined($self->{debug});
 
 	$self->{allow_fetch}		= $args{allow_fetch};
+	$self->{allow_fetch_old}	= $args{allow_fetch_old};
 	$self->{subdomain_prefix}	= $args{subdomain_prefix};
 	$self->{xrealm_bootstrap}	= $args{xrealm_bootstrap};
 	$self->{win_xrealm_bootstrap}	= $args{win_xrealm_bootstrap};
@@ -1204,11 +1205,34 @@ sub fetch {
 	my ($self, $name) = @_;
 	my $ctx  = $self->{ctx};
 	my $hndl = $self->{hndl};
-	my $tmp;
-	my @ret;
 
 	require_scalar("fetch <princ>", 1, $name);
 	Krb5Admin::C::krb5_getkey($ctx, $hndl, $name);
+}
+
+sub KHARON_ACL_fetch_old {
+	my ($self) = @_;
+
+	if (!$self->{allow_fetch_old}) {
+		return "Permission denied: fetch_old is administratively " .
+		    "prohibited";
+	}
+	acl_keytab(@_);
+}
+
+sub fetch_old {
+	my ($self, $name) = @_;
+	my $ctx  = $self->{ctx};
+	my $hndl = $self->{hndl};
+
+	require_scalar("fetch_old <princ>", 1, $name);
+
+	my @ret = Krb5Admin::C::krb5_getkey($ctx, $hndl, $name);
+	return @ret if (@ret == 0);
+
+	# Return only keys with a kvno less than the largest
+	my $kvno = [sort { $b <=> $a } map { $_->{"kvno"} } @ret]->[0];
+	return grep { $_->{"kvno"} < $kvno } @ret;
 }
 
 sub KHARON_ACL_change { acl_keytab(@_); }

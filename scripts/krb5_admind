@@ -28,6 +28,7 @@ our $config = KRB5_ADMIND_CONFIG;
 our $dbname;
 our $sqlite;
 our $allow_fetch;
+our $allow_fetch_old;
 # If defined it should end in a dot
 our $subdomain_prefix;
 our $master;
@@ -61,6 +62,7 @@ $config{config}			= $config;
 $config{dbname}			= $dbname;
 $config{sqlite}			= $sqlite;
 $config{allow_fetch}		= $allow_fetch;
+$config{allow_fetch_old}	= $allow_fetch_old;
 $config{subdomain_prefix}	= $subdomain_prefix;
 $config{master}			= $master;
 $config{kmdb_class}		= $kmdb_class;

@@ -62,6 +62,7 @@ our @KHARON_RO_SC_EXPORT = qw/	is_appid_owner
 			     /;
 
 our @KHARON_RO_AC_EXPORT = qw/	fetch
+				fetch_old
 				list
 				list_labels
 				listpols
@@ -342,6 +343,14 @@ will be applied before the list is returned.
 Will fetch the keys associated with PRINCIPAL.  The return value is
 a list of hash references containing the following keys: enctype,
 timestamp, princ, key, kvno.
+
+=item $kmdb->fetch_old(PRINCIPAL)
+
+Will fetch the old keys associated with PRINCIPAL.  The return value is
+a list of hash references containing the following keys: enctype,
+timestamp, princ, key, kvno.  Only keys whose kvno is less than the
+highest (current) kvno are returned.  After using change() to obtain
+a new key, a server can use fetch_old() to recover lost past keys.
 
 =item $kmdb->change(PRINCIPAL, KVNO, %ARGS)
 

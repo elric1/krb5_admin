@@ -1602,6 +1602,76 @@ sub curve25519_final {
 	return;
 }
 
+sub KHARON_ACL_write_old {
+	my ($self, $cmd, $user, $princ) = @_;
+	my $ctx   = $self->{ctx};
+	my $creds = $self->{client};
+
+	my $defrealm = Krb5Admin::C::krb5_get_realm($ctx);
+
+	my ($crealm, $cservice, $chost) =
+	    Krb5Admin::C::krb5_parse_name($ctx, $creds);
+
+	my ($realm, $service, $logical) = 
+	    Krb5Admin::C::krb5_parse_name($ctx, $princ);
+
+	#
+	# XXXrcd: should we enforce restrictions on realm in @pp?  Certainly,
+	#         we can't just as a random KDC whether we're in a cluster
+	#         with some hosts that it administers.  So, we'll enforce
+	#         this for now...
+
+	if ($crealm ne $defrealm) {
+		return "Client must come from default realm.";
+	}
+
+	if ($cservice ne 'host') {
+		return "Only host princs can synchronize old keys.";
+	}
+
+	if ($service eq 'host') {
+		return "The 'host' service must not be clustered.";
+	}
+
+	if ($realm ne $defrealm) {
+		return "Cluster logical names must be in the default realm.";
+	}
+
+	my $kmdb = $self->get_hostbased_kmdb($realm, $self->{myname});
+	my $cluster = $kmdb->query_hostmap($logical);
+
+	if (!grep { $_ eq $self->{myname} } @$cluster) {
+		return sprintf("host %s is not a member of cluster %s.",
+			       $self->{myname}, $logical);
+	}
+
+	if (!grep { $_ eq $chost } @$cluster) {
+		return sprintf("host %s is not a member of cluster %s.",
+			       $chost, $logical);
+	}
+
+	return 1;
+}
+
+sub write_old {
+	my ($self, $user, $strprinc, $lib, @keys) = @_;
+	$self->obtain_lock($user);
+	$self->write_keys_kt($user, $lib, $strprinc, undef, @keys);
+	$self->release_lock($user);
+}
+
+sub recover_old_keys {
+	my ($user, $strprinc, $lib, $kmdb, @hosts) = @_;
+	my @keys;
+
+	eval { @keys = $kmdb->fetch_old($strprinc) };
+	if (@keys) {
+		foreach my $host (@hosts) {
+			$host->write_old($user, $strprinc, $lib, @keys);
+		}
+	}
+}
+
 sub install_key {
 	my ($self, $action, $lib, $user, $princ) = @_;
 	my $ctx = $self->{ctx};
@@ -1725,6 +1795,10 @@ sub install_key {
 	CURVE25519_NWAY::do_nway(['change', $user, $strprinc, $lib,
 	    undef, enctypes => $etypes], [$kmdb, @hosts],
 	    privfunc => \&curve25519_privfunc);
+
+	$self->vprint("About to recover old keys.\n");
+
+	recover_old_keys($user, $strprinc, $lib, $kmdb, @hosts);
 
 	return;
 }
@@ -1874,6 +1948,8 @@ sub bootstrap_host_key {
 		    $strprinc, $lib, undef, enctypes => $etypes],
 		    [$kmdb, $self], privfunc => \&curve25519_privfunc);
 
+		recover_old_keys($user, $strprinc, $lib, $kmdb, $self);
+
 		#
 		# The KDC deleted the bootstrap principal, so we do
 		# likewise, but ignore errors, we got the main job done!
@@ -1913,6 +1989,8 @@ sub bootstrap_host_key {
 	CURVE25519_NWAY::do_nway(['bootstrap_host_key', $user,
 	    $strprinc, $lib, undef, enctypes => $etypes],
 	    [$kmdb, $self], privfunc => \&curve25519_privfunc);
+
+	recover_old_keys($user, $strprinc, $lib, $kmdb, $self);
 
 	eval { $self->del_kt_princ($bootprinc); };
 

@@ -22,17 +22,14 @@ sub notify_host {
     my $pid = fork();
     if ($pid == 0) {
 	close(STDIN);
-	eval {
-	    exec(@sendmail);
-	};
-	die [500, "Error execing sendmail"];
+	close(STDERR);
+        exec { $SENDMAIL } @sendmail;
 	exit(1);
     }
     if (!defined $pid) {
 	die [500, "Error with sendmail exec"];
     } else {
 	waitpid($pid, 0);
-
     }
 }
  
@@ -44,7 +41,7 @@ sub notify_update_required {
 	for my $hmap (@$hostmaps) {
 	    notify_host($krb5, $hmap);
 	}
-    }else{ 
+    } else { 
 	notify_host($krb5, $host);
     }
 }

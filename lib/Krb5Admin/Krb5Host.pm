@@ -15,6 +15,8 @@ our @KHARON_RW_SC_EXPORT = qw/	change_keytab
 				fetch_tickets
 				install_keytab
 				install_ticket
+				write_old
+				do_update
 			     /;
 
 our @KHARON_RO_SC_EXPORT = qw/	query_keytab
@@ -22,7 +24,6 @@ our @KHARON_RO_SC_EXPORT = qw/	query_keytab
 				generate_keytab
 				test_keytab
 				show_krb5_conf
-				do_update
 			     /;
 
 1;
