@@ -1145,6 +1145,12 @@ sub need_new_key {
 	#         has kvno and it is correct?  This should loop rather than
 	#         give an error, shouldn't it?
 
+	local $ENV{KRB5CCNAME} = "MEMORY:need_new_key-dont-thread-me";
+	eval {
+		Krb5Admin::C::kinit_kt($ctx, "host/" . $self->{myname},
+		    undef, undef);
+	};
+
 	for my $i (1..10) {
 		my $k;
 		eval { $k = Krb5Admin::C::kt_kvno($ctx, $kt, $princ); };
