@@ -83,10 +83,10 @@ my $krb5_admind_pid = fork();
 exit(1) if $krb5_admind_pid == -1;
 if ($krb5_admind_pid == 0) {
 	$ENV{'KRB5_KTNAME'} = 'FILE:t/keytabs/root';
-	exec {'knc'} qw{knc -l krb5_admin -- /usr/bin/perl
-			-Iblib/lib -Iblib/arch ./scripts/krb5_admind -M
+	exec {'knc'} (qw{knc -l -- krb5_admin}, $^X,
+		      qw{-Iblib/lib -Iblib/arch ./scripts/krb5_admind -M
 			-S t/sqlite.db
-		};
+		});
 	exit(1);
 }
 ok(1);
