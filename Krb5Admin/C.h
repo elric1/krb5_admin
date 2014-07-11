@@ -83,7 +83,7 @@
 		    KADM5_API_VERSION_2, NULL, (hndl))
 #else
 #define KADM5_INIT_WITH_PASSWORD(ctx, princ, params, hndl)		\
-		kadm5_init_with_password((princstr), NULL,		\
+		kadm5_init_with_password_ctx((ctx), (princstr), NULL,	\
 		    NULL, (params), KADM5_STRUCT_VERSION,		\
 		    KADM5_API_VERSION_2, (hndl))
 #endif
