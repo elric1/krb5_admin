@@ -18,6 +18,11 @@ my $debug = 0;
 my $verbose = 0;
 my $terse = 0;
 
+sub HELP_MESSAGE {
+	exec("man krb5_admin");
+	exit(1);
+}
+
 sub usage {
 	print STDERR <<EOM;
 usage: krb5_admin [-v] [-D dbname] [-h kdc_host | -r realm | -l] user [user ...]
