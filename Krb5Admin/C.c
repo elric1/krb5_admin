@@ -417,7 +417,6 @@ curve25519_pass2(krb5_context ctx, char *mysecretstr, char *theirpublicstr)
 	uint8_t	 mysecret[32];
 	uint8_t	 theirpublic[32];
 	char	*ret;
-	int	 i;
 
 	if (!mysecretstr || !theirpublicstr)
 		croak("mysecret and theirpublic must not be undef");
@@ -443,7 +442,9 @@ krb5_getkey(krb5_context ctx, kadm5_handle hndl, char *in)
 {
 	kadm5_principal_ent_rec	 dprinc;
 	krb5_principal		 princ = NULL;
+#ifdef HAVE_MIT
 	krb5_keyblock		 kb;
+#endif
 	kadm5_ret_t		 ret;
 	int			 i;
 	int			 got_dprinc = 0;
@@ -564,7 +565,7 @@ krb5_createkey(krb5_context ctx, kadm5_handle hndl, char *in,
 	 * the same test took 5.80s with 0.40s user.
 	 */
 
-	for (i=0; i < sizeof(dummybuf); i++)
+	for (i=0; i < sizeof(dummybuf) - 1; i++)
 		dummybuf[i] = 32 + (i % 80);
 
 	dummybuf[i] = '\0';
@@ -792,7 +793,9 @@ void
 krb5_randkey(krb5_context ctx, kadm5_handle hndl, char *in)
 {
 	krb5_principal		princ = NULL;
+#if HAVE_MIT
 	krb5_key_salt_tuple	enctypes[1];
+#endif
 	kadm5_ret_t		ret;
 	char			croakstr[2048] = "";
 
@@ -1057,7 +1060,6 @@ kinit_anonymous(krb5_context ctx, char *realm, char *ccname)
 	krb5_init_creds_context	 ictx = NULL;
 	krb5_ccache		 ccache = NULL;
 	krb5_principal		 princ = NULL;
-	int			 cred_allocated = 0;
 	char			 croakstr[2048] = "";
 
 	if (ccname)
@@ -1468,7 +1470,7 @@ mint_ticket(krb5_context ctx, kadm5_handle hndl, char *princ, int lifetime,
 	krb5_error_code		 ret;
 	krb5_crypto		 crypto;
 	EncryptionKey		 skey;
-	int			 skvno;
+	int			 skvno = 1;
 	krb5_creds		*creds;
 	EncryptionKey		 tmpkey;
 	kadm5_principal_ent_rec	 dprinc;
@@ -1688,10 +1690,9 @@ kt_kvno(krb5_context ctx, char *ktname, char *princ)
 	K5BAIL(decode_Ticket(out->ticket.data, out->ticket.length,
 	    &ticket, &len));
 
+	kvno = 0;
 	if (ticket.enc_part.kvno)
 		kvno = *ticket.enc_part.kvno;
-	else
-		kvno = 0;
 
 done:
 	if (kt)
