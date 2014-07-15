@@ -40,20 +40,45 @@ static int	keyblock_num_keys(krb5_keyblock *);
 	} while (0)
 
 #ifdef HAVE_HEIMDAL
+static void
+k5bail(krb5_context ctx, char *croakstr, size_t len, krb5_error_code ret,
+       const char *line, const char *func)
+{
+	const char	*k5err = NULL;
+	const char	*shortfunc;
+	char		*rubbish = NULL;
+
+	*croakstr = 0;
+	shortfunc = line;
+	rubbish = strdup(line);
+	if (rubbish) {
+		char	*tmp;
+
+		tmp = index(rubbish, '(');
+		if (tmp)
+			*tmp = 0;
+
+		shortfunc = rubbish;
+	}
+
+	k5err = krb5_get_error_message(ctx, ret);
+	if (k5err) {
+		snprintf(croakstr, len, "%s in %s:%s",
+		    k5err, func, shortfunc);
+		krb5_free_error_message(ctx, k5err);
+	} else {
+		snprintf(croakstr, len, "unknown error %d in %s:%s",
+		    ret, func, shortfunc);
+	}
+
+	free(rubbish);
+}
+
 #define K5BAIL(x)	do {						\
 		ret = x;						\
 		if (ret) {						\
-			const char	*tmp;				\
-									\
-			tmp = krb5_get_error_message(ctx, ret);		\
-			if (tmp) {					\
-				snprintf(croakstr, sizeof(croakstr),	\
-				    "%s: %s", #x, tmp);			\
-				krb5_free_error_message(ctx, tmp);	\
-			} else {					\
-				snprintf(croakstr, sizeof(croakstr),	\
-				    "%s: unknown error", #x);		\
-			}						\
+			k5bail(ctx, croakstr, sizeof(croakstr), ret,	\
+			    #x, __func__);				\
 			ret = 1;					\
 			goto done;					\
 		}							\
