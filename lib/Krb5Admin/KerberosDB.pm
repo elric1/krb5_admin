@@ -8,6 +8,7 @@ use base qw/Krb5Admin CURVE25519_NWAY::Kerberos/;
 use DBI;
 use Sys::Hostname;
 use Sys::Syslog;
+use Data::Dumper;
 
 use Krb5Admin::Utils qw/reverse_the host_list/;
 use Krb5Admin::NotifyClient;
@@ -18,6 +19,8 @@ use Kharon::Entitlement::SimpleSQL;
 
 use Kharon::dbutils qw/sql_command generic_query generic_modify/;
 use Kharon::utils qw/getclassvar/;
+
+use Krb5Admin::dbutils qw/generic_query_union/;
 
 use strict;
 use warnings;
@@ -189,6 +192,18 @@ sub KHARON_COMMON_ACL {
 	return undef;
 }
 
+# XXX - Todo
+#sub is_account_map {
+
+
+
+#    if (!defined $local_authz || $local_authz) { return 1; }
+#    $account_map =  $self->principal_map_query($username, unparse_princ(@pprinc));
+#    if (!defined $account_map || $account_map == 0) { return undef; } else { return 1; }
+
+#}
+
+
 #
 # This function supplies the logic which we use to provide self-service
 # keytab management.  This is a default and it can be overridden.  The
@@ -201,6 +216,14 @@ sub acl_keytab {
 	my $subject = $self->{client};
 	my $ctx = $self->{ctx};
 	my $denied;
+	my $kvno;
+	my $name;
+	my %args;
+	my @args;
+	my $username;
+	my $local_authz;
+	my $account_map;
+
 
 	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $subject);
 
@@ -209,13 +232,35 @@ sub acl_keytab {
 		@pprinc = Krb5Admin::C::krb5_parse_name($ctx, $predicate[0]);
 	}
 
+	if ($verb eq 'create') {
+	    ($name, %args) = @predicate;
+	} else {
+	    ($name, $kvno, @args) = @predicate;
+	    if (@args == 1) {
+		    # XXXrcd: legacy usage.
+		    # XXXmsw: copy/pasted
+		    %args = (keys => $args[0]);
+	    } else {
+		    %args = @args;
+	    }
+	}
+
+	if (defined $args{invoking_user}) {
+	    $username = $args{invoking_user};
+	}
+	
+	if (defined $args{local_authz}) {
+	    $local_authz = $args{local_authz};
+	}
+
+
 	#
 	# We allow host/foo@REALM to access <service>/foo@REALM for any
 	# <service>. If the requested principal is not name/instance,
 	# defer to the coarse grained ACLs, for example "create" is also
 	# used to create application user principals.
 
-	return if (@pprinc != 3);
+	return if (@pprinc != 3); # Requested principal was invalid
 
 	# These instances are not to be treated as hosts
 	return if ($pprinc[2] eq "admin" || $pprinc[2] eq "root");
@@ -223,26 +268,35 @@ sub acl_keytab {
 	# pprinc is the requested principal
 	# sprinc is the connected principal
 
+	# return 1 if (@sprinc == 3 && $sprinc[1] eq "host"
+	
+
+
 	# OK if subject is the host principal in the same realm
 	# Or a direct sub-domain of that host, if that's enabled.
 	my $basedomain = $pprinc[2];
 	my $sdp = '';
 	$sdp = $self->{subdomain_prefix} if defined $self->{subdomain_prefix};
 	$basedomain =~ s/^[a-z0-9](?:[-]?[a-z0-9]+)*\.//i;
-	
-	return 1 if (@sprinc == 3
-		     && $pprinc[0] eq $sprinc[0]
-		     && $sprinc[1] eq "host"
-		     && ($sprinc[2] eq $pprinc[2]
-			 || $sdp.$sprinc[2] eq $basedomain));
+
+	if (@sprinc == 3 && $pprinc[0] eq $sprinc[0] && $sprinc[1] eq "host"
+	    && ($sprinc[2] eq $pprinc[2] || $sdp.$sprinc[2] eq $basedomain)) {
+
+	    if (!defined $local_authz || $local_authz) { return 1; }
+	    $account_map =  $self->principal_map_query($username, unparse_princ(\@pprinc));
+	    if (!defined $account_map || $account_map == 0) { return undef; } else { return 1; }
+	}
 
 	if ($pprinc[1] ne "host") {
-		# OK if the subject is a cluster member of the logical
-		# host named by $pprinc[2].
-		#
-		return 1 if $self->is_cluster_member($pprinc[2], $sprinc[2]);
-
-		return undef;
+	    # OK if the subject is a cluster member of the logical
+	    # host named by $pprinc[2].
+	    #
+	    if ( $self->is_cluster_member($pprinc[2], $sprinc[2])) {
+		if (!defined $local_authz || $local_authz) { return 1; }
+		$account_map =  $self->principal_map_query($username, unparse_princ(\@pprinc));
+		if (!defined $account_map || $account_map == 0) { return undef; } else { return 1; }
+	    }
+	    return undef;
 	}
 
 	#
@@ -467,6 +521,12 @@ our %field_desc = (
 		fields		=> [qw/name owner/],
 		wontgrow	=> 1,
 	},
+	account_principal_map => {
+		pkey		=> [qw/servicename accountname instance realm/],
+		uniq		=> [qw/servicename accountname instance realm/],
+		fields		=> [qw/servicename accountname instance realm/],
+		wontgrow	=> 1
+	},
 	hosts		=> {
 		pkey		=> 'name',
 		uniq		=> [qw/name ip_addr bootbinding/],
@@ -481,6 +541,26 @@ our %field_desc = (
 		fields		=> [qw/logical physical/],
 		wontgrow	=> 1,
 	},
+
+	# Begin Externally populated tables these tables are
+	# populated externally. 
+	#  
+
+	external_account_principal_map => {
+		pkey		=> [qw/servicename accountname instance realm/],
+		uniq		=> [qw/servicename accountname instance realm/],
+		fields		=> [qw/servicename accountname instance realm/],
+		wontgrow	=> 1
+	},
+
+	external_hostmap	=> {
+		pkey		=> undef,
+		uniq		=> [],
+		fields		=> [qw/logical physical/],
+		wontgrow	=> 1,
+	},
+
+
 );
 
 sub init_db {
@@ -622,6 +702,39 @@ sub init_db {
 		)
 	});
 
+	$dbh->do(qq{
+	    CREATE TABLE account_principal_map (
+		servicename varchar(64), 
+		accountname varchar(64), 
+		instance varchar(64),
+		realm varchar(64),
+
+		PRIMARY KEY (servicename, accountname, instance)
+		FOREIGN KEY (instance) 
+		REFERENCES hosts(name)
+		ON DELETE CASCADE
+	    )
+	});
+
+	# The referential integrity constraints are relaxed on the external
+	# tables. We assume the feed from the external thing will keep things
+	# roughly correct
+
+	$dbh->do(qq{
+	    CREATE TABLE external_account_principal_map (
+		servicename varchar(64), 
+		accountname varchar(64), 
+		instance varchar(64),
+		realm varchar(64),
+
+		PRIMARY KEY (servicename, accountname, instance)
+	    )
+	});
+
+
+
+
+
 	$dbh->{AutoCommit} = 0;
 
 	$sacls->init_db([[qw/subject acls name/]])	if defined($sacls);
@@ -651,6 +764,8 @@ sub drop_db {
 	$dbh->do('DROP TABLE IF EXISTS acls');
 	$dbh->do('DROP TABLE IF EXISTS hosts');
 	$dbh->do('DROP TABLE IF EXISTS labels');
+	$dbh->do('DROP TABLE IF EXISTS account_principal_map');
+	$dbh->do('DROP TABLE IF EXISTS external_account_principal_map');
 	$dbh->{AutoCommit} = 0;
 }
 
@@ -681,8 +796,14 @@ sub KHARON_ACL_curve25519_final {
 	if ((grep { $op eq $_ } @curve25519_ops) < 1) {
 		return "arg1 must be one of: " . join(', ', @curve25519_ops);
 	}
+    
+	$args{invoking_user} = $user; 
 
-	return $self->{acl}->check($op, $name);
+	if ($op eq "create") {
+	    return $self->{acl}->check($op, $name, %args);
+	} else {
+	    return $self->{acl}->check($op, $name, $kvno, %args);
+	}
 }
 
 #
@@ -2052,6 +2173,10 @@ sub insert_ticket {
 
 sub KHARON_ACL_query_ticket { return 1; }
 
+
+# XXX - MSW - Query ticket seems to predate generic query :(
+#	      Extend it
+#
 sub query_ticket {
 	my ($self, %query) = @_;
 	my $dbh = $self->{dbh};
@@ -2579,14 +2704,67 @@ sub query_acl_owner {
     return $r;
 }
 
-
-
 sub KHARON_ACL_list_commands { return 1; }
 sub list_commands {
     return @KRB5_ALL_COMMANDS; 
-
 }
 
+sub principal_map_remove {
+    my ($self, $account, $princ, $hostname) = @_;
+    my $dbh = $self->{dbh};
+    
+    require_scalar("principal_map_remove <account> <service principal> <hostname>", 1, $account);
+    require_scalar("principal_map_remove <account> <service principal> <hostname>", 2, $princ);
+    require_scalar("principal_map_remove <account> <service principal> <hostname>", 3, $hostname);  
+    my @sprinc = Krb5Admin::C::krb5_parse_name($self->{ctx}, $princ."/".$hostname);
+
+    my $stmt = "DELETE FROM account_principal_map WHERE instance=? and servicename=? and accountname=? and realm=?";
+    sql_command($dbh, $stmt, $sprinc[2], $sprinc[1], $account, $sprinc[0]);
+    $dbh->commit();
+}
+
+# add some principal mappings... long term this should include a better implementation of the
+# access control policy than just punting to the SACLs
+sub principal_map_add {
+    my ($self, $account, $princ, $hostname) = @_;
+    my $dbh = $self->{dbh};
+    
+    require_scalar("principal_map_add <account> <service principal> <hostname>", 1, $account);
+    require_scalar("principal_map_add <account> <service principal> <hostname>", 2, $princ);
+    require_scalar("principal_map_add <account> <service principal> <hostname>", 3, $hostname);
+   
+    my @sprinc = Krb5Admin::C::krb5_parse_name($self->{ctx}, $princ."/".$hostname);
+
+    my $stmt = "INSERT INTO account_principal_map (instance, servicename, accountname, realm) values(?, ?, ?, ?);";
+    sql_command($dbh, $stmt, $sprinc[2], $sprinc[1], $account, $sprinc[0]);
+    $dbh->commit();
+    }
+
+sub KHARON_ACL_principal_map_query { return 1;}
+sub principal_map_query {
+    my ($self, $account, $princ) = @_;
+    my $dbh = $self->{dbh};
+    
+    require_scalar("principal_map_query <account> <service principal>", 1, $account);
+    require_scalar("principal_map_query <account> <service principal>", 2, $princ);
+ 
+    my @sprinc = Krb5Admin::C::krb5_parse_name($self->{ctx}, $princ);
+
+    my %query = (
+	accountname => $account,
+	servicename => $sprinc[1],
+	instance    => $sprinc[2],
+	realm	    => $sprinc[0]
+    );
+    
+
+    return generic_query_union( $dbh, 
+				\%field_desc, 
+				'account_principal_map',
+				'external_account_principal_map', 
+				[keys %query], 
+				%query);
+}
 
 
 1;

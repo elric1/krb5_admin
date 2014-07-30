@@ -246,6 +246,9 @@ ok((grep { $_->{kvno} == 3 } @keys) > 0, "install replaced faulty keys");
 ok(!(grep { $_->{kvno} == 3 && $_->{enctype} == 17 } @keys), "bad etype: 17");
 ok(!(grep { $_->{kvno} == 3 && $_->{enctype} == 18 } @keys), "bad etype: 18");
 
+print STDERR Dumper(@keys);
+
+
 #
 # And let's see if we can rotate the keys:
 

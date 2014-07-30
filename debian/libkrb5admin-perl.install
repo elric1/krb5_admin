@@ -14,6 +14,7 @@ usr/lib/perl5/Krb5Admin/Krb5Host/Client.pm
 usr/lib/perl5/Krb5Admin/Krb5Host/Log.pm
 usr/lib/perl5/Krb5Admin/NotifyClient.pm
 usr/lib/perl5/Krb5Admin/Krb5Host.pm
+usr/lib/perl5/Krb5Admin/dbutils.pm
 usr/lib/perl5/Krb5Admin/C.pm
 usr/lib/perl5/Krb5Admin/CLI.pm
 usr/lib/perl5/Krb5Admin/Log.pm

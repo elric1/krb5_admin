@@ -87,6 +87,9 @@ $kmdb->sacls_add('add_host_owner', $creds);
 
 $kmdb->sacls_add('query_host_owner', $creds);
 
+$kmdb->sacls_add('principal_map_add', $creds);
+$kmdb->sacls_add('principal_map_remove', $creds);
+
 $kmdb->create('krbtgt/TEST.REALM@TEST.REALM');
 $kmdb->create('WELLKNOWN/ANONYMOUS@TEST.REALM');
 $kmdb->create('krb5_admin/' . $hostname . '@TEST.REALM');

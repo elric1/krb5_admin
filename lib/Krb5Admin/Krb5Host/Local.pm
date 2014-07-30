@@ -1673,7 +1673,7 @@ sub recover_old_keys {
 }
 
 sub install_key {
-	my ($self, $action, $lib, $user, $princ) = @_;
+	my ($self, $action, $lib, $user, $princ, $local_authz) = @_;
 	my $ctx = $self->{ctx};
 	my $default_krb5_lib = $self->{default_krb5_lib};
 	my $krb5_libs = $self->{krb5_libs};
@@ -1793,7 +1793,7 @@ sub install_key {
 	}
 
 	CURVE25519_NWAY::do_nway(['change', $user, $strprinc, $lib,
-	    undef, enctypes => $etypes], [$kmdb, @hosts],
+	    undef, enctypes => $etypes, local_authz => $local_authz], [$kmdb, @hosts],
 	    privfunc => \&curve25519_privfunc);
 
 	$self->vprint("About to recover old keys.\n");
@@ -2088,6 +2088,24 @@ sub install_keys {
 	my $xrealm = $self->{xrealm};
 	my $errs = [];
 	my @ret;
+	my %args = ();	
+	my $local_authz = 1;
+	
+	# print @princs ."\n";
+	my $uacl = $self->user_acled($user);
+
+	eval {
+	    $self->vprint("checking acls...\n");
+	    $self->check_acls($user, @princs);	# this will throw on failure.
+	};
+	if($@) { $local_authz = 0; }
+
+#	if (!defined $uacl || $uacl != 1 || $ == 1) {
+	$args{invoking_user} = $user;
+#	}
+
+	
+
 
 	for my $princ (@princs) {
 		my $strprinc = unparse_princ($princ);
@@ -2106,7 +2124,7 @@ sub install_keys {
 		}
 
 		my @res;
-		eval { @res = &$f($self, $action, $lib, $user, $princ); };
+		eval { @res = &$f($self, $action, $lib, $user, $princ, $local_authz, \%args); };
 		if (my $err = $@) {
 			my $errstr = sprintf("Failed to install (%s) " .
 			    "keys for %s instance %s, %s", $action, $user,
@@ -2159,8 +2177,7 @@ sub install_all_keys {
 
 	@princs = $self->expand_princs($user, @princs);
 
-	$self->vprint("checking acls...\n");
-	$self->check_acls($user, @princs);	# this will throw on failure.
+
 
 	for my $i (@princs) {
 		push(@{$instmap{$i->[0]}->{$i->[2]}}, $i);
