@@ -163,7 +163,7 @@ sub KHARON_SET_CREDS {
 
 	if (@creds > 1) {
 		die "Krb5Admin::Krb5Host::Local does not support " .
-		    "multiple credentials"; 
+		    "multiple credentials";
 	}
 
 	$self->{client} = $creds[0];
@@ -967,9 +967,9 @@ sub expand_princs {
 
 sub match_acl_templates {
     my ($princ, $templates) = @_;
-    
+
     return undef if (@$princ != 3);
-    
+
     foreach my $t (@$templates) {
 	next if (@$t != 3);
 	my $i = 0;
@@ -1041,7 +1041,7 @@ sub mk_kt_dir {
 
 	mkdir($ktdir, 022);
 	chmod(0755, $ktdir);
-	die "$ktdir does not exist or isn't readable" if ! -d "$ktdir"; 
+	die "$ktdir does not exist or isn't readable" if ! -d "$ktdir";
 }
 
 sub obtain_lock {
@@ -1353,18 +1353,18 @@ sub get_kmdb {
 	# enforce it here:
 
 	if ($self->{invoking_user} ne 'root') {
-		if ($self->{local}) { 
+		if ($self->{local}) {
 			die "Local access requires root";
-		}	
+		}
 		if (defined($self->{winprinc})) {
-			die "Windows bootstrapping requires root"; 
+			die "Windows bootstrapping requires root";
 		}
 	}
 
 	#
 	# Are we configured to use the local Kerberos DB?
 
-	if ($self->{local}) { 
+	if ($self->{local}) {
 		$self->{kmdb} = Krb5Admin::KerberosDB->new(local => 1);
 		return $self->{kmdb};
 	}
@@ -1455,7 +1455,7 @@ sub get_hostbased_kmdb {
 
 	$kmdb = $self->get_kmdb(realm => $realm);
 	return $kmdb if defined($kmdb);
-	
+
 	$inst = $self->owner_inst($realm, $inst);
 
 	if (defined($self->{hostbased_kmdb})		&&
@@ -1542,7 +1542,7 @@ sub KHARON_ACL_curve25519_final {
 	my ($crealm, $cservice, $chost) =
 	    Krb5Admin::C::krb5_parse_name($ctx, $creds);
 
-	my ($realm, $service, $logical) = 
+	my ($realm, $service, $logical) =
 	    Krb5Admin::C::krb5_parse_name($ctx, $name);
 
 	#
@@ -1612,7 +1612,7 @@ sub KHARON_ACL_write_old {
 	my ($crealm, $cservice, $chost) =
 	    Krb5Admin::C::krb5_parse_name($ctx, $creds);
 
-	my ($realm, $service, $logical) = 
+	my ($realm, $service, $logical) =
 	    Krb5Admin::C::krb5_parse_name($ctx, $princ);
 
 	#
@@ -2088,9 +2088,9 @@ sub install_keys {
 	my $xrealm = $self->{xrealm};
 	my $errs = [];
 	my @ret;
-	my %args = ();	
+	my %args = ();
 	my $local_authz = 1;
-	
+
 	# print @princs ."\n";
 	my $uacl = $self->user_acled($user);
 
@@ -2104,7 +2104,7 @@ sub install_keys {
 	$args{invoking_user} = $user;
 #	}
 
-	
+
 
 
 	for my $princ (@princs) {
@@ -2237,10 +2237,10 @@ sub KHARON_ACL_do_update {
     # Allow admin users
     return 1 if ($self->{client} =~ m/^([-a-zA-Z0-9])+\/admin@.+$/);
     # and any user named krb5notify/
-    return 1 if ($self->{client} =~ m{^krb5notify(?:/[-_a-zA-Z0-9\.]+)?\@.+$}); 
+    return 1 if ($self->{client} =~ m{^krb5notify(?:/[-_a-zA-Z0-9\.]+)?\@.+$});
     # to do_update
     # or fall through
-    return undef;   
+    return undef;  
 }
 
 sub do_update {
@@ -2253,13 +2253,13 @@ sub do_update {
     #
     my $ctx = $self->{ctx};
     my ($realm, @dummy) = parse_princ($ctx, $self->{client});
-    
+
     my $kmdb = $self->get_hostbased_kmdb($realm, $self->{client});
-    
-    # We slap the get_hostbased_kmdb handle on to the global kmdb handle here 
+
+    # We slap the get_hostbased_kmdb handle on to the global kmdb handle here
     # to make master work. This should be OK, because nothing else in this
     # execution of the hostd will try to use this kmdb.
-    
+
     $self->{kmdb} = $kmdb;
     $self->{kmdb}->master();
     $self->fetch_tickets($realm);
