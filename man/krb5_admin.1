@@ -92,6 +92,26 @@ to stdout. The password must be reset by the user via
 will reset the password of a principal to a random temporary password
 which is printed to stdout. The password must be reset by the user via
 .Xr kpasswd 1 .
+.It Ar modify Ar princ Oo Ar key=val ... Oc
+will modify a principal or its associated attributes.  The additional
+arguments are a list of key value pairs indicating what is to be
+set.
+Set-based keys take a comma-separated list of values
+.Pq interpreted as a set
+and can also
+take plus equals
+.Pq +=
+or minus equals
+.Pq -=
+to add or subtract elements from the set.
+The following keys are defined for all principals: princ_expire_time,
+pw_expiration, max_life, max_renewable_life, and attributes.
+The following keys are defined for appids:
+owner
+.Pq set-based ,
+desc,
+cstraint
+.Pq set-based .
 .El
 .Pp
 Commands that operate on policies:
@@ -113,6 +133,14 @@ host principal in the same realm.
 Bind an existing host to the given ephemeral principal, this
 entitles the host to negotiate its initial keys.
 .El
+.Sh EXAMPLES
+To add
+.Ar elric@IMRRYR.ORG
+to the list of owners of the appid
+.Ar webserver :
+.Bd -literal
+	$ krb5_admin modify webserver owner+=elric@IMRRYR.ORG
+.Ed
 .Sh SEE ALSO
 .Xr knc 1 ,
 .Xr krb5_admind 8 ,
