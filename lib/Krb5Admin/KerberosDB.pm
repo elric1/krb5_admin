@@ -47,9 +47,6 @@ use constant {
 	MAX_TIX_PER_HOST	=> 1024,
 };
 
-our @KRB5_ALL_COMMANDS=@Krb5Admin::KRB5_USER_COMMANDS;
-
-
 our %flag_map = (
 	allow_postdated			=>	[DISALLOW_POSTDATED,   1],
 	allow_forwardable		=>	[DISALLOW_FORWARDABLE, 1],
@@ -192,17 +189,17 @@ sub KHARON_COMMON_ACL {
 	return undef;
 }
 
-# XXX - Todo
-#sub is_account_map {
+sub is_account_map {
+	my ($self, $local_authz, $username, @princ) = @_;
 
+	return 1 if !defined $local_authz || $local_authz;
 
+	my $princ = unparse_princ(@princ);
+	my $account_map = $self->principal_map_query($username, $princ);
 
-#    if (!defined $local_authz || $local_authz) { return 1; }
-#    $account_map =  $self->principal_map_query($username, unparse_princ(@pprinc));
-#    if (!defined $account_map || $account_map == 0) { return undef; } else { return 1; }
-
-#}
-
+	return undef if !defined $account_map || $account_map == 0;
+	return 1;
+}
 
 #
 # This function supplies the logic which we use to provide self-service
@@ -224,7 +221,6 @@ sub acl_keytab {
 	my $local_authz;
 	my $account_map;
 
-
 	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $subject);
 
 	my @pprinc;
@@ -233,26 +229,20 @@ sub acl_keytab {
 	}
 
 	if ($verb eq 'create') {
-	    ($name, %args) = @predicate;
+		($name, %args) = @predicate;
 	} else {
-	    ($name, $kvno, @args) = @predicate;
-	    if (@args == 1) {
-		    # XXXrcd: legacy usage.
-		    # XXXmsw: copy/pasted
-		    %args = (keys => $args[0]);
-	    } else {
-		    %args = @args;
-	    }
+		($name, $kvno, @args) = @predicate;
+		if (@args == 1) {
+			# XXXrcd: legacy usage.
+			# XXXmsw: copy/pasted
+			%args = (keys => $args[0]);
+		} else {
+			%args = @args;
+		}
 	}
 
-	if (defined $args{invoking_user}) {
-	    $username = $args{invoking_user};
-	}
-
-	if (defined $args{local_authz}) {
-	    $local_authz = $args{local_authz};
-	}
-
+	$username = $args{invoking_user};
+	$local_authz = $args{local_authz};
 
 	#
 	# We allow host/foo@REALM to access <service>/foo@REALM for any
@@ -265,13 +255,6 @@ sub acl_keytab {
 	# These instances are not to be treated as hosts
 	return if ($pprinc[2] eq "admin" || $pprinc[2] eq "root");
 
-	# pprinc is the requested principal
-	# sprinc is the connected principal
-
-	# return 1 if (@sprinc == 3 && $sprinc[1] eq "host"
-
-
-
 	# OK if subject is the host principal in the same realm
 	# Or a direct sub-domain of that host, if that's enabled.
 	my $basedomain = $pprinc[2];
@@ -281,22 +264,18 @@ sub acl_keytab {
 
 	if (@sprinc == 3 && $pprinc[0] eq $sprinc[0] && $sprinc[1] eq "host"
 	    && ($sprinc[2] eq $pprinc[2] || $sdp.$sprinc[2] eq $basedomain)) {
-
-	    if (!defined $local_authz || $local_authz) { return 1; }
-	    $account_map =  $self->principal_map_query($username, unparse_princ(\@pprinc));
-	    if (!defined $account_map || $account_map == 0) { return undef; } else { return 1; }
+		return $self->is_account_map($username, $local_authz, @pprinc);
 	}
 
 	if ($pprinc[1] ne "host") {
-	    # OK if the subject is a cluster member of the logical
-	    # host named by $pprinc[2].
-	    #
-	    if ( $self->is_cluster_member($pprinc[2], $sprinc[2])) {
-		if (!defined $local_authz || $local_authz) { return 1; }
-		$account_map =  $self->principal_map_query($username, unparse_princ(\@pprinc));
-		if (!defined $account_map || $account_map == 0) { return undef; } else { return 1; }
-	    }
-	    return undef;
+		# OK if the subject is a cluster member of the logical
+		# host named by $pprinc[2].
+
+		if ($self->is_cluster_member($pprinc[2], $sprinc[2])) {
+			return $self->is_account_map($username, $local_authz,
+			    @pprinc);
+		}
+		return undef;
 	}
 
 	#
@@ -530,7 +509,8 @@ our %field_desc = (
 	hosts		=> {
 		pkey		=> 'name',
 		uniq		=> [qw/name ip_addr bootbinding/],
-		fields		=> [qw/name realm ip_addr bootbinding is_logical/],
+		fields		=> [qw/name realm ip_addr bootbinding
+				      is_logical/],
 		lists		=> [[qw/host_labels host label/],
 				    [qw/hosts_owner name owner owner/]],
 		wontgrow	=> 0,
@@ -585,7 +565,6 @@ sub init_db {
 			desc		VARCHAR
 		)
 	});
-
 
 	$dbh->do(qq{
 		CREATE TABLE appid_acls (
@@ -703,17 +682,17 @@ sub init_db {
 	});
 
 	$dbh->do(qq{
-	    CREATE TABLE account_principal_map (
-		servicename varchar(64),
-		accountname varchar(64),
-		instance varchar(64),
-		realm varchar(64),
+		CREATE TABLE account_principal_map (
+			servicename	VARCHAR,
+			accountname	VARCHAR,
+			instance	VARCHAR,
+			realm		VARCHAR,
 
-		PRIMARY KEY (servicename, accountname, instance)
-		FOREIGN KEY (instance)
-		REFERENCES hosts(name)
-		ON DELETE CASCADE
-	    )
+			PRIMARY KEY (servicename, accountname, instance)
+			FOREIGN KEY (instance)
+			REFERENCES hosts(name)
+			ON DELETE CASCADE
+		)
 	});
 
 	# The referential integrity constraints are relaxed on the external
@@ -721,19 +700,15 @@ sub init_db {
 	# roughly correct
 
 	$dbh->do(qq{
-	    CREATE TABLE external_account_principal_map (
-		servicename varchar(64),
-		accountname varchar(64),
-		instance varchar(64),
-		realm varchar(64),
+		CREATE TABLE external_account_principal_map (
+			servicename	VARCHAR,
+			accountname	VARCHAR,
+			instance	VARCHAR,
+			realm		VARCHAR,
 
-		PRIMARY KEY (servicename, accountname, instance)
-	    )
+			PRIMARY KEY (servicename, accountname, instance)
+		)
 	});
-
-
-
-
 
 	$dbh->{AutoCommit} = 0;
 
@@ -800,9 +775,9 @@ sub KHARON_ACL_curve25519_final {
 	$args{invoking_user} = $user;
 
 	if ($op eq "create") {
-	    return $self->{acl}->check($op, $name, %args);
+		return $self->{acl}->check($op, $name, %args);
 	} else {
-	    return $self->{acl}->check($op, $name, $kvno, %args);
+		return $self->{acl}->check($op, $name, $kvno, %args);
 	}
 }
 
@@ -987,24 +962,23 @@ sub internal_create {
 # XXXrcd: this needs to be fixed...
 
 sub KHARON_ACL_create_appid { 
-    my ($self, $act, $appid, %args) = @_;
-    return undef;
+	my ($self, $act, $appid, %args) = @_;
+
+	return undef;
 }
 
 sub can_user_act {
-    my ($self, $msg, $name, $act, @r) = @_;
-    my $dbh = $self->{dbh};
-    if (defined($self->{acl})) {
-	eval {
-	    $self->{acl}->check($act, @r);
-	};
-	if ($@) {
-	    $dbh->rollback();
-	    die [503, $msg];
-	}
-    }
-}
+	my ($self, $msg, $name, $act, @r) = @_;
+	my $dbh = $self->{dbh};
 
+	if (defined($self->{acl})) {
+		eval { $self->{acl}->check($act, @r); };
+		if ($@) {
+			$dbh->rollback();
+			die [503, $msg];
+		}
+	}
+}
 
 sub create_appid {
 	my ($self, $appid, %args) = @_;
@@ -1017,7 +991,6 @@ sub create_appid {
 	if (@app_name != 2 || $app_name[1] !~ m{[A-Z][-A-Z0-9_]*}i) {
 		die [503, "$appid is an invalid appid\n"];
 	}
-	$appid = unparse_princ(\@app_name);
 
 	if (!$self->{local} && !exists($args{owner})) {
 		$args{owner} = [$self->{client}];
@@ -1029,7 +1002,8 @@ sub create_appid {
 
 	generic_modify($dbh, \%field_desc, 'appids', $appid, %args);
 
-	$self->can_user_act("Can't create appid's you don't own", $self->{client}, "modify" , $appid, %args);
+	$self->can_user_act("Can't create appid's you don't own",
+	    $self->{client}, "modify" , $appid, %args);
 
 	$dbh->commit();
 
@@ -1477,21 +1451,22 @@ sub modify {
 
 	# Did we modify the ownership of the appid
 	for my $act (@actions) {
-	    if (exists $mods{$act}) {
-		$is_appid_owner_mod = 1;
-		last;
-	    }
+		if (exists $mods{$act}) {
+			$is_appid_owner_mod = 1;
+			last;
+		}
 	}
 
 	# Ensure we aren't giving away our access
 	if ($is_appid_owner_mod && defined($self->{acl})) {
-	    eval {
-		$self->{acl}->check('modify', $name);
-	    };
-	    if ($@) {
-		$dbh->rollback();
-		die [503, "You cannot relinquish permissions."];
-	    }
+		eval {
+			$self->{acl}->check('modify', $name);
+		};
+
+		if ($@) {
+			$dbh->rollback();
+			die [503, "You cannot relinquish permissions."];
+		}
 	}
 
 	eval {
@@ -1798,51 +1773,49 @@ sub create_host_internal {
 }
 
 sub create_host {
-    my ($self, $host, %args) = @_;
-    my $dbh = $self->{dbh};
+	my ($self, $host, %args) = @_;
+	my $dbh = $self->{dbh};
 
-    require_scalar("create_host <host> [args]", 1, $host);
+	require_scalar("create_host <host> [args]", 1, $host);
 
-    create_host_internal(@_);
+	create_host_internal(@_);
 
-    $dbh->commit();
-    return undef;
+	$dbh->commit();
+	return undef;
 }
 
 sub KHARON_ACL_modify_host {
-    my ($self, $cmd, $logical, %mods) = @_;
-    my $lhost = $self->query_host($logical);
-    my @actions = qw{owner add_owner del_owner
-		     label add_label del_label};
+	my ($self, $cmd, $logical, %mods) = @_;
+	my $lhost = $self->query_host($logical);
+	my @actions = qw{owner add_owner del_owner
+			 label add_label del_label};
 
-    if (defined $lhost && $lhost->{is_logical}
-	&& is_owner($self->{dbh}, 'hosts', $self->{client}, $logical)) {
+	if (defined $lhost && $lhost->{is_logical} &&
+	    is_owner($self->{dbh}, 'hosts', $self->{client}, $logical)) {
 
-	for my $mod (keys %mods) {
-	    return undef if !grep {$_ eq $mod} @actions;
+		for my $mod (keys %mods) {
+		    return undef if !grep {$_ eq $mod} @actions;
+		}
+
+		return 1;
 	}
 
-	return 1;
-    }
-
-    return undef;
-
+	return undef;
 }
 
 sub modify_host {
-    my ($self, $host, %args) = @_;
-    my $dbh = $self->{dbh};
+	my ($self, $host, %args) = @_;
+	my $dbh = $self->{dbh};
 
-    require_scalar("modify_host <host> [args]", 1, $host);
+	require_scalar("modify_host <host> [args]", 1, $host);
 
+	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
 
-    generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
+	$self->can_user_act("Can't create logical hosts' you don't own",
+	    $self->{client}, "modify_host", $host);
 
-$self->can_user_act("Can't create logical hosts' you don't own",
-    $self->{client}, "modify_host", $host);
-
-$dbh->commit();
-return undef;
+	$dbh->commit();
+	return undef;
 }
 
 sub KHARON_ACL_query_host { return 1; }
@@ -1904,57 +1877,64 @@ sub remove_host {
 	return;
 }
 
-
 sub KHARON_ACL_create_logical_host { return 1; }
+
 sub create_logical_host {
-    my ($self, $host, %args) = @_;
-    my $dbh = $self->{dbh};
+	my ($self, $host, %args) = @_;
+	my $dbh = $self->{dbh};
 
-    require_scalar("create_logical_host <logical>" , 1, $host);
+	require_scalar("create_logical_host <logical>" , 1, $host);
 
-    my $lhost = $self->query_host($host);
-    if (!defined $lhost) {
-	my $drealm = Krb5Admin::C::krb5_get_realm($self->{ctx});
-	my $ret = $self->create_host_internal($host, ("realm" => $drealm, "is_logical" => 1));
-	if (!exists($args{owner})){
-	    $args{owner} = [$self->{client}];
+	my $lhost = $self->query_host($host);
+	if (!defined($lhost)) {
+		my $drealm = Krb5Admin::C::krb5_get_realm($self->{ctx});
+		my $ret = $self->create_host_internal($host,
+		    ("realm" => $drealm, "is_logical" => 1));
+
+		if (!exists($args{owner})) {
+			$args{owner} = [$self->{client}];
+		}
+
+		generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
+
+		$self->can_user_act("Can't create logical hosts you don't own",
+		    $self->{client}, "add_host_owner", $host);
+
+		$dbh->commit();
+	} else {
+		$dbh->rollback();
+		die [406, $host . " already exists.\n"];
 	}
 
-#	my $res = owner_add_f('hosts', 'name', $self, $host, $owner);
-	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
-
-	$self->can_user_act("Can't create logical hosts' you don't own",
-	    $self->{client}, "add_host_owner", $host);
-
-	$dbh->commit();
-    } else {
-	$dbh->rollback();
-	die [406, $host . " already exists.\n"];
-    }
-    return undef;
+	return undef;
 }
 
 sub KHARON_ACL_insert_hostmap { return hostmap_acl(@_); }
+
 sub insert_hostmap {
-    my ($self, @hosts) = @_;
-    my $dbh = $self->{dbh};
+	my ($self, @hosts) = @_;
+	my $dbh = $self->{dbh};
 
-    require_scalar("insert_hostmap <logical> <physical>", 1, $hosts[0]);
-    require_scalar("insert_hostmap <logical> <physical>", 2, $hosts[1]);
+	require_scalar("insert_hostmap <logical> <physical>", 1, $hosts[0]);
+	require_scalar("insert_hostmap <logical> <physical>", 2, $hosts[1]);
 
-    @hosts = map { lc($_) } @hosts;
+	@hosts = map { lc($_) } @hosts;
 
-    my $phost = $self->query_host($hosts[1]);
-    if (!defined $phost) {
-	die [500, "Physical host doesn't exist\n"];
-    }
+	my $phost = $self->query_host($hosts[1]);
+	if (!defined $phost) {
+		die [500, "Physical host doesn't exist\n"];
+	}
 
-    my $lhost = $self->query_host($hosts[0]);
-    if (!defined $lhost) {
-	die [404, "Logical host ". $hosts[0] ." doesn't exist"];
-    }
+	my $lhost = $self->query_host($hosts[0]);
+	if (!defined $lhost) {
+		die [404, "Logical host ". $hosts[0] ." doesn't exist"];
+	}
 
-    if ($lhost->{is_logical}) {
+	if (!$lhost->{is_logical}) {
+		die [504, "There was a problem creating the logical name " .
+		    "(likely a physical host named the same)."];
+	}
+
 	my $stmt = "INSERT INTO hostmap (logical, physical) VALUES (?, ?)";
 	sql_command($dbh, $stmt, @hosts);
 	$dbh->commit();
@@ -1968,15 +1948,11 @@ sub insert_hostmap {
 	    print STDERR "$@";
 	}
 
-
-
-    } else {
-	die [504, "There was a problem creating the logical name (likely a physical host named the same)."];
-    }
-    return undef;
+	return undef;
 }
 
 sub KHARON_ACL_query_hostmap { return 1; }
+
 sub query_hostmap {
 	my ($self, $host) = @_;
 	my $dbh = $self->{dbh};
@@ -2009,6 +1985,7 @@ sub remove_hostmap {
 	@hosts = map { lc($_) } @hosts;
 
 	my $stmt = "DELETE FROM hostmap WHERE logical = ? AND physical = ?";
+
 	sql_command($dbh, $stmt, @hosts);
 
 	# remove_object_owner($dbh, 'hosts', @hosts);
@@ -2152,11 +2129,11 @@ sub insert_ticket {
 
 		my ($count) = $sth->fetchrow_array();
 		eval {
-
-		    Krb5Admin::NotifyClient::notify_update_required($self, $host);
+			Krb5Admin::NotifyClient::notify_update_required($self,
+			    $host);
 		};
 		if ($@) {
-		    print STDERR "$@";
+			print STDERR "$@";
 		}
 		die [500, 'limit exceeded: you can only prestash ' .
 			  MAX_TIX_PER_HOST .
@@ -2385,6 +2362,59 @@ sub remove_ticket {
 	return undef;
 }
 
+sub KHARON_ACL_add_acl {
+	my ($self, $cmd, $acl, $type) = @_;
+
+	return 1 if $type eq 'group';
+	return undef;
+}
+
+sub add_acl {
+	my ($self, $acl, $type, %args) = @_;
+	my $dbh = $self->{dbh};
+
+	my $ctx = $self->{ctx};
+	my $princ = $self->{client};
+
+	require_scalar("add_acl <acl> <type>", 1, $acl);
+	require_scalar("add_acl <acl> <type>", 2, $type);
+
+	if ($type eq 'group' ) {
+		if ($acl !~ m/^[A-Za-z0-9][-_A-Za-z0-9]*$/) {
+			die [503, "Invalid acl name"];
+		}
+	} elsif ($type eq 'krb5') {
+		$acl = canonicalise_fqprinc($ctx, "add_acl <acl> <type>",
+		    1, $acl);
+	} else {
+		die [503, "ACL type invalid."];
+	}
+
+	my $stmt = "INSERT INTO acls(name, type) VALUES (?, ?)";
+
+	sql_command($dbh, $stmt, $acl, $type);
+
+	if ($type eq 'group') {
+		my $owner = $princ;
+		if (exists($args{owner})) {
+			$owner = $args{owner};
+		}
+		$self->add_acl_owner($acl, $owner);
+	}
+	$dbh->commit();
+
+	return undef;
+}
+
+sub KHARON_ACL_del_acl {
+	my ($self, $cmd, $acl) = @_;
+	my $acls = $self->query_acl(name => $acl);
+
+	return undef if $acls->{type} ne 'group';
+	return 1     if is_owner($self->{dbh}, 'acls', $self->{client}, $acl);
+	return undef;
+}
+
 sub del_acl {
 	my ($self, $acl) = @_;
 	my $dbh = $self->{dbh};
@@ -2407,22 +2437,10 @@ sub query_acl {
 	return generic_query($dbh, \%field_desc, 'acls', [keys %query], %query);
 }
 
-
-
-
-
 # Replacements for aclgroup modifications
 # Allows the "owner" to modify the group
-sub KHARON_ACL_insert_aclgroup {
-    my ($self, $command, $acl)  = @_;
-    my $acls = $self->query_acl(name => $acl);
 
-    if ($acls->{type} eq 'group' && is_owner($self->{dbh},'acls', $self->{client},$acl)) {
-	return 1;
-    }
-
-    return undef;
-}
+sub KHARON_ACL_insert_aclgroup { KHARON_ACL_del_acl(@_); }
 
 sub insert_aclgroup {
 	my ($self, @acls) = @_;
@@ -2440,6 +2458,7 @@ sub insert_aclgroup {
 	my $stmt = "INSERT INTO aclgroups (aclgroup, acl) VALUES (?, ?)";
 
 	sql_command($dbh, $stmt, @acls);
+
 	$dbh->commit();
 
 	return undef;
@@ -2476,101 +2495,42 @@ sub query_aclgroup {
 	    %args);
 }
 
-sub KHARON_ACL_add_acl {
-    my ($self, $cmd, $acl, $type)  = @_;
-    if ($type eq 'group') {
-	return 1;
-    }
-    return undef;
-}
-
-sub add_acl{
-	my ($self, $acl, $type, %args) = @_;
-	my $dbh = $self->{dbh};
-
-	my $ctx = $self->{ctx};
-	my $princ = $self->{client};
-
-	Krb5Admin::KerberosDB::require_scalar("add_acl <acl> <type>", 1, $acl);
-	Krb5Admin::KerberosDB::require_scalar("add_acl <acl> <type>", 2, $type);
-
-	if ($type eq 'group' ) {
-		if ($acl !~ m/^[A-Za-z0-9][-_A-Za-z0-9]*$/) {
-			die [503, "Invalid acl name"];
-		}
-	} elsif ($type eq 'krb5') {
-		my @x = Krb5Admin::C::krb5_parse_name($ctx, $acl);
-		$acl = unparse_princ(\@x);
-	} else {
-		die [503, "ACL type invalid."];
-	}
-
-
-	my $stmt = "INSERT INTO acls(name, type) VALUES (?, ?)";
-	sql_command($dbh, $stmt, $acl, $type);
-
-
-	if ($type eq 'group') {
-	    my $owner = $princ;
-	    if (exists($args{owner})) {
-		$owner = $args{owner};
-	    }
-	    $self->add_acl_owner($acl, $owner);
-	}
-	$dbh->commit();
-
-	return undef;
-}
-
-
-sub KHARON_ACL_del_acl {
-    my ($self, $cmd, $acl)  = @_;
-    my $acls = $self->query_acl(name => $acl);
-
-    if ($acls->{type} eq 'group' && is_owner($self->{dbh},'acls', $self->{client},$acl)) {
-	return 1;
-    }
-    return undef;
-}
-
-
 sub KHARON_ACL_add_acl_owner { return KHARON_ACL_del_acl(@_); }
-sub add_acl_owner {
-    my ($self)  = @_;
-    my $res = owner_add_f('acls', 'name', @_);
-    $self->{dbh}->commit();
-    return $res;
-}
 
+sub add_acl_owner {
+	my ($self) = @_;
+	my $res = owner_add_f('acls', 'name', @_);
+	$self->{dbh}->commit();
+	return $res;
+}
 
 sub KHARON_ACL_remove_acl_owner { return KHARON_ACL_del_acl(@_); }
 sub remove_acl_owner { return owner_del_f('acls',@_); }
 
 sub hostmap_acl {
-	# If the logical host exists and the user is an owner of that "host" then
-	# allow the user to perform the action
-	# fallthrough otherwise
+	# If the logical host exists and the user is an owner of that
+	# "host" then allow the user to perform the action fallthrough
+	# otherwise
 	my ($self, $cmd, $logical ) = @_;
+	my $dbh = $self->{dbh};
 	my $lhost = $self->query_host($logical);
 
-	if (defined $lhost && $lhost->{is_logical}
-	    && is_owner($self->{dbh}, 'hosts', $self->{client}, $logical)) {
-	    return 1;
-	}
-
+	return undef	if !defined($lhost);
+	return undef	if !$lhost->{is_logical};
+	return 1	if is_owner($dbh, 'hosts', $self->{client}, $logical);
 	return undef;
 }
 
 sub remove_object_owner {
 	my ($dbh, $obj_type, $objname, $ownerprinc) = @_;
-	my $stmt = "DELETE FROM ".$obj_type."_owner where owner = ? and name = ?";
+	my $stmt = "DELETE FROM ${obj_type}_owner where owner = ? and name = ?";
 	sql_command($dbh, $stmt, $ownerprinc, $objname);
 	$dbh->commit();
 }
 
 sub add_object_owner {
 	my ($dbh, $obj_type, $objname, $ownerprinc) = @_;
-	my $stmt= "INSERT INTO ".$obj_type."_owner(name, owner) VALUES (?,?)";
+	my $stmt= "INSERT INTO ${obj_type}_owner(name, owner) VALUES (?,?)";
 	sql_command($dbh, $stmt, $objname, $ownerprinc);
 }
 
@@ -2578,63 +2538,65 @@ sub owner_del_f {
 	my ($type_name, $self,  $obj, $owner) = @_;
 	my $dbh = $self->{dbh};
 	my $cmdline =  "del_".$type_name."_owner <".$type_name."> <owner>";
-	Krb5Admin::KerberosDB::require_scalar($cmdline, 1, $obj);
-	Krb5Admin::KerberosDB::require_scalar($cmdline, 2, $owner);
-	my $princ = Krb5Admin::KerberosDB::canonicalise_fqprinc($self->{ctx},$cmdline, 2, $owner);
+
+	require_scalar($cmdline, 1, $obj);
+	my $princ = canonicalise_fqprinc($self->{ctx}, $cmdline, 2, $owner);
 
 	if ($princ eq $self->{client}) {
 		die [503, "You can't delete your ownership"];
 	}
 
-	return	remove_object_owner($dbh, $type_name, $obj, $princ);
+	return remove_object_owner($dbh, $type_name, $obj, $princ);
 }
 
 sub owner_add_f {
 	my ($type_name, $type_key, $self, $obj, $owner) = @_;
 	my $dbh = $self->{dbh};
 	my $cmdline =  "add_".$type_name."_owner <".$type_name."> <owner>";
-	Krb5Admin::KerberosDB::require_scalar($cmdline, 1, $obj);
-	Krb5Admin::KerberosDB::require_scalar($cmdline, 2, $owner);
-	my $princ = $owner; #Krb5Admin::KerberosDB::canonicalise_fqprinc($self->{ctx},$cmdline, 2, $owner);
+
+	require_scalar($cmdline, 1, $obj);
+	require_scalar($cmdline, 2, $owner);
+	my $princ = $owner;	# canonicalise_fqprinc($self->{ctx}, $cmdline,
+				#     2, $owner);
 
 	my $res = generic_query($dbh, \%field_desc, $type_name, [$type_key],
 		$type_key=>$obj);
 
-	my $owner_res = generic_query($dbh, \%field_desc, "acls", ["name"], name=>$princ );
+	my $owner_res = generic_query($dbh, \%field_desc, "acls", ["name"],
+	    name=>$princ );
 	if (!defined $owner_res) {
-	    die [504, $princ. " doesn't exists"];
+		die [504, $princ. " doesn't exists"];
 	}
-
 
 	# The object must exist
 	# also we must we don't want to create extras
 	# so only add if the object doesn't already exist
 	if (defined $res) {
-		$res = generic_query($dbh, \%field_desc, $type_name."_owner", ['name'], name=>$obj, owner=>$princ);
-		if (!defined $res) { add_object_owner($dbh, $type_name, $obj, $princ); }
+		$res = generic_query($dbh, \%field_desc, $type_name."_owner",
+		    ['name'], name=>$obj, owner=>$princ);
+		if (!defined($res)) {
+			add_object_owner($dbh, $type_name, $obj, $princ);
+		}
 		return 1;
 	} else {
-		die [503, "$type_name object $obj must exists before attaching additional owners"];
+		die [503, "$type_name object $obj must exists before " .
+		    "attaching additional owners"];
 	}
 }
-
 
 sub KHARON_ACL_remove_host_owner { return hostmap_acl(@_); }
 sub remove_host_owner { return owner_del_f('hosts',@_); }
 
 sub KHARON_ACL_add_host_owner { return hostmap_acl(@_); }
 sub add_host_owner {
-    my ($self)  = @_;
-    my $res = owner_add_f('hosts', 'name', @_);
-    $self->{dbh}->commit();
-    return $res;
-}   
+	my ($self)  = @_;
+	my $res = owner_add_f('hosts', 'name', @_);
+	$self->{dbh}->commit();
+	return $res;
+}
 
 sub is_owner {
-	my ($dbconn, $obj_type, $princ, $obj_id) = @_;
-
-	#my $dbh = $self->{dbh};
-	#my $ctx = $self->{ctx};
+	my ($dbh, $obj_type, $princ, $obj_id) = @_;
 
 	#
 	# We implement here a single SQL statement that will deal
@@ -2660,22 +2622,18 @@ sub is_owner {
 		push(@bindv, $princ);
 	}
 
-	my $stmt = q{SELECT COUNT(}.$obj_type.q{_owner.name) FROM }.$obj_type .'_owner '.
-	    join(' ', @joins) . ' WHERE '.$obj_type.'_owner.name = ? AND (' .
+	my $stmt;
+	$stmt = "SELECT COUNT(${obj_type}_owner.name) FROM ${obj_type}_owner ".
+	    join(' ', @joins) . " WHERE ${obj_type}_owner.name = ? AND (" .
 	    join(' OR ', @where) . ")";
 
-	my $sth = sql_command($dbconn, $stmt, $obj_id, @bindv);
+	my $sth = sql_command($dbh, $stmt, $obj_id, @bindv);
 
 	my $res = $sth->fetch()->[0] ? 1 : 0;
 
 	$sth->finish;
 	return $res;
 }
-
-
-
-
-
 
 sub query_owner_f {
 	my ($obj_type, $self, @r)  = @_;
@@ -2686,84 +2644,95 @@ sub query_owner_f {
 	$sth->finish;
 #	$self->{dbh}->commit();
 	return $ret;
-
 }
-
 
 sub KHARON_ACL_query_host_owner { return 1; }
 sub query_host_owner { return query_owner_f('hosts', @_); }
 
-
 sub KHARON_ACL_query_acl_owner { return 1; }
 sub query_acl_owner {
-    my $self = $_[0];
-    my $r = query_owner_f('acls', @_);
-    $self->{dbh}->commit();
-    return $r;
+	my $self = $_[0];
+	my $r = query_owner_f('acls', @_);
+	$self->{dbh}->commit();
+	return $r;
 }
 
 sub KHARON_ACL_list_commands { return 1; }
 sub list_commands {
-    return @KRB5_ALL_COMMANDS;
+	return @Krb5Admin::KRB5_USER_COMMANDS;
 }
 
 sub principal_map_remove {
-    my ($self, $account, $princ, $hostname) = @_;
-    my $dbh = $self->{dbh};
+	my ($self, $account, $princ, $hostname) = @_;
+	my $ctx = $self->{ctx};
+	my $dbh = $self->{dbh};
 
-    require_scalar("principal_map_remove <account> <service principal> <hostname>", 1, $account);
-    require_scalar("principal_map_remove <account> <service principal> <hostname>", 2, $princ);
-    require_scalar("principal_map_remove <account> <service principal> <hostname>", 3, $hostname);
-    my @sprinc = Krb5Admin::C::krb5_parse_name($self->{ctx}, $princ."/".$hostname);
+	my $usage = "principal_map_remove <account> <service principal> " .
+	    "<hostname>";
 
-    my $stmt = "DELETE FROM account_principal_map WHERE instance=? and servicename=? and accountname=? and realm=?";
-    sql_command($dbh, $stmt, $sprinc[2], $sprinc[1], $account, $sprinc[0]);
-    $dbh->commit();
+	require_scalar($usage, 1, $account);
+	require_scalar($usage, 2, $princ);
+	require_scalar($usage, 3, $hostname);
+	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, "$princ/$hostname");
+
+	my $stmt = "DELETE FROM account_principal_map " .
+	    "WHERE accountname=? AND realm=? AND servicename=? AND instance=?";
+
+	sql_command($dbh, $stmt, $account, @sprinc);
+
+	$dbh->commit();
 }
 
-# add some principal mappings... long term this should include a better implementation of the
+# add some principal mappings...
+# long term this should include a better implementation of the
 # access control policy than just punting to the SACLs
 sub principal_map_add {
-    my ($self, $account, $princ, $hostname) = @_;
-    my $dbh = $self->{dbh};
+	my ($self, $account, $princ, $hostname) = @_;
+	my $ctx = $self->{ctx};
+	my $dbh = $self->{dbh};
 
-    require_scalar("principal_map_add <account> <service principal> <hostname>", 1, $account);
-    require_scalar("principal_map_add <account> <service principal> <hostname>", 2, $princ);
-    require_scalar("principal_map_add <account> <service principal> <hostname>", 3, $hostname);
+	my $usage = "principal_map_add <account> <service principal> " .
+	    "<hostname>";
 
-    my @sprinc = Krb5Admin::C::krb5_parse_name($self->{ctx}, $princ."/".$hostname);
+	require_scalar($usage, 1, $account);
+	require_scalar($usage, 2, $princ);
+	require_scalar($usage, 3, $hostname);
 
-    my $stmt = "INSERT INTO account_principal_map (instance, servicename, accountname, realm) values(?, ?, ?, ?);";
-    sql_command($dbh, $stmt, $sprinc[2], $sprinc[1], $account, $sprinc[0]);
-    $dbh->commit();
-    }
+	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, "$princ/$hostname");
 
-sub KHARON_ACL_principal_map_query { return 1;}
-sub principal_map_query {
-    my ($self, $account, $princ) = @_;
-    my $dbh = $self->{dbh};
+	my $stmt = "INSERT INTO account_principal_map " .
+	    "(accountname, realm, servicename, instance) VALUES (?, ?, ?, ?)";
 
-    require_scalar("principal_map_query <account> <service principal>", 1, $account);
-    require_scalar("principal_map_query <account> <service principal>", 2, $princ);
+	sql_command($dbh, $stmt, $account, @sprinc);
 
-    my @sprinc = Krb5Admin::C::krb5_parse_name($self->{ctx}, $princ);
-
-    my %query = (
-	accountname => $account,
-	servicename => $sprinc[1],
-	instance    => $sprinc[2],
-	realm	    => $sprinc[0]
-    );
-
-
-    return generic_query_union( $dbh,
-				\%field_desc,
-				'account_principal_map',
-				'external_account_principal_map',
-				[keys %query],
-				%query);
+	$dbh->commit();
 }
 
+sub KHARON_ACL_principal_map_query { return 1;}
+
+sub principal_map_query {
+	my ($self, $account, $princ) = @_;
+	my $dbh = $self->{dbh};
+	my $usage = "principal_map_query <account> <service principal>";
+
+	require_scalar($usage, 1, $account);
+	require_scalar($usage, 2, $princ);
+
+	my @sprinc = Krb5Admin::C::krb5_parse_name($self->{ctx}, $princ);
+
+	my %query = (
+		accountname => $account,
+		servicename => $sprinc[1],
+		instance    => $sprinc[2],
+		realm	    => $sprinc[0]
+	);
+
+
+	return generic_query_union($dbh, \%field_desc,
+				   'account_principal_map',
+				   'external_account_principal_map',
+				   [keys %query], %query);
+}
 
 1;
 

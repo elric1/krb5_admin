@@ -124,14 +124,14 @@ sub get_kt {
 	return Krb5Admin::Krb5Host::Local->new(
 		verbose			=>  $verbose,
 		invoking_user		=> 'root',
-		user2service            => \%user2service,
-		allowed_enctypes        => \@allowed_enctypes,
-		admin_users             => \@admin_users,
-		krb5_libs               => \%krb5_libs,
-		krb5_lib_quirks         => \%krb5_lib_quirks,
-		default_krb5_lib        =>  $default_krb5_lib,
-		user_libs               => \%user_libs,
-		use_fetch               =>  $use_fetch,
+		user2service		=> \%user2service,
+		allowed_enctypes	=> \@allowed_enctypes,
+		admin_users		=> \@admin_users,
+		krb5_libs		=> \%krb5_libs,
+		krb5_lib_quirks		=> \%krb5_lib_quirks,
+		default_krb5_lib	=>  $default_krb5_lib,
+		user_libs		=> \%user_libs,
+		use_fetch		=>  $use_fetch,
 		ktdir			=>  './t/keytabs',
 		lockdir			=>  './t/krb5host.lock',
 		testing			=> 1,
@@ -245,9 +245,6 @@ ok((grep { $_->{kvno} == 3 } @keys) > 0, "install replaced faulty keys");
 
 ok(!(grep { $_->{kvno} == 3 && $_->{enctype} == 17 } @keys), "bad etype: 17");
 ok(!(grep { $_->{kvno} == 3 && $_->{enctype} == 18 } @keys), "bad etype: 18");
-
-print STDERR Dumper(@keys);
-
 
 #
 # And let's see if we can rotate the keys:

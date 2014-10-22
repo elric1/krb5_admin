@@ -966,20 +966,20 @@ sub expand_princs {
 }
 
 sub match_acl_templates {
-    my ($princ, $templates) = @_;
+	my ($princ, $templates) = @_;
 
-    return undef if (@$princ != 3);
+	return undef if @$princ != 3;
 
-    foreach my $t (@$templates) {
-	next if (@$t != 3);
-	my $i = 0;
-	for ($i = 0; $i< 3; $i++) {
-	    next if (!defined $t->[$i] || $t->[$i] eq "");
-	    last if ($princ->[$i] ne $t->[$i]);
+	foreach my $t (@$templates) {
+		next if (@$t != 3);
+		my $i = 0;
+		for ($i = 0; $i< 3; $i++) {
+			next if (!defined $t->[$i] || $t->[$i] eq "");
+			last if ($princ->[$i] ne $t->[$i]);
+		}
+		return 1 if ($i == 3);
 	}
-	return 1 if ($i == 3);
-    }
-    return undef;
+	return undef;
 }
 
 #
@@ -1010,25 +1010,26 @@ sub check_acls {
 	return if $user eq 'root';
 
 	if (!defined($user2service->{$user})) {
-	    $user2service->{$user} = [];
+		$user2service->{$user} = [];
 	}
 
 	# if the user has been "disabled" then we don't assign the implicit
 	# permissions
-	if (!defined $self->{disabled_user_defaults}->{$user}) {
-	    push(@{$user2service->{$user}} ,[$self->{defrealm}, $user, $hostname]);
-	    if (defined $self->{subdomain_prefix}) {
+	if (!defined($self->{disabled_user_defaults}->{$user})) {
 		push(@{$user2service->{$user}},
-		    [$self->{defrealm}, undef, sprintf("%s.%s%s", $user,
-			    $self->{subdomain_prefix},$hostname)]);
-	    }
+		    [$self->{defrealm}, $user, $hostname]);
+		if (defined $self->{subdomain_prefix}) {
+			push(@{$user2service->{$user}},
+			    [$self->{defrealm}, undef, sprintf("%s.%s%s",
+			    $user, $self->{subdomain_prefix},$hostname)]);
+		}
 	}
 
 	for my $i (@services) {
-	    if (!match_acl_templates($i, $user2service->{$user})) {
-		push(@errs, "Permission denied: $user can't create " .
-		    unparse_princ($i));
-	    }
+		if (!match_acl_templates($i, $user2service->{$user})) {
+			push(@errs, "Permission denied: $user can't create " .
+			    unparse_princ($i));
+		}
 	}
 
 	die \@errs if @errs;
@@ -1253,13 +1254,13 @@ sub write_keys_kt {
 	$self->write_keys_internal($lib, $kt, @keys);
 
 	if (!$self->{testing}) {
-	    my ($uid, $gid) = get_ugid($user);
-	    (my $ktfile = $kt) =~ s/WRFILE://;
-	    chmod(0400, $ktfile)	or die "chmod(0400, $ktfile): $!";
-	    chown($uid, $gid, $ktfile)	or die "chown($uid, $gid, $ktfile): $!";
+		my ($uid, $gid) = get_ugid($user);
+		(my $ktfile = $kt) =~ s/WRFILE://;
+		chmod(0400, $ktfile)
+		    or die "chmod(0400, $ktfile): $!";
+		chown($uid, $gid, $ktfile)
+		    or die "chown($uid, $gid, $ktfile): $!";
 	}
-
-
 
 	my @ktkeys;
 	eval { @ktkeys = Krb5Admin::C::read_kt($ctx, $kt); };
@@ -1526,16 +1527,16 @@ my @curve25519_ops = qw(change create);
 
 # XXX - validate user is a user
 sub KHARON_ACL_curve25519_final {
-        my ($self, $cmd, $priv) = @_;
+	my ($self, $cmd, $priv) = @_;
 	my $ctx   = $self->{ctx};
 	my $creds = $self->{client};
 
-        my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
-        # XXXrcd: SANITY CHECK!
+	my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
+	# XXXrcd: SANITY CHECK!
 
-        if ((grep { $op eq $_ } @curve25519_ops) < 1) {
-                return "arg1 must be one of: " . join(', ', @curve25519_ops);
-        }
+	if ((grep { $op eq $_ } @curve25519_ops) < 1) {
+		return "arg1 must be one of: " . join(', ', @curve25519_ops);
+	}
 
 	my $defrealm = Krb5Admin::C::krb5_get_realm($ctx);
 
@@ -1793,8 +1794,8 @@ sub install_key {
 	}
 
 	CURVE25519_NWAY::do_nway(['change', $user, $strprinc, $lib,
-	    undef, enctypes => $etypes, local_authz => $local_authz], [$kmdb, @hosts],
-	    privfunc => \&curve25519_privfunc);
+	    undef, enctypes => $etypes, local_authz => $local_authz],
+	    [$kmdb, @hosts], privfunc => \&curve25519_privfunc);
 
 	$self->vprint("About to recover old keys.\n");
 
@@ -2095,17 +2096,14 @@ sub install_keys {
 	my $uacl = $self->user_acled($user);
 
 	eval {
-	    $self->vprint("checking acls...\n");
-	    $self->check_acls($user, @princs);	# this will throw on failure.
+		$self->vprint("checking acls...\n");
+		$self->check_acls($user, @princs);	# this will throw.
 	};
-	if($@) { $local_authz = 0; }
+	$local_authz = 0 if $@;
 
 #	if (!defined $uacl || $uacl != 1 || $ == 1) {
-	$args{invoking_user} = $user;
+		$args{invoking_user} = $user;
 #	}
-
-
-
 
 	for my $princ (@princs) {
 		my $strprinc = unparse_princ($princ);
@@ -2115,16 +2113,18 @@ sub install_keys {
 		my $f = \&install_key;
 
 		$f = \&install_key_fetch	if $use_fetch || $self->{local};
-		# Host keys are only special for root.
-		$f = \&install_host_key		if ($princ->[1] eq 'host'
-						    && $user eq 'root');
+		$f = \&install_host_key		if $princ->[1] eq 'host' &&
+						   $user eq 'root';
 
 		if ($princ->[1] eq 'bootstrap' && $princ->[2] eq 'RANDOM') {
 			$f = \&install_bootstrap_key;
 		}
 
 		my @res;
-		eval { @res = &$f($self, $action, $lib, $user, $princ, $local_authz, \%args); };
+		eval {
+			@res = &$f($self, $action, $lib, $user, $princ,
+			    $local_authz, \%args);
+		};
 		if (my $err = $@) {
 			my $errstr = sprintf("Failed to install (%s) " .
 			    "keys for %s instance %s, %s", $action, $user,
@@ -2176,8 +2176,6 @@ sub install_all_keys {
 	my ($uid, $gid) = get_ugid($user);
 
 	@princs = $self->expand_princs($user, @princs);
-
-
 
 	for my $i (@princs) {
 		push(@{$instmap{$i->[0]}->{$i->[2]}}, $i);
@@ -2231,40 +2229,41 @@ sub install_all_keys {
 	return @ret;
 }
 
-
 sub KHARON_ACL_do_update {
-    my ($self) = @_;
-    # Allow admin users
-    return 1 if ($self->{client} =~ m/^([-a-zA-Z0-9])+\/admin@.+$/);
-    # and any user named krb5notify/
-    return 1 if ($self->{client} =~ m{^krb5notify(?:/[-_a-zA-Z0-9\.]+)?\@.+$});
-    # to do_update
-    # or fall through
-    return undef;  
+	my ($self) = @_;
+	my $client = $self->{client};
+
+	#
+	# Allow admin users and any user named krb5notify/
+
+	return 1 if $client =~ m/^([-a-zA-Z0-9])+\/admin@.+$/;
+	return 1 if $client =~ m{^krb5notify(?:/[-_a-zA-Z0-9\.]+)?\@.+$};
+
+	return undef;  
 }
 
 sub do_update {
-    my ($self) = @_;
+	my ($self) = @_;
 
-    # Refresh tickets from the realm of the requesting KDC
-    #
-    # XXX: We're assuming the KDC handles only one realm, ideally the KDC
-    # should provide the desired realm.
-    #
-    my $ctx = $self->{ctx};
-    my ($realm, @dummy) = parse_princ($ctx, $self->{client});
+	# Refresh tickets from the realm of the requesting KDC
+	#
+	# XXX: We're assuming the KDC handles only one realm, ideally the KDC
+	# should provide the desired realm.
 
-    my $kmdb = $self->get_hostbased_kmdb($realm, $self->{client});
+	my $ctx = $self->{ctx};
+	my ($realm, @dummy) = parse_princ($ctx, $self->{client});
 
-    # We slap the get_hostbased_kmdb handle on to the global kmdb handle here
-    # to make master work. This should be OK, because nothing else in this
-    # execution of the hostd will try to use this kmdb.
+	my $kmdb = $self->get_hostbased_kmdb($realm, $self->{client});
 
-    $self->{kmdb} = $kmdb;
-    $self->{kmdb}->master();
-    $self->fetch_tickets($realm);
-    return "OK";
+	# We slap the get_hostbased_kmdb handle on to the global kmdb
+	# handle here to make master work. This should be OK, because
+	# nothing else in this execution of the hostd will try to use
+	# this kmdb.
+
+	$self->{kmdb} = $kmdb;
+	$self->{kmdb}->master();
+	$self->fetch_tickets($realm);
+	return "OK";
 }
-
 
 1;

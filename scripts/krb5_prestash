@@ -47,7 +47,7 @@ sub fetch {
 	my ($kmdb, @realms) = @_;
 	
 	if ($> != 0) { 
-	    die "Only root can run fetch.\n";
+		die "Only root can run fetch.\n";
 	}
 
 

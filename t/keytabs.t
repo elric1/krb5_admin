@@ -110,6 +110,4 @@ test_keytab($ctx, $realm, '/tmp/foo.kt', \@keys);
 
 test_keytab($ctx, $realm, '/tmp/foo.kt', \@keys);
 
-#done_testing();
-
 exit(0);

@@ -174,7 +174,8 @@ our @KRB5_USER_COMMANDS = (
 "add_label            - add a label to a host",
 "bind_host            - associate a boostrap id with a host principal name",
 "change_passwd        - change a password",
-"create_appid         - create a new appid, the kerberos principal of a role account",
+"create_appid         - create a new appid, the kerberos principal of a " .
+			"role account",
 "create_host          - create a new entry for a host",
 "create_user          - create a new kerberos user",
 "del_acl              - delete a krb5_admin user or group",
@@ -184,7 +185,8 @@ our @KRB5_USER_COMMANDS = (
 "insert_aclgroup      - add a member to a group",
 "insert_hostmap       - add a host to a cluster",
 "modify               - modify an appid (owners, etc)",
-"modify_host          - modify properties of a host(ip, binding, labels, etc) ",
+"modify_host          - modify properties of a host(ip, binding, labels, " .
+			"etc) ",
 "remove               - remove a principal from the database ",
 "remove_aclgroup      - remove a member from a krb5_admin group",
 "remove_host          - remove a host",

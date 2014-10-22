@@ -57,5 +57,3 @@ $kmdb = Krb5Admin::ForkClient->new({
 
 eval { $kmdb->sacls_del('create', 'baz@TEST.REALM'); };
 ok($@, 'baz@TEST.REALM should not be able to relinquish privs...');
-
-#done_testing();

@@ -71,17 +71,19 @@ testObjC("Create a host", $kmdb, [undef], 'create_host', 'foo.test.realm',
 	ip_addr => '1.1.1.1', realm => 'TEST.REALM');
 testObjC("Query the host", $kmdb,
 	[{realm => 'TEST.REALM', ip_addr => '1.1.1.1', bootbinding => undef,
-	is_logical=>undef, label => [], owner => []}], 'query_host', 'foo.test.realm');
+	is_logical=>undef, label => [], owner => []}], 'query_host',
+	'foo.test.realm');
 testObjC("Create a host", $kmdb, [undef], 'create_host', 'bar.test.realm',
 	ip_addr => '2.2.2.2', realm => 'TEST.REALM');
 testObjC("Query the host", $kmdb,
 	[{ip_addr => '2.2.2.2', realm => 'TEST.REALM', bootbinding => undef,
-	is_logical=>undef, label => [], owner => []}], 'query_host', 'bar.test.realm');
+	is_logical=>undef, label => [], owner => []}], 'query_host',
+	'bar.test.realm');
 testObjC("Create a host", $kmdb, [undef], 'create_host', 'baz.test.realm',
 	ip_addr => '3.3.3.3', realm => 'TEST.REALM');
 testObjC("Query the host", $kmdb, [{realm => 'TEST.REALM',
-	is_logical=>undef, ip_addr => '3.3.3.3', bootbinding => undef, label => [], owner => []}],
-	'query_host', 'baz.test.realm');
+	is_logical=>undef, ip_addr => '3.3.3.3', bootbinding => undef,
+	label => [], owner => []}], 'query_host', 'baz.test.realm');
 
 testObjC("Query the hostmap", $kmdb,
 	[undef],
@@ -102,17 +104,17 @@ testObjC("Query the hostmap", $kmdb,
 	[[qw/bar.test.realm baz.test.realm/]],
 	'query_hostmap', 'logical.test.realm');
 
-testMustDie("Create a mapping to a bogus physical host", $kmdb, 'insert_hostmap',
-	qw/logical.test.realm bdfdfda.est.realm/);
+testMustDie("Create a mapping to a bogus physical host", $kmdb,
+	'insert_hostmap', qw/logical.test.realm bdfdfda.est.realm/);
 
-testMustDie("Don't create a physical host named the same as a logical host", $kmdb, 
-    'create_host', 'logical.test.realm',
-    ip_addr => '3.3.3.3', realm => 'TEST.REALM');
+testMustDie("Don't create a physical host named the same as a logical host",
+	$kmdb, 'create_host', 'logical.test.realm',
+	ip_addr => '3.3.3.3', realm => 'TEST.REALM');
 
 testObjC("Query the logical host", $kmdb,
 	[{ip_addr => undef, realm => 'TEST.REALM', bootbinding => undef,
-	is_logical=>1, label => [], owner => ['admin_user@TEST.REALM']}], 'query_host', 'logical.test.realm');
-
+	is_logical=>1, label => [], owner => ['admin_user@TEST.REALM']}],
+	'query_host', 'logical.test.realm');
 
 #
 # And finally, the prestashed tickets.  First, we insert a reasonable list

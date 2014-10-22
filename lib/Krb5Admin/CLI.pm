@@ -45,21 +45,21 @@ our %appid_hmap = (
 
 
 our %acl_hmap = (
-    owner =>[]
+	owner	=> []
 );
 
-our %logical_host_hmap = ( 
-    owner		=> []
+our %logical_host_hmap = (
+	owner	=> []
 );
 
 sub KHARON_HASHIFY_COMMANDS {
 	return {
-		create_appid	=> [1, \%appid_hmap],
-		create_host	=> [1, \%host_hmap],
+		create_appid		=> [1, \%appid_hmap],
+		create_host		=> [1, \%host_hmap],
 		create_logical_host	=> [1, \%logical_host_hmap],
-		modify		=> [1, {%princ_hmap, %appid_hmap}],
-		modify_host	=> [1, \%host_hmap],
-		add_acl		=> [2, \%acl_hmap],
+		modify			=> [1, {%princ_hmap, %appid_hmap}],
+		modify_host		=> [1, \%host_hmap],
+		add_acl			=> [2, \%acl_hmap],
 	};
 }
 

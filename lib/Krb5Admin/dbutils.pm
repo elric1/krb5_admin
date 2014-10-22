@@ -4,14 +4,10 @@ use Kharon::dbutils qw/sql_command generic_query generic_modify/;
 
 use Exporter;
 @ISA = qw(Exporter);
-@EXPORT_OK = qw{
-		generic_query_union
-	};
+@EXPORT_OK = qw{ generic_query_union };
 
 use warnings;
 use strict;
-
-
 
 # Create a union of data from $table1 and $table2
 # both tables must have the same schema from tabledesc
@@ -70,8 +66,6 @@ sub generic_query_union {
 			delete $query{$vfield};
 		}
 	}
-	
-
 
 	my @errfields;
 	for my $field (keys %query) {
@@ -99,7 +93,6 @@ sub generic_query_union {
 	my $where = join( ' AND ', @where );
 	$where = "WHERE $where" if length($where) > 0;
 
-
 	my $fields;
 	my $stmt = '';
 	if (scalar(keys %fields) > 0) {
@@ -107,15 +100,16 @@ sub generic_query_union {
 
 		$tmp_fields{'A.'.$key_field} = 1;
 		$fields = join(',', keys %tmp_fields);
-		$stmt = "SELECT $fields FROM $table1 as A $join $where UNION SELECT $fields FROM $table2 as A $join $where";
-
+		$stmt = "SELECT $fields FROM $table1 AS A " .
+		    "$join $where UNION SELECT $fields " .
+		    "FROM $table2 AS A $join $where";
 	} else {
 		$fields = "COUNT($key_field)";
-		$stmt = "SELECT ( SELECT $fields FROM $table1 as A $join $where) + (SELECT $fields FROM $table2 as A $join $where) as total";
-
+		$stmt = "SELECT ( SELECT $fields FROM $table1 AS A " .
+		    "$join $where) + " .
+		    "(SELECT $fields FROM $table2 AS A $join $where) " .
+		    "AS total";
 	}
-
-
 
 	my $sth = sql_command($dbh, $stmt, @bindv, @bindv);
 
@@ -179,7 +173,5 @@ sub generic_query_union {
 
 	return $ret;
 }
-
-
 
 1;

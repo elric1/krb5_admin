@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+
 use Krb5Admin::Krb5Host::Client;
 
 use strict;
@@ -8,21 +9,19 @@ use Sys::Hostname;
 use IO::Pipe;
 use Data::Dumper;
 
-
 sub exec_stdout { 
-    my $pw;
-    my $p = IO::Pipe->new();
-    $p->reader(@_);
-    local $_;
-    while (<$p>) {
-    	$pw = $_;
-	last;
-    }
-    $p->close(); 
-    chomp($pw);
-    return $pw;
+	my $pw;
+	my $p = IO::Pipe->new();
+	$p->reader(@_);
+	local $_;
+	while (<$p>) {
+		$pw = $_;
+		last;
+	}
+	$p->close(); 
+	chomp($pw);
+	return $pw;
 }
-
 
 my $uname = getpwuid($<);
 my $fqdn = exec_stdout(qw{uname -n});
@@ -31,31 +30,28 @@ my $KINIT="/opt/heimdal/bin/kinit";
 my $KTAB ="/var/spool/keytabs/$uname";
 my $PRINC="$uname/$fqdn";
 
-
-if (!defined $ENV{'KRB5CCNAME'}) {
-    print "Execing\n";
-    exec($KINIT, "-kt", $KTAB, $PRINC, $0, @ARGV); 
+if (!defined($ENV{'KRB5CCNAME'})) {
+	print "Execing\n";
+	exec($KINIT, "-kt", $KTAB, $PRINC, $0, @ARGV);
 } else {
-    if (@ARGV != 1) {
-	print "Missing hostname\n";
-	print "usage: " . $0 . " <hostname>\n";
-	exit(1);
-    }
+	if (@ARGV != 1) {
+		print "Missing hostname\n";
+		print "usage: " . $0 . " <hostname>\n";
+		exit(1);
+	}
 
-    eval {
-	my $clnt = Krb5Admin::Krb5Host::Client->new($ARGV[0]);
-	my $resp = $clnt->do_update();
-    };
+	eval {
+		my $clnt = Krb5Admin::Krb5Host::Client->new($ARGV[0]);
+		my $resp = $clnt->do_update();
+	};
 
 
-    # Maybe handle this a little better
-    # right now we just assume that all errors are recoverable
-    # and then we tell postfix to try again soon
-    # maybe not that great of an approach
-    if ($@) {
-	#print STDERR $@; 
-	print STDERR Dumper($@);
-	exit(75);
-    }
-
+	# Maybe handle this a little better
+	# right now we just assume that all errors are recoverable
+	# and then we tell postfix to try again soon
+	# maybe not that great of an approach
+	if ($@) {
+		print STDERR Dumper($@);
+		exit(75);
+	}
 }
