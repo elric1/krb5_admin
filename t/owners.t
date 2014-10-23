@@ -42,7 +42,7 @@ sub testMustNotDie {
 	if ($@) {
 		ok(0, $testname);
 		diag(Dumper($@));
-	} else { 
+	} else {
 		ok(1, $testname);
 	}
 }
@@ -59,7 +59,7 @@ sub testMustDie {
 	if ($@) {
 		#diag(Dumper($@));
 		ok(1, $testname);
-	} else { 
+	} else {
 		ok(0, $testname);
 	}
 
@@ -76,7 +76,7 @@ sub admin_user_connect {
 }
 my $kmdb = admin_user_connect();
 
-testMustNotDie("normal_user create", $kmdb, 
+testMustNotDie("normal_user create", $kmdb,
 	'create_user', 'normal_user@TEST.REALM') ;
 
 my @physical_hosts = ("a","b","c","d","e");
@@ -91,7 +91,7 @@ foreach my $h (@physical_hosts) {
 }
 
 my $h = 'cname1';
-testMustNotDie("Create a host $h", $kmdb, 'create_host', "$h.test.realm", 
+testMustNotDie("Create a host $h", $kmdb, 'create_host', "$h.test.realm",
 		 'ip_addr'=> '6.6.6.6', 'realm'=>'TEST.REALM');
 
 testObjC("Query the logical host $h", $kmdb,
@@ -104,7 +104,7 @@ testMustDie("Can't steal a physical host to be a cluster name", $kmdb,
 
 testMustDie("Can't steal a physical host to be a cluster name", $kmdb,
     "insert_hostmap", qw/cname.test.realm b.test.realm/);
-	    
+
 $h = 'cname';
 testMustNotDie("Create a host $h", $kmdb, 'create_logical_host',
     "$h.test.realm", 'ip_addr'=> '6.6.6.6', 'realm'=>'TEST.REALM');
@@ -147,10 +147,10 @@ testMustDie("Normal User Attempts to add", $kmdb_user, "insert_hostmap",
     qw/cname.test.realm c.test.realm/);
 undef $kmdb_user;
 
-testObjC("Add normal_user to hostmap owners", $kmdb, [1],"add_host_owner", 
+testObjC("Add normal_user to hostmap owners", $kmdb, [1],"add_host_owner",
     qw/cname.test.realm normal_user@TEST.REALM/);
 
-testObjC("Query host owner must show correct", $kmdb, @x,"query_host_owner", 
+testObjC("Query host owner must show correct", $kmdb, @x,"query_host_owner",
     qw/cname.test.realm/);
 undef $kmdb;
 
@@ -194,7 +194,7 @@ $kmdb = admin_user_connect();
 
 $kmdb_user = create_normal_user_connect();
 
-testMustDie("normal user should not modify aclgroup", 
+testMustDie("normal user should not modify aclgroup",
 	$kmdb_user, "insert_aclgroup",
 	qw/test_group1 normal_user@TEST.REALM/);
 undef $kmdb_user;
@@ -215,14 +215,14 @@ testMustNotDie("delete self owner", $kmdb, "remove_acl_owner",
     qw/test_group3 normal_user@TEST.REALM/);
 
 testMustNotDie("add a host", $kmdb, "create_host", "a.testfqdn.com",
-    realm => 'TEST.REALM');    
+    realm => 'TEST.REALM');
 testMustDie("add a host", $kmdb, "create_host", "a.testfqdn.com",
-    realm => 'TEST.REALM');    
+    realm => 'TEST.REALM');
 testMustNotDie("add a host", $kmdb, "create_host", "b.testfqdn.com",
-    realm => 'TEST.REALM');    
+    realm => 'TEST.REALM');
 
 $kmdb_user = create_normal_user_connect();
-testMustNotDie("remove hostmap", $kmdb_user, "remove_hostmap", 
+testMustNotDie("remove hostmap", $kmdb_user, "remove_hostmap",
     qw/cname.test.realm c.test.realm/);
 
 testMustNotDie("logical multi owner", $kmdb_user, "create_logical_host",
@@ -260,7 +260,7 @@ $kmdb = Krb5Admin::ForkClient->new({
     sqlite	=> 't/sqlite.db',
 }, CREDS => 'admin_user@TEST.REALM');
 
-testMustNotDie("normal_user create", $kmdb, 
+testMustNotDie("normal_user create", $kmdb,
 	'create_user', 'normal_user@TEST.REALM') ;	# repeat?
 
 my @physical_hosts = ("a","b","c","d","e");
@@ -331,7 +331,7 @@ testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group3 group/);
 testMustNotDie("add a group", $kmdb, "add_acl",
     qw/normal_user@TEST.REALM krb5/);
 
-testMustDie("normal user should not modify aclgroup", 
+testMustDie("normal user should not modify aclgroup",
 	$kmdb_user, "insert_aclgroup",
 	qw/test_group1 normal_user@TEST.REALM/);
 

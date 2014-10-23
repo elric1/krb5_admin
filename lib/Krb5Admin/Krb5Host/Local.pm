@@ -2239,7 +2239,7 @@ sub KHARON_ACL_do_update {
 	return 1 if $client =~ m/^([-a-zA-Z0-9])+\/admin@.+$/;
 	return 1 if $client =~ m{^krb5notify(?:/[-_a-zA-Z0-9\.]+)?\@.+$};
 
-	return undef;  
+	return undef;
 }
 
 sub do_update {

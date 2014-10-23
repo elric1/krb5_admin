@@ -112,10 +112,10 @@ sub mk_kte {
 	my ($ctx, $princ, $kvno, $enctype) = @_;
 
 	my $key = Krb5Admin::C::krb5_make_a_key($ctx, $enctype);
- 
+
 	$key->{princ} = $princ;
 	$key->{kvno}  = $kvno;
- 
+
 	return $key;
 }
 

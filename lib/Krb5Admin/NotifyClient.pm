@@ -14,7 +14,7 @@ my $CF = "/etc/postfix-prestash";
 
 sub notify_host {
 	my ($krb5, $host) = @_;
-	my $host_email = "notify\@$host"; 
+	my $host_email = "notify\@$host";
 	my @sendmail = ($SENDMAIL, "-i", "-f" ,'', "-C" , "$CF", $host_email);
 
 	my $pid = fork();
@@ -30,7 +30,7 @@ sub notify_host {
 		waitpid($pid, 0);
 	}
 }
- 
+
 sub notify_update_required {
 	my ($krb5, $host) = @_;
 	my $hdef = $krb5->query_host($host);
@@ -39,7 +39,7 @@ sub notify_update_required {
 		for my $hmap (@$hostmaps) {
 			notify_host($krb5, $hmap);
 		}
-	} else { 
+	} else {
 		notify_host($krb5, $host);
 	}
 }

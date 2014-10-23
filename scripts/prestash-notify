@@ -9,7 +9,7 @@ use Sys::Hostname;
 use IO::Pipe;
 use Data::Dumper;
 
-sub exec_stdout { 
+sub exec_stdout {
 	my $pw;
 	my $p = IO::Pipe->new();
 	$p->reader(@_);
@@ -18,7 +18,7 @@ sub exec_stdout {
 		$pw = $_;
 		last;
 	}
-	$p->close(); 
+	$p->close();
 	chomp($pw);
 	return $pw;
 }

@@ -33,7 +33,7 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				master
 				modify
 				modify_host
-				remove 
+				remove
 				remove_aclgroup
 				remove_host
 				remove_hostmap

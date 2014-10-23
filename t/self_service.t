@@ -38,7 +38,7 @@ sub testMustDie {
 
 	if ($@) {
 		ok(1, $testname);
-	} else { 
+	} else {
 		ok(0, $testname);
 	}
 }
@@ -103,7 +103,7 @@ testMustDie("Principal->Account Map: Create map to non-existant princ ",
     $kmdb, 'principal_map_add', 'root', $sprinc3);
 
 $kmdb = admin_kmdb();
-testObjC("Create a principal->account mapping", $kmdb, [1], 
+testObjC("Create a principal->account mapping", $kmdb, [1],
     'principal_map_add', 'testaccount' , "woodyard", $sprinc_host);
 testObjC("Create a principal->account mapping", $kmdb, [1],
     'principal_map_add', 'testaccount2' , "woodyard", $sprinc_host);
@@ -115,30 +115,30 @@ testMustDie("Create a principal->account mapping (bogus)", $kmdb,
     "foo");
 
 #testObjC("Create Keys - Must Succeed(1)", $kmdb, [undef], 'create', $sprinc2,
-#    local_authz=>0); 
+#    local_authz=>0);
 #testObjC("Change Keys - Must Succeed(2)", $kmdb, [undef], 'change', $sprinc2,
 #    3, local_authz=>0,keys => [{enctype=>17, key=>'0123456789ABCDEF'}]);
 #testMustDie("Change Keys - Must Fail", $kmdb, "change", $sprinc2, 4,
 #    keys => [{enctype=>17, key=>'0123456789ABCDEF'}],
-#    invoking_user=> 'notallowed', local_authz=>0 ); 
+#    invoking_user=> 'notallowed', local_authz=>0 );
 
 #testObjC("Change Keys - Must Fail", $kmdb, [undef], "change", $sprinc2, 4,
 #    keys => [{enctype=>17, key=>'0123456789ABCDEF'}],
-#    invoking_user=> 'notallowed' ); 
+#    invoking_user=> 'notallowed' );
 
 #testObjC("Change Keys - Must Succeed(3)", $kmdb, [undef], 'change',
 #    $sprinc2, 4, keys => [{enctype=>17, key=>'0123456789ABCDEF'}],
-#    local_authz=>0, invoking_user=>'testaccount3'); 
+#    local_authz=>0, invoking_user=>'testaccount3');
 
 #testMustDie("Create Keys - Must Fail(a)", $kmdb, 'create', $sprinc3,
-#    invoking_user=>"notallowed", local_authz=>0); 
+#    invoking_user=>"notallowed", local_authz=>0);
 #testMustDie("Create Keys - Must Fail(b)", $kmdb, 'create', $sprinc3,
 #    local_authz=>0 );
 #$kmdb = undef;
 #$kmdb = host2_kmdb();
 # testMustDie("Create Keys - Must Fail", $kmdb, 'create', $sprinc3);
 #testMustDie("Create Keys - Must Fail(c)", $kmdb, 'create', $sprinc3,
-#    local_authz=>0, invoking_user=>"notallowed"); 
+#    local_authz=>0, invoking_user=>"notallowed");
 #testObjC("Create Keys - Must Succeed(4)", $kmdb, [undef],'create',
 #    $sprinc3, local_authz=>0 );
 

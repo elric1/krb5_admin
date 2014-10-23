@@ -38,7 +38,7 @@ sub testMustDie {
 	if ($@) {
 		#diag(Dumper($@));
 		ok(1, $testname);
-	} else { 
+	} else {
 		ok(0, $testname);
 	}
 

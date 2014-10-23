@@ -501,9 +501,12 @@ our %field_desc = (
 		wontgrow	=> 1,
 	},
 	account_principal_map => {
-		pkey		=> [qw/servicename accountname instance realm/],
-		uniq		=> [qw/servicename accountname instance realm/],
-		fields		=> [qw/servicename accountname instance realm/],
+		pkey		=> [qw/servicename accountname
+				       instance realm/],
+		uniq		=> [qw/servicename accountname
+				       instance realm/],
+		fields		=> [qw/servicename accountname
+				       instance realm/],
 		wontgrow	=> 1
 	},
 	hosts		=> {
@@ -532,15 +535,12 @@ our %field_desc = (
 		fields		=> [qw/servicename accountname instance realm/],
 		wontgrow	=> 1
 	},
-
 	external_hostmap	=> {
 		pkey		=> undef,
 		uniq		=> [],
 		fields		=> [qw/logical physical/],
 		wontgrow	=> 1,
 	},
-
-
 );
 
 sub init_db {
@@ -961,7 +961,7 @@ sub internal_create {
 #
 # XXXrcd: this needs to be fixed...
 
-sub KHARON_ACL_create_appid { 
+sub KHARON_ACL_create_appid {
 	my ($self, $act, $appid, %args) = @_;
 
 	return undef;
@@ -2148,7 +2148,6 @@ sub insert_ticket {
 
 sub KHARON_ACL_query_ticket { return 1; }
 
-
 # XXX - MSW - Query ticket seems to predate generic query :(
 #	      Extend it
 #
@@ -2726,7 +2725,6 @@ sub principal_map_query {
 		instance    => $sprinc[2],
 		realm	    => $sprinc[0]
 	);
-
 
 	return generic_query_union($dbh, \%field_desc,
 				   'account_principal_map',

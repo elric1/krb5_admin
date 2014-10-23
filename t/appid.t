@@ -38,7 +38,7 @@ sub testMustDie {
 	if ($@) {
 		#diag(Dumper($@));
 		ok(1, $testname);
-	} else { 
+	} else {
 		ok(0, $testname);
 	}
 }
@@ -54,8 +54,8 @@ my $kmdb = Krb5Admin::ForkClient->new({
 # First, we create a few ACLs.  They must be created before the appids
 # because appids will always reference at least one ACL.
 
-my @owner_grp = (owner => ['admin_user@TEST.REALM']); 
-my @owner_user = (owner => []); 
+my @owner_grp = (owner => ['admin_user@TEST.REALM']);
+my @owner_user = (owner => []);
 our $acls = {
 	'admin_user@TEST.REALM'	=> { type => 'krb5', @owner_user},
 	'normal_user@TEST.REALM'=> { type => 'krb5', @owner_user},

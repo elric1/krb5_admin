@@ -27,7 +27,7 @@ sub generic_query_union {
 	my $key_field = $tabledesc->{fields}->[0];
 	# my %fields = map { $table1.'.'.$_ => 1 } @{$tabledesc->{fields}};
 	my %fields = map {'A.'.$_ => 1 } @{$tabledesc->{fields}};
-	    
+
 	my $lists = $tabledesc->{lists};
 
 	my @join;

@@ -1,8 +1,8 @@
-#! /bin/bash
+#!/bin/bash
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 
-if [[ -d /etc/postfix-prestash ]]; then 
+if [[ -d /etc/postfix-prestash ]]; then
     echo "Already configured"
     exit 1
 fi
