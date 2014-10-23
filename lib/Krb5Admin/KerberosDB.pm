@@ -262,20 +262,23 @@ sub acl_keytab {
 	$sdp = $self->{subdomain_prefix} if defined $self->{subdomain_prefix};
 	$basedomain =~ s/^[a-z0-9](?:[-]?[a-z0-9]+)*\.//i;
 
-	if (@sprinc == 3 && $pprinc[0] eq $sprinc[0] && $sprinc[1] eq "host"
-	    && ($sprinc[2] eq $pprinc[2] || $sdp.$sprinc[2] eq $basedomain)) {
-		return $self->is_account_map($username, $local_authz, @pprinc);
+	my $valid = 0;
+	if (@sprinc == 3 && $sprinc[0] eq $pprinc[0] && $sprinc[1] eq "host") {
+		$valid = 1	if $sprinc[2] eq $pprinc[2];
+		$valid = 1	if $sdp.$sprinc[2] eq $basedomain;
+
+		if (!$valid && $pprinc[1] ne "host") {
+			# OK if the subject is a cluster member of the logical
+			# host named by $pprinc[2].
+
+			if ($self->is_cluster_member($pprinc[2], $sprinc[2])) {
+				valid = 1;
+			}
+		}
 	}
 
-	if ($pprinc[1] ne "host") {
-		# OK if the subject is a cluster member of the logical
-		# host named by $pprinc[2].
-
-		if ($self->is_cluster_member($pprinc[2], $sprinc[2])) {
-			return $self->is_account_map($username, $local_authz,
-			    @pprinc);
-		}
-		return undef;
+	if (valid == 1) {
+		return $self->is_account_map($username, $local_authz, @pprinc);
 	}
 
 	#
