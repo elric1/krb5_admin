@@ -1725,27 +1725,12 @@ sub install_key {
 	$kvno = max_kvno($ret->{keys})		if defined($ret);
 
 	if (!$err && $action eq 'default') {
-		#
-		# XXXrcd: hmmm, we've already determined that we need a
-		#         new key here, haven't we?
 		if (!$self->need_new_key($kt, $strprinc, $kvno)) {
 			$self->vprint("The keys for $strprinc already " .
 			    "exist.\n");
 			return;
 		}
 
-		#
-		# If the instance matches the local hostname,
-		# just change the key, it should not be shared
-		# with other hosts.
-
-		if ($princ->[2] ne $self->{myname}) {
-			die "The kvno for $strprinc is less than".
-			    " the KDCs, aborting as the key may".
-			    " be shared with other hosts. If the".
-			    " is not shared, you may use $0 -c".
-			    " to force a key change.\n";
-		}
 		$action = 'change';
 	}
 
