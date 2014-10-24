@@ -76,7 +76,7 @@ sub curve25519_final {
 	# Sanity:
 
 	die "HNUM doesn't match.\n"  if $hnum != $self->{CURVE25519_NWAY_hnum};
-	die "nonce doesn't match"    if $nonces->[$hnum] ne
+	die "nonce doesn't match.\n" if $nonces->[$hnum] ne
 					$self->{CURVE25519_NWAY_nonce};
 
 	my $prk = Krb5Admin::C::hkdf_extract(join(' ', @$nonces),

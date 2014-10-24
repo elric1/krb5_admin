@@ -1257,9 +1257,9 @@ sub write_keys_kt {
 		my ($uid, $gid) = get_ugid($user);
 		(my $ktfile = $kt) =~ s/WRFILE://;
 		chmod(0400, $ktfile)
-		    or die "chmod(0400, $ktfile): $!";
+		    or die "chmod(0400, $ktfile): $!\n";
 		chown($uid, $gid, $ktfile)
-		    or die "chown($uid, $gid, $ktfile): $!";
+		    or die "chown($uid, $gid, $ktfile): $!\n";
 	}
 
 	my @ktkeys;
@@ -1326,10 +1326,10 @@ sub write_keys_kt {
 	$kt =~ s/^WRFILE://;
 	if (!$self->{testing}) {
 		my ($uid, $gid) = get_ugid($user);
-		chmod(0400, $kt)	or die "chmod(0400, $kt): $!";
-		chown($uid, $gid, $kt)	or die "chown($uid, $gid, $kt): $!";
+		chmod(0400, $kt)	or die "chmod(0400, $kt): $!\n";
+		chown($uid, $gid, $kt)	or die "chown($uid, $gid, $kt): $!\n";
 	}
-	rename($kt, $oldkt)		    or die "rename: $!";
+	rename($kt, $oldkt)		    or die "rename: $!\n";
 
 	$self->vprint("New keytab file renamed into position, quirk-free\n");
 }
@@ -1355,10 +1355,10 @@ sub get_kmdb {
 
 	if ($self->{invoking_user} ne 'root') {
 		if ($self->{local}) {
-			die "Local access requires root";
+			die "Local access requires root\n";
 		}
 		if (defined($self->{winprinc})) {
-			die "Windows bootstrapping requires root";
+			die "Windows bootstrapping requires root\n";
 		}
 	}
 
@@ -1381,7 +1381,7 @@ sub get_kmdb {
 		if (@princs == 0) {
 			my %hashprincs;
 
-			die "opt xrealm must be defined if winprinc == ''."
+			die "opt xrealm must be defined if winprinc == ''.\n"
 			    if !defined($xrealm);
 
 			%hashprincs = map { $_->{princ} => 1 }
@@ -1423,7 +1423,7 @@ sub get_kmdb {
 	return if !$self->{kadmin};
 
 	if (!$self->{interactive}) {
-		die "Must be run interactively to use kadmin princs.";
+		die "Must be run interactively to use kadmin princs.\n";
 	}
 
 	print "Please enter your Kerberos administrative principal\n";
@@ -1688,7 +1688,7 @@ sub install_key {
 	}
 
 	my $kmdb = $self->get_hostbased_kmdb($princ->[0], $princ->[2]);
-	die "Cannot connect to KDC."	if !$kmdb;
+	die "Cannot connect to KDC.\n"	if !$kmdb;
 
 	$etypes = $krb5_libs->{$lib} if defined($lib);
 
@@ -1813,7 +1813,7 @@ sub install_key_fetch {
 	my $etypes;
 
 	my $kmdb = $self->get_hostbased_kmdb($princ->[0], $princ->[2]);
-	die "Cannot connect to KDC."	if !$kmdb;
+	die "Cannot connect to KDC.\n"	if !$kmdb;
 
 	$etypes = $krb5_libs->{$lib} if defined($lib);
 
@@ -1852,7 +1852,7 @@ sub install_key_fetch {
 	for my $i (@ret) {
 		$kvno = $i->{kvno} if $i->{kvno} > $kvno;
 	}
-	die "Could not determine max kvno" if $kvno == -1;
+	die "Could not determine max kvno\n" if $kvno == -1;
 
 	if (!defined($etypes)) {
 		my %enctypes;
@@ -1918,7 +1918,7 @@ sub bootstrap_host_key {
 	}
 
 	if (!defined($kmdb)) {
-		die "Can not connect to KDC.";
+		die "Can not connect to KDC.\n";
 	}
 
 	$self->vprint("Connected.\n");
@@ -1974,11 +1974,11 @@ sub bootstrap_host_key {
 	$ret = $kmdb->query_host(name => $princ->[2]);
 
 	if (!defined($ret)) {
-		die "Cannot determine the host's bootbinding.";
+		die "Cannot determine the host's bootbinding.\n";
 	}
 
 	if (!defined($bootprinc = $ret->{bootbinding})) {
-		die "$strprinc is not bound to any bootstrap id.";
+		die "$strprinc is not bound to any bootstrap id.\n";
 	}
 
 	$self->vprint("host is actually bound to " . $bootprinc . "\n");
@@ -2214,8 +2214,8 @@ sub install_all_keys {
 
 	$kt =~ s/^WRFILE://;
 	if (-f $kt && !$self->{testing}) {
-		chmod(0400, $kt)	or die "chmod(0400, $kt): $!";
-		chown($uid, $gid, $kt)	or die "chown($uid, $gid, $kt): $!";
+		chmod(0400, $kt)	or die "chmod(0400, $kt): $!\n";
+		chown($uid, $gid, $kt)	or die "chown($uid, $gid, $kt): $!\n";
 	}
 
 	$self->reset_hostbased_kmdb();

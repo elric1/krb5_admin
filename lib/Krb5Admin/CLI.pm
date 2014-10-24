@@ -278,11 +278,11 @@ sub proid_passwd {
 
 	if (!defined($proid) || !defined($file)) {
 		die "Syntax error: not enough args\nusage: proid_passwd " .
-		    "<proid> <file>";
+		    "<proid> <file>\n";
 	}
 
 	my $fh = IO::File->new($file, O_CREAT|O_EXCL|O_WRONLY, 0600);
-	die "Can't open $file: $!" if !defined($fh);
+	die "Can't open $file: $!\n" if !defined($fh);
 
 	#
 	# XXXrcd: check to see if the file is PTS protected.
@@ -295,13 +295,13 @@ sub proid_passwd {
 	if ($fsout =~ /system:anyuser/) {
 		unlink($file);
 		die "Permission denied: will not write a proid's to an AFS ".
-		    "location which permits system:anyuser access";
+		    "location which permits system:anyuser access\n";
 	}
 
 	my $pass;
 	eval { $pass = $kmdb->proid_passwd($proid); };
 	if ($@) {
-		unlink($file) and die formaterr($@) . " and unlink failed: $!";
+		unlink($file) and die formaterr($@)." and unlink failed: $!\n";
 		die $@;
 	}
 	print $fh "$pass\n";

@@ -1023,7 +1023,7 @@ sub create_user {
 	my $hndl = $self->{hndl};
 
 	require_scalar("create_user <princ>", 1, $name);
-	die "malformed name"	if $name =~ m,[^-A-Za-z0-9_/@.],;
+	die [500, "malformed name"]	if $name =~ m,[^-A-Za-z0-9_/@.],;
 
 	my $ret = Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
 			principal	=> $name,
