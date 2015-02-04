@@ -420,7 +420,14 @@ sub fetch_tickets_realm {
 	for my $princstr (keys %$tix) {
 		eval { $self->install_ticket($princstr, $tix); };
 
-		push(@errs, $@) if $@;
+		if ($@) {
+			push(@errs, $@);
+			syslog('err', "%s", "failed to install prestashed " .
+			    "ticket for $princstr: $@");
+		} else {
+			syslog('info', "installed prestashed ticket for %s",
+			    $princstr);
+		}
 	}
 
 	die \@errs if @errs > 0;
@@ -433,6 +440,8 @@ sub fetch_tickets {
 	#
 	# XXXrcd: and ACLs.  ACLs ACLs ACLs.
 	# XXXrcd: may also want to test euid == 0.
+
+	syslog('info', "Running krb5_prestash fetch");
 
 	$self->use_private_krb5ccname();
 
