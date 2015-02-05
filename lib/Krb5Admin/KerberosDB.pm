@@ -303,7 +303,7 @@ sub acl_keytab {
 	}
 
 	if ($valid == 1) {
-		return $self->is_account_map($username, $local_authz, @pprinc);
+		return $self->is_account_map($local_authz, $username, @pprinc);
 	}
 
 	#
@@ -3139,17 +3139,18 @@ sub list_commands {
 }
 
 sub principal_map_remove {
-	my ($self, $account, $princ, $hostname) = @_;
+	my ($self, $account, $svc, $hostname) = @_;
 	my $ctx = $self->{ctx};
 	my $dbh = $self->{dbh};
 
-	my $usage = "principal_map_remove <account> <service principal> " .
-	    "<hostname>";
+	my $usage = "principal_map_remove <account> <service> <hostname>";
 
 	require_scalar($usage, 1, $account);
-	require_scalar($usage, 2, $princ);
+	require_scalar($usage, 2, $svc);
 	require_scalar($usage, 3, $hostname);
-	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, "$princ/$hostname");
+
+	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, "$svc/$hostname");
+	die [500, "Malformed service or host name" ] if (@sprinc != 3);
 
 	my $stmt = "DELETE FROM account_principal_map " .
 	    "WHERE accountname=? AND realm=? AND servicename=? AND instance=?";
@@ -3163,18 +3164,18 @@ sub principal_map_remove {
 # long term this should include a better implementation of the
 # access control policy than just punting to the SACLs
 sub principal_map_add {
-	my ($self, $account, $princ, $hostname) = @_;
+	my ($self, $account, $svc, $hostname) = @_;
 	my $ctx = $self->{ctx};
 	my $dbh = $self->{dbh};
 
-	my $usage = "principal_map_add <account> <service principal> " .
-	    "<hostname>";
+	my $usage = "principal_map_add <account> <service> <hostname>";
 
 	require_scalar($usage, 1, $account);
-	require_scalar($usage, 2, $princ);
+	require_scalar($usage, 2, $svc);
 	require_scalar($usage, 3, $hostname);
 
-	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, "$princ/$hostname");
+	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, "$svc/$hostname");
+	die [500, "Malformed service or host name" ] if (@sprinc != 3);
 
 	my $stmt = "INSERT INTO account_principal_map " .
 	    "(accountname, realm, servicename, instance) VALUES (?, ?, ?, ?)";
