@@ -330,7 +330,7 @@ sub proid_passwd {
 	my $pass;
 	eval { $pass = $kmdb->proid_passwd($proid); };
 	if ($@) {
-		unlink($file) and die formaterr($@)." and unlink failed: $!\n";
+		unlink($file) or die formaterr($@)." and unlink failed: $!\n";
 		die $@;
 	}
 	print $fh "$pass\n";
