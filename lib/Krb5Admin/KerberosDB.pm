@@ -4,6 +4,8 @@
 package Krb5Admin::KerberosDB;
 
 use base qw/Krb5Admin CURVE25519_NWAY::Kerberos/;
+use Digest::SHA qw(hmac_sha256_base64);
+use MIME::Base64;
 
 use DBI;
 use Sys::Hostname;
@@ -681,6 +683,21 @@ sub init_db {
 			ip_addr		VARCHAR,
 			bootbinding	VARCHAR,
 			is_logical	BOOLEAN
+		)
+	});
+
+	$dbh->do(qq{
+		CREATE TABLE host_secrets (
+			name		VARCHAR REFERENCES hosts(name),
+			id		INTEGER REFERENCES host_secret_ids(id),
+			PRIMARY KEY (name)
+		)
+	});
+
+	$dbh->do(qq{
+		CREATE TABLE host_secret_ids (
+			id		INTEGER NOT NULL PRIMARY KEY,
+			secret		VARCHAR NOT NULL
 		)
 	});
 
@@ -1974,6 +1991,138 @@ sub KHARON_IV_modify_host {
 	return undef;
 }
 
+sub acl_host_secret {
+	my ($self, $cmd, @args) = @_;
+	my $subject = $self->{client};
+	my $ctx = $self->{ctx};
+	my $drealm = Krb5Admin::C::krb5_get_realm($ctx);
+	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $subject);
+
+	# Use of explicit hostname and perhaps keyid requires admin privs, and
+	# furthermore, admins MUST at least provide the hostname in args[0].
+	#
+	if (@args == 0) {
+		if (@sprinc != 3 || $sprinc[0] ne $drealm ||
+		    $sprinc[1] ne "host") {
+			return 0;
+		}
+		my $host = $self->query_host($sprinc[2]);
+		if (! defined($host) || $host->{realm} ne $drealm) {
+			return 0;
+		}
+		return 1;
+	}
+	return undef;
+}
+
+sub KHARON_ACL_bind_host_secret { acl_host_secret(@_); }
+sub KHARON_ACL_read_host_secret { acl_host_secret(@_); }
+
+sub bind_host_secret {
+	my ($self, @args) = @_;
+	my $dbh = $self->{dbh};
+	my $ctx = $self->{ctx};
+	my $subject = $self->{client};
+	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $subject);
+	my $stmt;
+	my $sth;
+	my $maxid;
+
+	if (@args < 2) {
+		$stmt = qq{ SELECT max(id) as maxid FROM host_secret_ids };
+		$sth = sql_command($dbh, $stmt);
+		my $results = $sth->fetchall_arrayref({});
+		$maxid = $results->[0]->{"maxid"};
+		if ($sth->rows != 1 || ! $maxid) {
+			$dbh->rollback();
+			die [500, "No host_secrets found."];
+		}
+	} else {
+		$maxid = $args[1];
+	}
+
+	my $host = @args ? $args[0] : $sprinc[2];
+	$stmt = qq { DELETE FROM host_secrets WHERE name = ? };
+	sql_command($dbh, $stmt, $host);
+	$stmt = qq { INSERT INTO host_secrets(name, id) VALUES (?, ?) };
+	sql_command($dbh, $stmt, $host, $maxid) ;
+	$dbh->commit();
+
+	# Self-service calls from hosts, get id and value,
+	# While administrators binding the host get only the id.
+	#
+	return [ $maxid ] if (@args);
+	return [ $maxid, $self->read_host_secret() ];
+}
+
+sub read_host_secret {
+	my ($self, @args) = @_;
+	my $dbh = $self->{dbh};
+	my $ctx = $self->{ctx};
+	my $subject = $self->{client};
+	my $sth;
+	my $secret;
+
+	# Administrator creates synthetic subject for salting the
+	# secret for the appropriate host.
+	#
+	if (@args) {
+		my $drealm = Krb5Admin::C::krb5_get_realm($ctx);
+		$subject = sprintf(q{host/%s@%s}, $args[0], $drealm);
+	}
+	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $subject);
+
+	# No explicit id, use the designated id of the host,
+	# otherwise some (past) id for data recovery, ...
+	#
+	if (@args < 2) {
+		my $stmt = qq {
+			SELECT host_secret_ids.secret as secret
+			FROM hosts
+			LEFT JOIN host_secrets
+				ON hosts.name = host_secrets.name
+			LEFT JOIN host_secret_ids
+				ON host_secrets.id = host_secret_ids.id
+			WHERE hosts.name = ?
+		};
+		$sth = sql_command($dbh, $stmt, $sprinc[2]);
+	} else {
+		my $stmt = qq {
+			SELECT secret
+			FROM host_secret_ids
+			WHERE id = ?
+		};
+		$sth = sql_command($dbh, $stmt, $args[1]);
+	}
+	my $results = $sth->fetchall_arrayref({});
+
+	if ($sth->rows != 1 ||
+	    !defined($secret = $results->[0]->{"secret"})) {
+		$dbh->rollback();
+		die [500, "Host key not found."];
+	}
+
+	$dbh->commit();
+	return hmac_sha256_base64($secret, $subject);
+}
+
+sub new_host_secret {
+	my ($self) = @_;
+	my $dbh = $self->{dbh};
+	my $ctx = $self->{ctx};
+	my $rnd = Krb5Admin::C::krb5_make_a_key($ctx, 18)->{key};
+
+	my $stmt = qq{ SELECT max(id) as maxid FROM host_secret_ids };
+	my $sth = sql_command($dbh, $stmt);
+	my $results = $sth->fetchall_arrayref({});
+	my $maxid = $results->[0]->{"maxid"};
+	$maxid //= 0;
+
+	$stmt = qq { INSERT INTO host_secret_ids(id, secret) VALUES(?, ?) };
+	$sth = sql_command($dbh, $stmt, $maxid + 1, encode_base64($rnd, ""));
+	$dbh->commit();
+}
+
 sub KHARON_ACL_modify_host {
 	my ($self, $cmd, $logical, %mods) = @_;
 	my $dbh = $self->{dbh};
@@ -2001,7 +2150,7 @@ sub modify_host {
 
 	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
 
-	$self->can_user_act("Can't create logical hosts' you don't own",
+	$self->can_user_act("Can't create logical hosts you don't own",
 	    $self->{client}, "modify_host", $host);
 
 	$dbh->commit();

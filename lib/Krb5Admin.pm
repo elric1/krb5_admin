@@ -12,6 +12,7 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				add_label
 				add_feature
 				bind_host
+				bind_host_secret
 				bootstrap_host_key
 				change
 				change_passwd
@@ -39,6 +40,7 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				modify_group
 				modify_host
 				modify_subject
+				new_host_secret
 				refresh_ticket
 				remove
 				remove_aclgroup
@@ -72,6 +74,7 @@ our @KHARON_RO_SC_EXPORT = qw/	is_appid_owner
 				query_hostmap
 				query_subject
 				query_ticket
+				read_host_secret
 				sacls_query
 				principal_map_query
 			     /;
