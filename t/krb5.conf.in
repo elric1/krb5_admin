@@ -3,6 +3,7 @@
 
 [libdefaults]
 	default_realm = TEST.REALM
+	default_keytab_name = FILE:./t/keytabs/root
 
 [realms]
 	TEST.REALM = {
