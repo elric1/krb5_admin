@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 30;
+use Test::More tests => 32;
 
 use Sys::Hostname;
 
@@ -207,6 +207,11 @@ ok(!$@, Dumper($@));
 eval { $kt->install_keytab($me, undef, $me); };
 ok(!$@, Dumper($@));
 
+my @keys;
+eval { @keys = Krb5Admin::C::read_kt($ctx, "t/keytabs/$me"); };
+ok(!$@, Dumper($@));
+ok((grep { $_->{kvno} == 3 } @keys) == 0, "install is not idempotent");
+
 #
 # Now, how about if we mess up the keys?  We specifically add AES
 # keys and will use mitkrb5/1.3 to see if they are left in place.
@@ -234,7 +239,6 @@ for my $etype (16, 17, 18, 23) {
 eval { $kt->install_keytab($me, 'mitkrb5/1.3', $me); };
 ok(!$@, Dumper($@));
 
-my @keys;
 eval { @keys = Krb5Admin::C::read_kt($ctx, "t/keytabs/$me"); };
 ok(!$@, Dumper($@));
 ok((grep { $_->{kvno} == 3 } @keys) > 0, "install replaced faulty keys");
