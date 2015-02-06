@@ -2397,7 +2397,7 @@ sub add_acl {
 	sql_command($dbh, $stmt, $acl, $type);
 
 	if ($type eq 'group') {
-		$self->add_acl_owner($acl, $args{owner} // $owner);
+		$self->add_acl_owner($acl, $args{owner} // $princ);
 	}
 	$dbh->commit();
 
