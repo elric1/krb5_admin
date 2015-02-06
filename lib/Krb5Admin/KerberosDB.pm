@@ -272,12 +272,12 @@ sub acl_keytab {
 			# host named by $pprinc[2].
 
 			if ($self->is_cluster_member($pprinc[2], $sprinc[2])) {
-				valid = 1;
+				$valid = 1;
 			}
 		}
 	}
 
-	if (valid == 1) {
+	if ($valid == 1) {
 		return $self->is_account_map($username, $local_authz, @pprinc);
 	}
 
