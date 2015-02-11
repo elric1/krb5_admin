@@ -133,7 +133,6 @@ for my $princ (keys %princs) {
 		diag("Missing: $princ only from list_princs\n");
 	}
 }
-diag("list has " . @$results . "/" . ($nprocs*$nprincs) . "\n");
 
 ok(1);
 
