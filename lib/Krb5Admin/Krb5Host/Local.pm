@@ -386,9 +386,10 @@ sub install_ticket {
 	my $warn;
 
 	if (!defined($name) || $name ne $user) {
-		die "Tickets sent for illegal username: %s", $user
+		die "Tickets received for illegal username: %s", $user
 			unless ($user =~ m{^\w(-?\w+)*$});
-		$warn = sprintf "Tickets sent for non-existent user %s", $user;
+		$warn = sprintf "Tickets received for non-existent user %s",
+			$user;
 		$uid = 0;
 		$user .= ":nopwent";
 	} else {
@@ -438,7 +439,7 @@ sub fetch_tickets_realm {
 		}
 	}
 
-	die \@errs if @errs > 0;
+	die join("\n", @errs) if @errs > 0;
 }
 
 sub fetch_tickets {
@@ -464,7 +465,7 @@ sub fetch_tickets {
 
 	$self->reset_krb5ccname();
 
-	die \@errs if @errs > 0;
+	die join("\n", @errs) if @errs > 0;
 }
 
 
