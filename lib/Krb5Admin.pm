@@ -33,6 +33,7 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				master
 				modify
 				modify_host
+				refresh_ticket
 				remove
 				remove_aclgroup
 				remove_host
@@ -530,6 +531,11 @@ Removes the host PHYSICAL from the cluster LOGICAL.
 
 Configure prestashed tickets for PRINCIPAL to appear on the list
 of hosts provided.
+
+=item $kmdb->refresh_ticket(PRINCIPAL, HOST, [HOST, ...])
+
+Push fresh prestashed tickets for principal to the requested
+hosts, which MUST already be configured for the principal.
 
 =item $kmdb->query_ticket(%QUERY)
 

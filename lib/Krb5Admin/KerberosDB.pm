@@ -2138,14 +2138,58 @@ sub insert_ticket {
 		if ($@) {
 			print STDERR "$@";
 		}
-		die [500, 'limit exceeded: you can only prestash ' .
-			  MAX_TIX_PER_HOST .
-			  ' tickets on a single host or service address']
-			if ($count > MAX_TIX_PER_HOST);
+		if ($count > MAX_TIX_PER_HOST) {
+			dbh->rollback();
+			die [500, 'limit exceeded: you can only prestash ' .
+				  MAX_TIX_PER_HOST .
+				  ' tickets on a single host or service address']
+		}
 	}
-
 	$dbh->commit();
 
+	return undef;
+}
+
+sub KHARON_ACL_refresh_ticket {
+	KHARON_ACL_insert_ticket(@_);
+}
+
+sub refresh_ticket {
+	my ($self, $princ, @hosts) = @_;
+	my $ctx = $self->{ctx};
+	my $dbh = $self->{dbh};
+	my $usage = "refresh_ticket <princ> <host> [<host> ...]";
+
+	require_fqprinc($ctx, $usage, 1, $princ);
+	require_scalar($usage, 2, $hosts[0]);
+
+	for (my $i = 1; $i <= $#hosts; ++$i) {
+		require_scalar("insert_ticket <princ> <host> [<host> ...]",
+		    $i+2, $hosts[$i]);
+	}
+
+	# lc() and de-dup host list
+	@hosts = keys %{{map { lc($_) => 1 } @hosts}};
+
+	($sth, $str) = sql_command($dbh,
+		"SELECT count(host) FROM prestashed" .
+		"  WHERE principal = ?
+		"  AND host IN (".
+		join(',', map { "?" } @hosts) .
+		")", $princ);
+	my ($count) = $sth->fetchrow_array();
+
+	if ($count != @hosts) {
+		die [500, 'Principal not configured on all hosts provided'];
+	}
+
+	for my $host (@hosts) {
+		eval {
+			Krb5Admin::NotifyClient::notify_update_required($self,
+			    $host);
+		};
+	}
+	$dbh->rollback();
 	return undef;
 }
 
