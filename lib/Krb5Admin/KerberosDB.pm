@@ -2171,9 +2171,9 @@ sub refresh_ticket {
 	# lc() and de-dup host list
 	@hosts = keys %{{map { lc($_) => 1 } @hosts}};
 
-	($sth, $str) = sql_command($dbh,
+	my ($sth, $str) = sql_command($dbh,
 		"SELECT count(host) FROM prestashed" .
-		"  WHERE principal = ?
+		"  WHERE principal = ?".
 		"  AND host IN (".
 		join(',', map { "?" } @hosts) .
 		")", $princ);
