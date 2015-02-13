@@ -382,10 +382,17 @@ sub install_ticket {
 
 	my $user = $princ[1];
 
-	my ($name, $passwd, $uid, $gid) = getpwnam($user);
+	my ($name, $passwd, $uid) = getpwnam($user);
+	my $warn;
 
 	if (!defined($name) || $name ne $user) {
-		die sprintf("Tickets sent for non-existent user %s.\n", $user);
+		die "Tickets sent for illegal username: %s", $user
+			unless ($user =~ m{^\w(-?\w+)*$});
+		$warn = sprintf "Tickets sent for non-existent user %s", $user;
+		$uid = 0;
+		$user .= ":nopwent";
+	} else {
+		unlink("$tixdir/$user:nopwent");
 	}
 
 	# Install new tickets atomically by writing to a temporary ccache,
@@ -402,6 +409,7 @@ sub install_ticket {
 	chown($uid, 0, $ccache_tmp); # XXXrcd: chown() may fail in test mode.
 	rename($ccache_tmp, $ccache_fn) or
 		die "$0: rename($ccache_tmp, $ccache_fn): $!\n";
+	die "$warn\n" if defined($warn);
 	return;
 }
 
