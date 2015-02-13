@@ -128,6 +128,27 @@ sub insert {
 	$kmdb->insert_ticket(qualify_princ($princ), @hosts);
 }
 
+sub refresh {
+	my ($kmdb, $princ, @hosts) = @_;
+
+	if (!defined($princ)) {
+		die "Missing argument principal.\n";
+	}
+
+	if (@hosts == 0) {
+		@hosts = (hostname());
+	}
+
+	if (!defined($kmdb)) {
+		my ($realm) = Krb5Admin::C::krb5_parse_name($ctx, $princ);
+		$kmdb = Krb5Admin::Client->new(undef, {realm=>$realm});
+	}
+
+	# XXXrcd: put in the warnings and FQDNification?  Maybe.
+
+	$kmdb->refresh_ticket(qualify_princ($princ), @hosts);
+}
+
 sub remove {
 	my ($kmdb, $princ, @hosts) = @_;
 
@@ -172,6 +193,7 @@ my %cmds = (
 	fetch	=> \&fetch,
 	insert	=> \&insert,
 	add	=> \&insert,
+	refresh	=> \&refresh,
 	remove	=> \&remove,
 	del	=> \&remove,
 	query	=> \&query,

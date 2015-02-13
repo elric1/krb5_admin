@@ -51,6 +51,12 @@ the installed credentials caches to the appropriate users.
 will prestash tickets for the principal
 .Ar principal
 on the provided list of hosts.
+.It refresh Ar principal Ar host Oo Ar host ... Oc
+will push fresh tickets for the principal
+.Ar principal
+to the provided list of hosts or the current host by default.  All
+provided hosts (or the default) must already be configured as
+prestash hosts for the principal.
 .It query principal Ar principal
 will output the hosts on which
 .Ar principal Ns 's
