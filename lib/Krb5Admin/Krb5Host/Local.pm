@@ -71,6 +71,7 @@ our %kt_opts = (
 	lockdir			=> undef,
 	ktdir			=> undef,
 	tixdir			=> undef,
+	userqual		=> 0,
 	user_libs		=> {},
 	use_fetch		=> 0,
 	force			=> 0,
@@ -868,9 +869,12 @@ sub get_princs {
 #         to revert to such behaviour.
 
 sub get_instances {
-	my ($self, $realm) = @_;
+	my ($self, $user, $realm) = @_;
+	my $prefix = '';
 
-	return host_list($self->{myname});
+	$prefix = "$user." if $self->{userqual} == 1;
+
+	return map { "$prefix$_" } (host_list($self->{myname}));
 
 #	my $ctx = $self->{ctx};
 #	my @tmp;
@@ -951,7 +955,8 @@ sub expand_princs {
 				if (!exists($instances->{$realm}) ||
 				    @{$instances->{$realm}} == 0) {
 					$instances->{$realm} =
-					    [$self->get_instances($realm)];
+					    [$self->get_instances($user,
+					    $realm)];
 				}
 				@insts = @{$instances->{$realm}};
 			}
