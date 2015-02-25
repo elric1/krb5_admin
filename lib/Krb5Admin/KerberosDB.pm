@@ -2176,7 +2176,7 @@ sub refresh_ticket {
 		"  WHERE principal = ?".
 		"  AND host IN (".
 		join(',', map { "?" } @hosts) .
-		")", $princ);
+		")", $princ, @hosts);
 	my ($count) = $sth->fetchrow_array();
 
 	if ($count != @hosts) {
