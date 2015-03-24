@@ -88,6 +88,7 @@ our @KHARON_RO_AC_EXPORT = qw/	fetch
 				listpols
 				mquery
 				list_commands
+				list_table
 			     /;
 
 sub KHARON_MASTER {
@@ -209,8 +210,8 @@ our @KRB5_USER_COMMANDS = (
 "remove_host          - remove a host",
 "remove_hostmap       - remove a host from a cluster ",
 "reset_passwd         - reset a kerberos password",
-"sacls_add            - remove an administrative privilege",
-"sacls_del            - add an administrative privilege",
+"sacls_add            - add an administrative privilege",
+"sacls_del            - remove an administrative privilege",
 "add_acl_owner        - add an owner to an acl or aclgroup",
 "remove_acl_owner     - remove an owner from an aclgroup",
 "query_acl_owner      - list the owner of an aclgroup",

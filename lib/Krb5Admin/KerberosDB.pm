@@ -1100,6 +1100,15 @@ sub KHARON_ACL_create_appid {
 	return undef;
 }
 
+
+#
+# determine if a user can execute the
+# $act function with args @r
+# if not then catch exceptions and rollback any database commits
+#
+# This is for use in the typical, make DB update, check new state of db for
+# policy consistency, rollback on violation
+#
 sub can_user_act {
 	my ($self, $msg, $name, $act, @r) = @_;
 	my $dbh = $self->{dbh};
@@ -1962,6 +1971,27 @@ sub list_labels {
 
 	return generic_query($dbh, \%field_desc, 'labels', []);
 }
+
+# sub KHARON_ACL_list_table { return 1; }
+sub list_table {
+    my ($self, $table) = @_;
+    my $dbh = $self->{dbh};
+
+    my %allowed = ('appids' => 1,
+		   'hosts' => 1,
+		   'prestashed' => 1,
+		   'account_principal_map' =>  1);
+
+
+    require_scalar("list_table <table> ", 1, $table);
+
+    if ($allowed{$table} == 1) {
+	return generic_query($dbh, \%field_desc, $table, []);
+    }
+
+    die [500, "Raw query of $table unsupported"] ;
+}
+
 
 sub create_host_internal {
 	my ($self, $host, %args) = @_;
@@ -2896,7 +2926,7 @@ sub create_subject {
 	my $type = $args{type};
 
 	if ($type eq 'group') {
-		if ($subj !~ m/^[A-Za-z0-9][-_A-Za-z0-9]*$/) {
+		if ($subj !~ m/^[A-Za-z0-9][-_A-Za-z0-9 ]*$/) {
 			die [503, "Invalid group name."];
 		}
 	} elsif ($type eq 'krb5') {
@@ -3157,7 +3187,7 @@ sub query_aclgroup {
 sub KHARON_ACL_add_acl_owner { return KHARON_ACL_del_acl(@_); }
 
 sub add_acl_owner {
-	my ($self) = @_;
+	my ($self, $obj, $owner) = @_;
 	my $res = owner_add_f('acls', 'name', @_);
 	$self->{dbh}->commit();
 	return;
@@ -3184,7 +3214,6 @@ sub remove_object_owner {
 	my ($dbh, $obj_type, $objname, $ownerprinc) = @_;
 	my $stmt = "DELETE FROM ${obj_type}_owner where owner = ? and name = ?";
 	sql_command($dbh, $stmt, $ownerprinc, $objname);
-	$dbh->commit();
 }
 
 sub add_object_owner {
@@ -3197,15 +3226,20 @@ sub owner_del_f {
 	my ($type_name, $self,  $obj, $owner) = @_;
 	my $dbh = $self->{dbh};
 	my $cmdline =  "del_".$type_name."_owner <".$type_name."> <owner>";
+	my $verb = "add_".$type_name."_owner";
+	$verb = "add_acl_owner" if $type_name eq "acls";
 
 	require_scalar($cmdline, 1, $obj);
 	my $princ = canonicalise_fqprinc($self->{ctx}, $cmdline, 2, $owner);
 
-	if ($princ eq $self->{client}) {
-		die [503, "You can't delete your ownership"];
-	}
+	my $res = remove_object_owner($dbh, $type_name, $obj, $owner);
 
-	return remove_object_owner($dbh, $type_name, $obj, $princ);
+	if ($self->{client} eq $princ) {
+	    $self->can_user_act("You can't remove your own ownership",
+		$self->{client}, $verb, $obj, $owner);
+	}
+	$dbh->commit();
+	return $res;
 }
 
 sub owner_add_f {
@@ -3303,12 +3337,16 @@ sub query_owner_f {
 
 	my $ret =  $sth->fetchall_arrayref({});
 	$sth->finish;
-#	$self->{dbh}->commit();
 	return $ret;
 }
 
 sub KHARON_ACL_query_host_owner { return 1; }
-sub query_host_owner { return query_owner_f('hosts', @_); }
+sub query_host_owner {
+	my $self = $_[0];
+	my $r = query_owner_f('hosts', @_);
+	$self->{dbh}->commit();
+	return $r;
+}
 
 sub KHARON_ACL_query_acl_owner { return 1; }
 sub query_acl_owner {

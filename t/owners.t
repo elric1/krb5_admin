@@ -204,12 +204,12 @@ testMustNotDie("add owner of test_group1", $kmdb, "add_acl_owner",
 $kmdb_user = create_normal_user_connect();
 testMustNotDie("add a group", $kmdb_user, "insert_aclgroup",
     qw/test_group3 normal_user@TEST.REALM/);
+testMustDie("delete self owner", $kmdb_user, "remove_acl_owner",
+    qw/test_group3 normal_user@TEST.REALM/);
 undef $kmdb_user;
 
 testMustNotDie("add a owner", $kmdb, "add_acl_owner",
     qw/test_group3 normal_user@TEST.REALM/);
-testMustDie("delete self owner", $kmdb, "remove_acl_owner",
-    qw/test_group3 admin_user@TEST.REALM/);
 testMustNotDie("delete self owner", $kmdb, "remove_acl_owner",
     qw/test_group3 normal_user@TEST.REALM/);
 
