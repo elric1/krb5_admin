@@ -1961,7 +1961,7 @@ sub bootstrap_host_key {
 	# we're connected to the KDC already, we can simply
 	# ask it what we need to do to make progress.
 
-	$ret = $kmdb->query_host(name => $princ->[2]);
+	$ret = $kmdb->query_host($princ->[2]);
 
 	if (!defined($ret)) {
 		die "Cannot determine the host's bootbinding.\n";
