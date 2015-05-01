@@ -71,6 +71,8 @@ will list the principals that match the
 .It Ar query Ar princ
 will display the principal
 .Ar princ .
+.It Ar mquery Ar glob Op Ar glob Ar ...
+Outputs a list of principals.
 .It Ar remove Ar princ
 will remove the principal
 .Ar princ .
@@ -84,6 +86,12 @@ will disable the principal
 .Ar princ
 by adding the attribute
 .Fl allow_tix .
+.It Ar create_appid Ar princ Op Ar key=val ...
+will create a principal for use by automated processes.
+This principal will have no assigned passwd and will have a default
+owner set to the calling user.
+The key value pairs are the same as for
+.Ar modify .
 .It Ar create_user Ar princ
 will create a principal with a random temporary password which is printed
 to stdout. The password must be reset by the user via
