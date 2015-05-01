@@ -1939,7 +1939,17 @@ sub insert_hostmap {
 	}
 
 	my $stmt = "INSERT INTO hostmap (logical, physical) VALUES (?, ?)";
-	sql_command($dbh, $stmt, @hosts);
+	eval {
+		sql_command($dbh, $stmt, @hosts);
+	};
+
+	if ($@) {
+		if ($@ =~ /unique/i) {
+			die [500, $hosts[1] . ' is already in ' . $hosts[0]];
+		}
+		die $@;
+	}
+
 	$dbh->commit();
 
 	# A cluster member has been added, its important for the new member
