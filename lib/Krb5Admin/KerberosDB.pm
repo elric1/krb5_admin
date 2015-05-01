@@ -2115,18 +2115,25 @@ sub insert_ticket {
 	$self->_check_hosts($princ, $prealm, $realms, @hosts);
 
 	for my $host (map {lc($_)} @hosts) {
+		my $sth;
 
 		my $stmt = qq{
 			INSERT INTO prestashed (principal, host) VALUES (?, ?)
 		};
 
-		my ($sth, $str) = sql_command($dbh, $stmt, $princ, $host);
+		eval {
+			$sth = sql_command($dbh, $stmt, $princ, $host);
+		};
 
-#		if (!$sth || ($str =~ /unique/)) {
-#			die [500, 'tickets already configured for prestash'];
-#		}
+		if ($@) {
+			if ($@ =~ /unique/i) {
+				die [500, 'tickets already configured for ' .
+				    $princ . ' on ' .  $host];
+			}
+			die $@;
+		}
 
-		($sth, $str) = sql_command($dbh,
+		$sth = sql_command($dbh,
 			"SELECT count(principal) FROM prestashed" .
 			" WHERE host = ?", $host);
 
