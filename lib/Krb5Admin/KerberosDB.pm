@@ -2506,7 +2506,16 @@ sub insert_aclgroup {
 
 	my $stmt = "INSERT INTO aclgroups (aclgroup, acl) VALUES (?, ?)";
 
-	sql_command($dbh, $stmt, @acls);
+	eval {
+		sql_command($dbh, $stmt, @acls);
+	};
+
+	if ($@) {
+		if ($@ =~ /unique/i) {
+			die [500, $acls[1] . ' is already in ' . $acls[0]];
+		}
+		die $@;
+	}
 
 	$dbh->commit();
 
