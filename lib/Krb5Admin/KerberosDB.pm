@@ -72,6 +72,19 @@ sub require_scalar {
 	    if ref($arg) ne '';
 }
 
+sub require_localrealm {
+	my ($ctx, $hndl, $realm) = @_;
+
+	eval {
+		Krb5Admin::C::krb5_query_princ($ctx, $hndl,
+		    unparse_princ([$realm, "krbtgt", $realm]));
+	};
+
+	if ($@) {
+		die [502, "KDC does not support realm $realm"];
+	}
+}
+
 sub require_princ {
 	my ($ctx, $usage, $argnum, $princ) = @_;
 
@@ -987,6 +1000,7 @@ sub create_appid {
 	my ($self, $appid, %args) = @_;
 	my $dbh = $self->{dbh};
 	my $ctx = $self->{ctx};
+	my $hndl = $self->{hndl};
 
 	$appid = canonicalise_fqprinc($ctx, "insert <appid>", 1, $appid);
 
@@ -994,6 +1008,8 @@ sub create_appid {
 	if (@app_name != 2 || $app_name[1] !~ m{[A-Z][-A-Z0-9_]*}i) {
 		die [503, "$appid is an invalid appid\n"];
 	}
+
+	require_localrealm($ctx, $hndl, $app_name[0]);
 
 	if (!$self->{local} && !exists($args{owner})) {
 		$args{owner} = [$self->{client}];
@@ -1085,16 +1101,7 @@ sub create_bootstrap_id {
 	}
 
 	if (defined($args{realm}) && ref($args{realm}) eq '') {
-		$realm = $args{realm};
-
-		eval {
-			Krb5Admin::C::krb5_query_princ($ctx, $hndl,
-			    unparse_princ([$realm, "krbtgt", $realm]));
-		};
-
-		if ($@) {
-			die [502, "KDC does not support realm $realm"];
-		}
+		require_localrealm($ctx, $hndl, $args{realm});
 	}
 
 	if (!defined($realm)) {
