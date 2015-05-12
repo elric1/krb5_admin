@@ -1952,7 +1952,8 @@ sub insert_hostmap {
 
 	if ($@) {
 		if ($@ =~ /unique/i) {
-			die [500, $hosts[1] . ' is already in ' . $hosts[0]];
+			die [500, $hosts[1] . ' is already in cluster ' .
+			    $hosts[0]];
 		}
 		die $@;
 	}
@@ -2538,7 +2539,8 @@ sub insert_aclgroup {
 
 	if ($@) {
 		if ($@ =~ /unique/i) {
-			die [500, $acls[1] . ' is already in ' . $acls[0]];
+			die [500, $acls[1] . ' is already in group ' .
+			    $acls[0]];
 		}
 		die $@;
 	}
