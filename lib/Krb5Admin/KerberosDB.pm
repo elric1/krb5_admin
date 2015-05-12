@@ -2462,7 +2462,16 @@ sub add_acl {
 
 	my $stmt = "INSERT INTO acls(name, type) VALUES (?, ?)";
 
-	sql_command($dbh, $stmt, $acl, $type);
+	eval {
+		sql_command($dbh, $stmt, $acl, $type);
+	};
+
+	if ($@) {
+		if ($@ =~ /unique/i) {
+			die [500, $acl . ' already exists.'];
+		}
+		die $@;
+	}
 
 	if ($type eq 'group') {
 		$self->add_acl_owner($acl, $args{owner} // $princ);
