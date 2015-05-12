@@ -21,6 +21,11 @@ our $expand_srvloc = 0;
 
 my $vfmt = "   %- 22.22s %- 25.25s %s\n";
 
+sub HELP_MESSAGE {
+	exec("man krb5_prestash");
+	exit(1);
+}
+
 sub warning {
 	my ($format, @args) = @_;
 	my $num = 50;

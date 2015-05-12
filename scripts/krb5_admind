@@ -14,6 +14,11 @@ use constant {
 	ACL_FILE                => '/etc/krb5/krb5_admin.acl',
 };
 
+sub HELP_MESSAGE {
+	exec("man krb5_admind");
+	exit(1);
+}
+
 sub usage {
 
 	print STDERR "Usage: krb5_admind [-M] [-a acl_file] [-d dbname] " .

@@ -30,6 +30,11 @@ our $use_fetch = 0;
 our $ktdir;
 our $lockdir;
 
+sub HELP_MESSAGE {
+	exec("man krb5_hostd");
+	exit(1);
+}
+
 sub usage {
 
 	print STDERR "Usage: krb5_hostd\n";
