@@ -1162,7 +1162,7 @@ sub create_bootstrap_id {
 	my $ctx = $self->{ctx};
 	my $hndl = $self->{hndl};
 	my $princ;
-	my $realm;
+	my $realm = $args{realm};
 
 	if (!defined($args{public}) || !defined($args{enctypes})) {
 		die [503, "Must provide public key and enctypes"];
@@ -1190,13 +1190,8 @@ sub create_bootstrap_id {
 		    "aes256-cts"];
 	}
 
-	if (defined($args{realm}) && ref($args{realm}) eq '') {
-		$realm = $args{realm};
-		require_localrealm($ctx, $hndl, $realm);
-	}
-
-	if (!defined($realm)) {
-		die [503, "Must supply realm"];
+	if (defined($realm)) {
+		require_localrealm($ctx, $hdnl, $realm);
 	}
 
 	my $passwd = $self->generate_ecdh_key2($args{public});
