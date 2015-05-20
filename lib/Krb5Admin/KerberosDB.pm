@@ -2652,6 +2652,7 @@ sub owner_add_f {
 	my $owner_res = generic_query($dbh, \%field_desc, "acls", ["name"],
 	    name=>$princ );
 	if (!defined $owner_res) {
+		$dbh->rollback();
 		die [504, $princ. " doesn't exists"];
 	}
 
@@ -2666,6 +2667,7 @@ sub owner_add_f {
 		}
 		return 1;
 	} else {
+		$dbh->rollback();
 		die [503, "$type_name object $obj must exists before " .
 		    "attaching additional owners"];
 	}
