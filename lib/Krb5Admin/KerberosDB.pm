@@ -1101,7 +1101,8 @@ sub create_bootstrap_id {
 	}
 
 	if (defined($args{realm}) && ref($args{realm}) eq '') {
-		require_localrealm($ctx, $hndl, $args{realm});
+		$realm = $args{realm};
+		require_localrealm($ctx, $hndl, $realm);
 	}
 
 	if (!defined($realm)) {
