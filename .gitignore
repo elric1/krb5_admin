@@ -24,6 +24,8 @@ pm_to_blib
 t/ca.pem
 t/kdc.pem
 t/keytabs/
+t/krb5-default-logs
+t/krb5-kdc-logs
 t/krb5.conf
 t/krb5host.lock/
 t/sqlite.db

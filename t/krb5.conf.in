@@ -32,8 +32,8 @@
 	allow-anonymous = true
 
 [logging]
-	default = FILE=/dev/null
-	kdc = FILE=/dev/null
+	default = FILE=./t/krb5-default-logs
+	kdc = FILE=./t/krb5-kdc-logs
 
 [domain_realm]
 	__HOSTNAME__ = TEST.REALM
