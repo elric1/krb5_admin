@@ -427,8 +427,15 @@ sub new {
 		$self->{sacls}->set_dbh($dbh);
 	}
 
-	$self->{sacls}->set_verbs(getclassvar($self, 'KHARON_RW_SC_EXPORT'),
-	    'fetch');
+	my @rosccmds = getclassvar($self, "KHARON_RO_SC_EXPORT");
+	my @roaccmds = getclassvar($self, "KHARON_RO_AC_EXPORT");
+	my @rwsccmds = getclassvar($self, "KHARON_RW_SC_EXPORT");
+	my @rwaccmds = getclassvar($self, "KHARON_RW_AC_EXPORT");
+
+	my @rocmds = (@rosccmds, @roaccmds);
+	my @rwcmds = (@rwsccmds, @rwaccmds);
+
+	$self->{sacls}->set_verbs(@rocmds, @rwcmds);
 
 	if (!defined($self->{allow_fetch})) {
 		$self->{allow_fetch} = 0;
