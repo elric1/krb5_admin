@@ -544,8 +544,7 @@ our %field_desc = (
 	account_principal_map => {
 		pkey		=> [qw/servicename accountname
 				       instance realm/],
-		uniq		=> [qw/servicename accountname
-				       instance realm/],
+		uniq		=> [],
 		fields		=> [qw/servicename accountname
 				       instance realm/],
 		wontgrow	=> 1
