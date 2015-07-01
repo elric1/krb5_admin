@@ -15,6 +15,7 @@ sub cmd_log {
 	@args = @args[0,1]	if $cmd eq 'curve25519_start';
 	@args = $args[0]	if $cmd eq 'curve25519_step';
 	@args = @args[0,1]	if $cmd eq 'curve25519_final';
+	@args = @args[0..2]	if $cmd eq 'write_old';
 
 	return $self->SUPER::cmd_log($level, $code, $cmd, @args);
 }
