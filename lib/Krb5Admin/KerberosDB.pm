@@ -219,7 +219,7 @@ sub is_account_map {
 
 	return 1 if !defined $local_authz || $local_authz;
 
-	my $princ = unparse_princ(@princ);
+	my $princ = unparse_princ(\@princ);
 	my $account_map = $self->principal_map_query($username, $princ);
 
 	return undef if !defined $account_map || $account_map == 0;
