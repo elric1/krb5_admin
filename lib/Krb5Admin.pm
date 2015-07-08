@@ -56,8 +56,6 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				remove_host_owner
 				add_acl_owner
 				remove_acl_owner
-				query_acl_owner
-				query_host_owner
 				create_logical_host
 				principal_map_add
 				principal_map_remove
@@ -69,9 +67,11 @@ our @KHARON_RO_SC_EXPORT = qw/	is_appid_owner
 				query
 				query_acl
 				query_aclgroup
+				query_acl_owner
 				query_group
 				query_host
 				query_hostmap
+				query_host_owner
 				query_subject
 				query_ticket
 				read_host_secret
