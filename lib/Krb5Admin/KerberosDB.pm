@@ -2184,6 +2184,16 @@ sub insert_ticket {
 }
 
 sub KHARON_ACL_refresh_ticket {
+	my ($self, $verb, $princ, @hosts) = @_;
+	my $ctx = $self->{ctx};
+	my $usage = "refresh_ticket <princ> <host> [<host> ...]";
+
+	require_fqprinc($ctx, $usage, 1, $princ);
+
+	if ($princ eq $self->{client}) {
+		return 1;
+	}
+
 	KHARON_ACL_insert_ticket(@_);
 }
 
