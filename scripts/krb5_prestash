@@ -18,6 +18,7 @@ my $verbose = 0;
 
 our $ctx;
 our $expand_srvloc = 0;
+our $use_master = 0;
 
 my $vfmt = "   %- 22.22s %- 25.25s %s\n";
 
@@ -84,6 +85,10 @@ sub query {
 
 	if (!defined($kmdb)) {
 		$kmdb = Krb5Admin::Client->new();
+	}
+
+	if ($use_master) {
+		$kmdb->master();
 	}
 
 	my %args;
@@ -208,8 +213,9 @@ our %opts;
 my @kdcs;
 my $realm;
 
-getopts('Eh:lr:v', \%opts);
+getopts('EMh:lr:v', \%opts);
 
+$use_master = 1    if defined($opts{M});
 @kdcs = ($opts{h}) if defined($opts{h});
 $realm = $opts{r}  if defined($opts{r});
 $expand_srvloc = 1 if defined($opts{E});

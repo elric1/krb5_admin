@@ -9,7 +9,7 @@
 .Nd manage/fetch prestashed tickets
 .Sh SYNOPSIS
 .Nm
-.Op Fl Elv
+.Op Fl EMlv
 .Op Fl h Ar hostspec
 .Op Fl r Ar REALM
 .Ar command Ar arg Oo Ar arg ... Oc
@@ -21,6 +21,8 @@ The options are as follows:
 .Bl -tag -width indentxxxxxx
 .It Fl E
 expand hosts accoring to site-specific rules.
+.It Fl M
+connect to the master KDC.
 .It Fl h Ar hostspec
 connect to
 .Ar hostspec
