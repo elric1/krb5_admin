@@ -2152,10 +2152,7 @@ sub insert_ticket {
 		};
 
 		if ($@) {
-			if ($@ =~ /unique/i) {
-				die [500, 'tickets already configured for ' .
-				    $princ . ' on ' .  $host];
-			}
+			next if $@ =~ /unique/i;
 			die $@;
 		}
 
