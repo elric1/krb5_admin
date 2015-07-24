@@ -769,7 +769,7 @@ sub drop_db {
 
 sub KHARON_ACL_master { return 1; }
 
-sub master { undef; }
+sub master { $_[0]->KHARON_MASTER(); }
 
 #
 # We override the methods in CURVE25519_NWAY::Kerberos to perform the
