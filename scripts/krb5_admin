@@ -36,7 +36,7 @@ my $sqldbname;
 my @kdcs;
 my $realm;
 
-getopts('D:S:dh:lr:sv?', \%opts) or usage();
+getopts('D:MS:dh:lr:sv?', \%opts) or usage();
 
 usage()			if exists($opts{'?'});
 $dbname = $opts{'D'}	if exists($opts{'D'});
@@ -75,6 +75,10 @@ eval {
 if (my $err = $@) {
 	$cli->printerr($err);
 	exit(1);
+}
+
+if (exists($opts{'M'})) {
+	$kmdb->master();
 }
 
 $cli->set_obj($kmdb);

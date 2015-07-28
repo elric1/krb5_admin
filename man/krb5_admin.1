@@ -9,7 +9,7 @@
 .Nd kerberos administration tool
 .Sh SYNOPSIS
 .Nm
-.Op Fl dlv
+.Op Fl Mdlv
 .Op Fl D Ar kdb
 .Op Fl S Ar sqlitedb
 .Op Fl h Ar hostspec
@@ -32,6 +32,8 @@ database.
 Defaults to the location built into the Kerberos libriares.
 Implies
 .Fl l .
+.It Fl M
+connect to the master KDC rather than a slave.
 .It Fl S Ar sqlitedb
 specifies the location of the sqlite3 adjunct database where
 .Nm
