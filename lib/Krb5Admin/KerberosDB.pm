@@ -471,6 +471,11 @@ our %field_desc = (
 		fields		=> [qw/principal type/],
 		lists		=> [ [qw/prestashed principal host/] ],
 	},
+	features	=> {
+		pkey		=> [qw/feature/],
+		uniq		=> [qw/feature/],
+		fields		=> [qw/feature/],
+	},
 	labels		=> {
 		pkey		=> [qw/label/],
 		uniq		=> [qw/label/],
@@ -574,6 +579,12 @@ sub init_db {
 	Krb5Admin::C::init_kdb($self->{ctx}, $self->{hndl});
 
 	$dbh->{AutoCommit} = 1;
+
+	$dbh->do(qq{
+		CREATE TABLE features (
+			feature		VARCHAR PRIMARY KEY
+		)
+	});
 
 	$dbh->do(qq{
 		CREATE TABLE labels (
@@ -750,6 +761,7 @@ sub drop_db {
 	$sacls->drop_db()	if defined($sacls);
 
 	$dbh->{AutoCommit} = 1;
+	$dbh->do('DROP TABLE IF EXISTS features');
 	$dbh->do('DROP TABLE IF EXISTS aclgroups');
 	$dbh->do('DROP TABLE IF EXISTS appid_cstraints');
 	$dbh->do('DROP TABLE IF EXISTS appid_acls');
@@ -770,6 +782,30 @@ sub drop_db {
 sub KHARON_ACL_master { return 1; }
 
 sub master { $_[0]->KHARON_MASTER(); }
+
+sub KHARON_ACL_has_feature { return 1; }
+
+sub has_feature {
+	my ($self, $feature) = @_;
+	my $dbh = $self->{dbh};
+
+	return generic_query($dbh, \%field_desc, 'features', ['feature'],
+	    feature => $feature);
+}
+
+sub add_feature {
+	my ($self, $feature) = @_;
+	my $dbh = $self->{dbh};
+
+	require_scalar("add_feature <feature>", 1, $feature);
+
+	my $stmt = 'INSERT INTO features(feature) VALUES (?)';
+
+	sql_command($dbh, $stmt, $feature);
+
+	$dbh->commit();
+	return undef;
+}
 
 #
 # We override the methods in CURVE25519_NWAY::Kerberos to perform the
