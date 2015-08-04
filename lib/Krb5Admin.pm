@@ -10,6 +10,7 @@ use warnings;
 
 our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				add_label
+				add_feature
 				bind_host
 				bootstrap_host_key
 				change
@@ -24,6 +25,7 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				curve25519_final
 				del_acl
 				del_label
+				del_feature
 				disable
 				enable
 				generate_ecdh_key1
@@ -55,6 +57,7 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 
 our @KHARON_RO_SC_EXPORT = qw/	is_appid_owner
 				fetch_tickets
+				has_feature
 				query
 				query_acl
 				query_aclgroup
