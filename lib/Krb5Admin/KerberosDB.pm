@@ -807,6 +807,20 @@ sub add_feature {
 	return undef;
 }
 
+sub del_feature {
+	my ($self, $feature) = @_;
+	my $dbh = $self->{dbh};
+
+	require_scalar("add_feature <feature>", 1, $feature);
+
+	my $stmt = 'DELETE FROM features WHERE feature = ?';
+
+	sql_command($dbh, $stmt, $feature);
+
+	$dbh->commit();
+	return undef;
+}
+
 #
 # We override the methods in CURVE25519_NWAY::Kerberos to perform the
 # writing to the Kerberos database.  These functions are passed $priv
