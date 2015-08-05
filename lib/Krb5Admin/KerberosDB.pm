@@ -781,7 +781,7 @@ sub drop_db {
 
 sub KHARON_ACL_master { return 1; }
 
-sub master { $_[0]->KHARON_MASTER(); }
+sub master { hostname(); }
 
 sub KHARON_ACL_has_feature { return 1; }
 
