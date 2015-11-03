@@ -25,7 +25,7 @@ sub HELP_MESSAGE {
 
 sub usage {
 	print STDERR <<EOM;
-usage: krb5_admin [-v] [-D dbname] [-h kdc_host | -r realm | -l] user [user ...]
+usage: krb5_admin [-v] [-D dbname] [-h kdc_host | -r realm | -l] cmd [args ...]
 EOM
 	exit(1);
 }
