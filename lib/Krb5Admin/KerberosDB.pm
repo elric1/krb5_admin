@@ -1058,8 +1058,9 @@ sub create_appid {
 	my $dbh = $self->{dbh};
 	my $ctx = $self->{ctx};
 	my $hndl = $self->{hndl};
+	my $usage = "insert <appid> [key=val ...]";
 
-	$appid = canonicalise_fqprinc($ctx, "insert <appid>", 1, $appid);
+	$appid = canonicalise_fqprinc($ctx, $usage, 1, $appid);
 
 	my @app_name = Krb5Admin::C::krb5_parse_name($ctx, $appid);
 	if (@app_name != 2 || $app_name[1] !~ m{[A-Z][-A-Z0-9_]*}i) {
@@ -1449,13 +1450,14 @@ sub change_passwd {
 	my ($self, $name, $passwd, $opt) = @_;
 	my $ctx = $self->{ctx};
 	my $hndl = $self->{hndl};
+	my $usage = "change_passwd <princ> [<passwd> [+needchange]]";
 
-	require_scalar("change_passwd <princ>", 1, $name);
+	require_scalar($usage, 1, $name);
 	if (defined($passwd)) {
-		require_scalar("change_passwd <princ>", 2, $passwd);
+		require_scalar($usage, 2, $passwd);
 	}
 	if (defined($opt)) {
-		require_scalar("change_passwd <princ>", 3, $opt);
+		require_scalar($usage, 3, $opt);
 	}
 
 	if (defined($passwd)) {
@@ -1508,9 +1510,10 @@ sub modify {
 	my ($self, $name, %mods) = @_;
 	my $dbh = $self->{dbh};
 	my $ctx = $self->{ctx};
+	my $usage = "modify <princ> [key=val ...]";
 
-	$name = canonicalise_fqprinc($ctx, "modify <princ> %mods", 1, $name);
-	require_hashref("modify <princ> %mods", 2, \%mods);
+	$name = canonicalise_fqprinc($ctx, $usage, 1, $name);
+	require_hashref($usage, 2, \%mods);
 
 	generic_modify($dbh, \%field_desc, 'appids', $name, %mods);
 
@@ -1844,7 +1847,7 @@ sub create_host {
 	my ($self, $host, %args) = @_;
 	my $dbh = $self->{dbh};
 
-	require_scalar("create_host <host> [args]", 1, $host);
+	require_scalar("create_host <host> [key=val ...]", 1, $host);
 
 	create_host_internal(@_);
 
@@ -1875,7 +1878,7 @@ sub modify_host {
 	my ($self, $host, %args) = @_;
 	my $dbh = $self->{dbh};
 
-	require_scalar("modify_host <host> [args]", 1, $host);
+	require_scalar("modify_host <host> [key=val ...]", 1, $host);
 
 	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
 
@@ -1951,7 +1954,8 @@ sub create_logical_host {
 	my ($self, $host, %args) = @_;
 	my $dbh = $self->{dbh};
 
-	require_scalar("create_logical_host <logical>" , 1, $host);
+	require_scalar("create_logical_host <logical> [key=val ...]" ,
+	    1, $host);
 
 	my $lhost = $self->query_host($host);
 	if (!defined($lhost)) {
@@ -1982,9 +1986,10 @@ sub KHARON_ACL_insert_hostmap { return hostmap_acl(@_); }
 sub insert_hostmap {
 	my ($self, @hosts) = @_;
 	my $dbh = $self->{dbh};
+	my $usage = "insert_hostmap <logical> <physical>";
 
-	require_scalar("insert_hostmap <logical> <physical>", 1, $hosts[0]);
-	require_scalar("insert_hostmap <logical> <physical>", 2, $hosts[1]);
+	require_scalar($usage, 1, $hosts[0]);
+	require_scalar($usage, 2, $hosts[1]);
 
 	@hosts = map { lc($_) } @hosts;
 
@@ -2057,9 +2062,10 @@ sub KHARON_ACL_remove_hostmap { return hostmap_acl(@_); }
 sub remove_hostmap {
 	my ($self, @hosts) = @_;
 	my $dbh = $self->{dbh};
+	my $usage = "remove_hostmap <logical> <physical>";
 
-	require_scalar("remove_hostmap <logical> <physical>", 1, $hosts[0]);
-	require_scalar("remove_hostmap <logical> <physical>", 2, $hosts[1]);
+	require_scalar($usage, 1, $hosts[0]);
+	require_scalar($usage, 2, $hosts[1]);
 
 	@hosts = map { lc($_) } @hosts;
 
@@ -2508,12 +2514,12 @@ sub KHARON_ACL_add_acl {
 sub add_acl {
 	my ($self, $acl, $type, %args) = @_;
 	my $dbh = $self->{dbh};
-
 	my $ctx = $self->{ctx};
 	my $princ = $self->{client};
+	my $usage = "add_acl <acl> <type> [key=val ...]";
 
-	require_scalar("add_acl <acl> <type>", 1, $acl);
-	require_scalar("add_acl <acl> <type>", 2, $type);
+	require_scalar($usage, 1, $acl);
+	require_scalar($usage, 2, $type);
 
 	if ($type eq 'group' ) {
 		if ($acl !~ m/^[A-Za-z0-9][-_A-Za-z0-9]*$/) {
@@ -2586,9 +2592,10 @@ sub KHARON_ACL_insert_aclgroup { KHARON_ACL_del_acl(@_); }
 sub insert_aclgroup {
 	my ($self, @acls) = @_;
 	my $dbh = $self->{dbh};
+	my $usage = "insert_aclgroup <aclgroup> <acl>";
 
-	require_scalar("insert_aclgroup <aclgroup> <acl>", 1, $acls[0]);
-	require_scalar("insert_aclgroup <aclgroup> <acl>", 2, $acls[1]);
+	require_scalar($usage, 1, $acls[0]);
+	require_scalar($usage, 2, $acls[1]);
 
 	my $acls = $self->query_acl(name => $acls[0]);
 
@@ -2620,9 +2627,10 @@ sub KHARON_ACL_remove_aclgroup { return KHARON_ACL_insert_aclgroup (@_); }
 sub remove_aclgroup {
 	my ($self, @acls) = @_;
 	my $dbh = $self->{dbh};
+	my $usage = "remove_aclgroup <aclgroup> <acl>";
 
-	require_scalar("remove_aclgroup <aclgroup> <acl>", 1, $acls[0]);
-	require_scalar("remove_aclgroup <aclgroup> <acl>", 2, $acls[1]);
+	require_scalar($usage, 1, $acls[0]);
+	require_scalar($usage, 2, $acls[1]);
 
 	my $stmt = "DELETE FROM aclgroups WHERE aclgroup = ? AND acl = ?";
 
