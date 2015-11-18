@@ -3,5 +3,20 @@
 %:
 	dh $@
 
+override_dh_auto_install:
+	set -e; PERLLIB=$(shell perl -MConfig -le 'print $$Config{installvendorarch};'); \
+	for file in libkrb5admin-perl.install; \
+	do \
+		sed -e"s,\$${PERLLIB},$${PERLLIB#/},g" \
+			debian/$${file}.in > debian/$$file; \
+	done
+	if [ -e usr/lib/perl5/auto/Krb5Admin/C/C.bs ]; then \
+	    printf "%s %s\n" \
+		"usr/lib/perl5/auto/Krb5Admin/C/C.bs" \
+		'$${PERLLIB}/auto/Krb5Admin/C' \
+		>> libkrb5admin-perl.install; \
+	fi
+	dh_auto_install
+
 override_dh_strip:
 	: "don't"
