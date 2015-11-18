@@ -77,6 +77,10 @@ sub CMD_help {
 Show a list of available commands:
        list_commands
 
+General commands:
+
+	master			returns the name of the master KDC
+
 Commands that operate on principals:
 
 	list [wildcard]		lists principals that match the wildcard

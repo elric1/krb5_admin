@@ -243,7 +243,8 @@ Creates a new "Krb5Admin" object.  ARGS is a hash.
 
 =item $kmdb->master()
 
-Will ensure that the master DB is being modified.
+Will ensure that the master DB is being modified.  Returns the name
+of the master on stdout.
 
 =item $kmdb->genkeys()
 
