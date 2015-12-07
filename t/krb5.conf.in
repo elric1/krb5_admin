@@ -4,6 +4,9 @@
 [libdefaults]
 	default_realm = TEST.REALM
 	default_keytab_name = FILE:./t/keytabs/root
+	use_rdns = false
+	dns_lookup_realm = false
+	dns_lookup_kdc = false
 
 [realms]
 	TEST.REALM = {
