@@ -198,11 +198,7 @@ sub list_keytab {
 	my ($self, $user) = @_;
 	my $ret;
 
-	if (!$self->is_admin()) {
-		syslog('err', "%s attempted to list %s's keytab",
-		    $self->{invoking_user}, $user);
-		die "list is an administrative function only.\n";
-	}
+	$self->user_acled($user);
 	syslog('info', "%s listed %s's keytab", $self->{invoking_user}, $user);
 
 	$ret->{ktname} = $self->get_kt($user);
