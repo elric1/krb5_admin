@@ -1863,6 +1863,16 @@ sub install_key_fetch {
 	return;
 }
 
+sub bootsort {
+	my ($ctx, $a, $b) = @_;
+	my ($ra, $na) = parse_princ($ctx, $a->{"princ"});
+	my ($rb, $nb) = parse_princ($ctx, $b->{"princ"});
+
+	return -1	if $na eq 'bootstrap' && $nb ne 'bootstrap';
+	return  1	if $na ne 'bootstrap' && $nb eq 'bootstrap';
+	return $a cmp $b;
+}
+
 sub bootstrap_host_key {
 	my ($self, $action, $lib, $user, $princ) = @_;
 	my $default_krb5_lib = $self->{default_krb5_lib};
@@ -1886,12 +1896,12 @@ sub bootstrap_host_key {
 	# to see if there was another reason...
 
 	my $bootprinc;
-	foreach my $ktent ($self->get_keys()) {
+	foreach my $ktent (sort { bootsort($ctx, $a, $b) } $self->get_keys()) {
 		# Ignore bootstrap keys with an unexpected enctype.
 		next if (!defined($ktent->{"enctype"}) ||
 		    $ktent->{"enctype"} ne $bootetype_name);
 		my ($r, $n) = parse_princ($ctx, $bootprinc = $ktent->{"princ"});
-		next if ($r ne $realm || $n ne 'bootstrap');
+		next if $r ne $realm;
 
 		$self->vprint("Trying to connect with $bootprinc creds.\n");
 		if (!defined($kmdb)) {
@@ -1948,7 +1958,10 @@ sub bootstrap_host_key {
 		# The KDC deleted the bootstrap principal, so we do
 		# likewise, but ignore errors, we got the main job done!
 
-		eval { $self->del_kt_princ($bootprinc); };
+		my ($r, $n) = parse_princ($ctx, $bootprinc);
+		if ($n eq 'bootstrap') {
+			eval { $self->del_kt_princ($bootprinc); };
+		}
 	};
 
 	#
@@ -1986,7 +1999,10 @@ sub bootstrap_host_key {
 
 	recover_old_keys($user, $strprinc, $lib, $kmdb, $self);
 
-	eval { $self->del_kt_princ($bootprinc); };
+	my ($r, $n) = parse_princ($ctx, $bootprinc);
+	if ($n eq 'bootstrap') {
+		eval { $self->del_kt_princ($bootprinc); };
+	}
 
 	return;
 }

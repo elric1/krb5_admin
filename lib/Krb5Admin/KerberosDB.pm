@@ -1313,6 +1313,13 @@ sub remove_bootbinding {
 	$dbh->commit();
 
 	#
+	# We do not want to remove principals from the Kerberos DB if
+	# they are not used solely in conjunxion with the bootbinding
+	# framework:
+
+	return undef if $h ne 'bootstrap';
+
+	#
 	# We now check to see if the binding is no longer being used and
 	# if it is not then we remove the krb5 principal.  XXXrcd: maybe
 	# this will cause a race condition, though, as another principal
