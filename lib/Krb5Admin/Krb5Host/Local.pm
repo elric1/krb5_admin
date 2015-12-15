@@ -1133,6 +1133,13 @@ sub get_kt {
 	return "$prefix/etc/krb5.keytab";
 }
 
+sub get_init_kt {
+	my ($self) = @_;
+
+	return "WRFILE:$self->{ktdir}/root"	if defined($self->{ktdir});
+	return "WRFILE:/etc/krb5.keytab";
+}
+
 #
 # Here, we make a quick determination to see if we need a new key.  We
 # have stopped using the kinit(1) method and replaced it by fetching a
@@ -2194,7 +2201,7 @@ sub install_all_keys {
 		}
 	}
 
-	local $ENV{'KRB5_KTNAME'}   = $self->get_kt('root');
+	local $ENV{'KRB5_KTNAME'}   = $self->get_init_kt('root');
 
 	$self->use_private_krb5ccname();
 	$self->mk_kt_dir();
