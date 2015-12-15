@@ -70,6 +70,7 @@ our %kt_opts = (
 	default_krb5_lib	=> 'mitkrb5/1.4',
 	lockdir			=> undef,
 	ktdir			=> undef,
+	ktroot			=> undef,
 	tixdir			=> undef,
 	userqual		=> 0,
 	user_libs		=> {},
@@ -1126,12 +1127,14 @@ sub release_lock {
 
 sub get_kt {
 	my ($self, $user) = @_;
+	my $prefix = "WRFILE:";
 
+	$prefix .= $self->{ktroot} . "/"	 if defined($self->{ktroot});
 	$user = 'root'				 if !defined($user) ||
 						    $user eq '';
-	return "WRFILE:$self->{ktdir}/$user"	 if defined($self->{ktdir});
-	return "WRFILE:/var/spool/keytabs/$user" if $user ne 'root';
-	return 'WRFILE:/etc/krb5.keytab';
+	return "$prefix$self->{ktdir}/$user"	 if defined($self->{ktdir});
+	return "$prefix/var/spool/keytabs/$user" if $user ne 'root';
+	return "$prefix/etc/krb5.keytab";
 }
 
 #
