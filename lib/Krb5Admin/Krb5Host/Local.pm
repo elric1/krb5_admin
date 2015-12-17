@@ -389,7 +389,7 @@ sub install_ticket {
 
 	my $defrealm = $self->get_defrealm();
 
-	mkdir($tixdir);
+	mkdir($tixdir, 0755);
 	chmod(0755, $tixdir);
 
 	my $deflink = readlink("$tixdir/$defrealm");
@@ -401,7 +401,7 @@ sub install_ticket {
 
 	if ($realm ne $defrealm) {
 		$tixdir .= "/$realm";
-		mkdir($tixdir);
+		mkdir($tixdir, 0755);
 		chmod(0755, $tixdir);
 	}
 
@@ -1060,7 +1060,7 @@ sub mk_kt_dir {
 	my $ktdir = $self->{ktdir};
 	$ktdir //= "/var/spool/keytabs";
 
-	mkdir($ktdir, 022);
+	mkdir($ktdir, 0755);
 	chmod(0755, $ktdir);
 	die "$ktdir does not exist or isn't readable" if ! -d "$ktdir";
 }
