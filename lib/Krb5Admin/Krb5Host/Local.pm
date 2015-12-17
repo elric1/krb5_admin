@@ -378,10 +378,32 @@ sub install_ticket {
 		    "eligible for prestashed tickets.\n";
 	}
 
-	my $user = $princ[1];
-
+	my ($realm, $user) = @princ;
 	my ($name, $passwd, $uid) = getpwnam($user);
 	my $warn;
+
+	# We first setup the correct directories unconditionally, let's
+	# just make sure that they are all in place:
+	#
+	# XXXrcd: may not always be able to create $tixdir?
+
+	my $defrealm = $self->get_defrealm();
+
+	mkdir($tixdir);
+	chmod(0755, $tixdir);
+
+	my $deflink = readlink("$tixdir/$defrealm");
+	if (!defined($deflink) || $deflink ne ".") {
+		symlink(".", "$tixdir/$defrealm.$$");
+		rename("$tixdir/$defrealm.$$", "$tixdir/$defrealm") or
+		    die "$0: Can't create $tixdir/$defrealm $!\n";
+	}
+
+	if ($realm ne $defrealm) {
+		$tixdir .= "/$realm";
+		mkdir($tixdir);
+		chmod(0755, $tixdir);
+	}
 
 	if (!defined($name) || $name ne $user) {
 		die "Tickets received for illegal username: %s", $user
@@ -396,11 +418,7 @@ sub install_ticket {
 
 	# Install new tickets atomically by writing to a temporary ccache,
 	# and moving it into place.
-	#
-	# XXXrcd: may not always be able to create $tixdir?
 
-	mkdir($tixdir);
-	chmod(0755, $tixdir);
 	my $ccache_fn = "$tixdir/$user";
 	my $ccache_tmp = "$tixdir/.$user";
 	my $ccache = "FILE:$ccache_tmp";
