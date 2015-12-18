@@ -17,7 +17,7 @@ use Time::HiRes qw(gettimeofday);
 use Krb5Admin::Client;
 use Krb5Admin::KerberosDB;
 use Krb5Admin::Krb5Host::Client;
-use Krb5Admin::Utils qw/host_list/;
+use Krb5Admin::Utils qw/host_list force_symlink/;
 use Krb5Admin::C;
 
 use strict;
@@ -392,12 +392,7 @@ sub install_ticket {
 	mkdir($tixdir, 0755);
 	chmod(0755, $tixdir);
 
-	my $deflink = readlink("$tixdir/$defrealm");
-	if (!defined($deflink) || $deflink ne ".") {
-		symlink(".", "$tixdir/$defrealm.$$");
-		rename("$tixdir/$defrealm.$$", "$tixdir/$defrealm") or
-		    die "$0: Can't create $tixdir/$defrealm $!\n";
-	}
+	force_symlink(".", "$tixdir/$defrealm");
 
 	if ($realm ne $defrealm) {
 		$tixdir .= "/$realm";

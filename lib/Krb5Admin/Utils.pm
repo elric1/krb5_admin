@@ -6,7 +6,7 @@
 package Krb5Admin::Utils;
 use Exporter;
 @ISA = qw(Exporter);
-@EXPORT_OK = qw/reverse_the host_list/;
+@EXPORT_OK = qw/reverse_the host_list force_symlink/;
 
 #
 # Host list will, given an IP/Hostname return a list of all of the valid
@@ -29,5 +29,15 @@ sub reverse_the {
 	return undef;	# unimplemented.
 }
 
+sub force_symlink {
+	my ($to, $from) = @_;
+
+	my $l = readlink($from);
+	if (!defined($l) || $l ne $to) {
+		symlink($to, "$from.$$");
+		rename("$from.$$", $from) or
+		    die "$0: Can't create $from as a link to $to: $!\n";
+	}
+}
 
 1;
