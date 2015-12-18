@@ -432,6 +432,7 @@ sub install_ticket {
 
 sub fetch_tickets_realm {
 	my ($self, $clnt, $realm) = @_;
+	my $ctx = $self->{ctx};
 	my @errs;
 
 	my $kmdb = $self->get_kmdb();
@@ -443,6 +444,15 @@ sub fetch_tickets_realm {
 	my $tix = $kmdb->fetch_tickets($realm);
 
 	for my $princstr (keys %$tix) {
+		my @princ = Krb5Admin::C::krb5_parse_name($ctx, $princstr);
+
+		if ($princ[0] ne $realm) {
+			my $err = "failed to install prestashed ticket for " .
+			    "$princstr: realm doesn't match $realm";
+			push(@errs, $err);
+			syslog('err', "%s", $err);
+		}
+
 		eval { $self->install_ticket($princstr, $tix); };
 
 		if ($@) {
