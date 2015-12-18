@@ -1164,8 +1164,8 @@ sub get_kt {
 sub get_init_kt {
 	my ($self) = @_;
 
-	return "WRFILE:$self->{ktdir}/root"	if defined($self->{ktdir});
-	return "WRFILE:/etc/krb5.keytab";
+	return "FILE:$self->{ktdir}/root"	if defined($self->{ktdir});
+	return "FILE:/etc/krb5.keytab";
 }
 
 #
