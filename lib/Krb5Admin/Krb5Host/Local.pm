@@ -1070,6 +1070,8 @@ sub mk_kt_dir {
 	my $ktdir = $self->{ktdir};
 	$ktdir //= "/var/spool/keytabs";
 
+	$ktdir = "$self->{ktroot}/$ktdir"	if defined($self->{ktroot});
+
 	mkdir($ktdir, 0755);
 	chmod(0755, $ktdir);
 	die "$ktdir does not exist or isn't readable" if ! -d "$ktdir";
