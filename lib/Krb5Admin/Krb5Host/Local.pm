@@ -1070,6 +1070,9 @@ sub mk_kt_dir {
 	mkdir($ktdir, 0755);
 	chmod(0755, $ktdir);
 	die "$ktdir does not exist or isn't readable" if ! -d "$ktdir";
+
+	force_symlink("/etc/krb5.keytab", "$ktdir/" .  '%{username}');
+	force_symlink("/etc/krb5.keytab", "$ktdir/root");
 }
 
 sub obtain_lock {
