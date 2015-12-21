@@ -392,10 +392,10 @@ sub install_ticket {
 	mkdir($tixdir, 0755);
 	chmod(0755, $tixdir);
 
-	force_symlink(".", "$tixdir/$defrealm");
+	force_symlink(".", "$tixdir/\@$defrealm");
 
 	if ($realm ne $defrealm) {
-		$tixdir .= "/$realm";
+		$tixdir .= "/\@$realm";
 		mkdir($tixdir, 0755);
 		chmod(0755, $tixdir);
 	}
