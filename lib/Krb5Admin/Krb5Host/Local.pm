@@ -1073,7 +1073,7 @@ sub mk_kt_dir {
 	chmod(0755, $ktdir);
 	die "$ktdir does not exist or isn't readable" if ! -d "$ktdir";
 
-	my $realroot  = Cwd::realpath($ktroot);
+	my $realroot  = Cwd::realpath($ktroot) . "/";
 	my $realktdir = Cwd::realpath($ktdir);
 
 	if ($realroot ne substr($realktdir, 0, length($realroot))) {
