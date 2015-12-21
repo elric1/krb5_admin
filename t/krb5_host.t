@@ -43,10 +43,12 @@ $ENV{'PATH'} = "$KRB5DIR/bin:$KRB5DIR/sbin:".$ENV{PATH};
 
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
+my $keytabs = 't/rootdir/var/spool/keytabs';
+
 #
 # XXXrcd: THIS MASKS A BUG THAT WE NEED TO FIND!:
-unlink('t/keytabs/root');
-unlink('t/keytabs/elric');
+unlink("$keytabs/root");
+unlink("$keytabs/elric");
 
 #
 # As a first step, we start a kdc using our local configuration.  This
@@ -131,7 +133,7 @@ sub get_kt {
 		default_krb5_lib	=>  $default_krb5_lib,
 		user_libs		=> \%user_libs,
 		use_fetch		=>  $use_fetch,
-		ktdir			=>  './t/keytabs',
+		ktroot			=>  './t/rootdir',
 		lockdir			=>  './t/krb5host.lock',
 		testing			=> 1,
 		@_,
@@ -207,7 +209,7 @@ eval { $kt->install_keytab($me, undef, $me); };
 ok(!$@, Dumper($@));
 
 my @keys;
-eval { @keys = Krb5Admin::C::read_kt($ctx, "t/keytabs/$me"); };
+eval { @keys = Krb5Admin::C::read_kt($ctx, "$keytabs/$me"); };
 ok(!$@, Dumper($@));
 ok((grep { $_->{kvno} == 3 } @keys) == 0, "install is not idempotent");
 
@@ -217,7 +219,7 @@ ok((grep { $_->{kvno} == 3 } @keys) == 0, "install is not idempotent");
 
 for my $etype (16, 17, 18, 23) {
 	eval {
-		Krb5Admin::C::write_kt($ctx, "WRFILE:t/keytabs/$me",
+		Krb5Admin::C::write_kt($ctx, "WRFILE:$keytabs/$me",
 		    mk_kte($ctx, "$me/$hostname", 2, $etype));
 	};
 	ok(!$@, Dumper($@));
@@ -226,7 +228,7 @@ for my $etype (16, 17, 18, 23) {
 for my $etype (16, 17, 18, 23) {
 	eval {
 		my $key = mk_kte($ctx, "$me/$hostname", 3, $etype);
-		Krb5Admin::C::write_kt($ctx, "WRFILE:t/keytabs/$me", $key);
+		Krb5Admin::C::write_kt($ctx, "WRFILE:$keytabs/$me", $key);
 	};
 	ok(!$@, Dumper($@));
 }
@@ -238,7 +240,7 @@ for my $etype (16, 17, 18, 23) {
 eval { $kt->install_keytab($me, 'mitkrb5/1.3', $me); };
 ok(!$@, Dumper($@));
 
-eval { @keys = Krb5Admin::C::read_kt($ctx, "t/keytabs/$me"); };
+eval { @keys = Krb5Admin::C::read_kt($ctx, "$keytabs/$me"); };
 ok(!$@, Dumper($@));
 ok((grep { $_->{kvno} == 3 } @keys) > 0, "install replaced faulty keys");
 

@@ -5,6 +5,7 @@ package Krb5Admin::Krb5Host::Local;
 
 use base qw/Krb5Admin::Krb5Host CURVE25519_NWAY::Kerberos/;
 
+use Cwd;
 use IO::File;
 use File::Path;
 use File::Temp qw/ :mktemp /;
@@ -1063,16 +1064,30 @@ sub check_acls {
 sub mk_kt_dir {
 	my ($self) = @_;
 	my $ktdir = $self->{ktdir};
+	my $ktroot = $self->{ktroot};
 	$ktdir //= "/var/spool/keytabs";
 
-	$ktdir = "$self->{ktroot}/$ktdir"	if defined($self->{ktroot});
+	$ktdir = "$ktroot/$ktdir"	if defined($self->{ktroot});
 
 	mkdir($ktdir, 0755);
 	chmod(0755, $ktdir);
 	die "$ktdir does not exist or isn't readable" if ! -d "$ktdir";
 
-	force_symlink("/etc/krb5.keytab", "$ktdir/" .  '%{username}');
-	force_symlink("/etc/krb5.keytab", "$ktdir/root");
+	my $realroot  = Cwd::realpath($ktroot);
+	my $realktdir = Cwd::realpath($ktdir);
+
+	if ($realroot ne substr($realktdir, 0, length($realroot))) {
+		die "$realroot not the initial segment of $realktdir\n";
+	}
+
+	my $target;
+	$target = substr($realktdir, length($realroot));
+	$target =~ s#^/##;
+	$target =~ s#[^/][^/]*#..#g;
+	$target .= "/etc/krb5.keytab";
+
+	force_symlink($target, "$ktdir/" .  '%{username}');
+	force_symlink($target, "$ktdir/root");
 }
 
 sub obtain_lock {
@@ -1163,6 +1178,10 @@ sub get_kt {
 
 sub get_init_kt {
 	my ($self) = @_;
+
+	if ($self->{testing}) {
+		return $self->get_kt();
+	}
 
 	return "FILE:$self->{ktdir}/root"	if defined($self->{ktdir});
 	return "FILE:/etc/krb5.keytab";
