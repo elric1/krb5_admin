@@ -1926,6 +1926,7 @@ sub bind_host {
 	$dbh->commit();
 
 	# XXXrcd: we must check if we successfully bound the host.
+	return undef;
 }
 
 sub remove_host {
