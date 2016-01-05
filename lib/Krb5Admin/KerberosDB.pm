@@ -1317,6 +1317,7 @@ sub remove_bootbinding {
 	# they are not used solely in conjunxion with the bootbinding
 	# framework:
 
+	($realm, $h, $host) = Krb5Admin::C::krb5_parse_name($ctx, $princ);
 	return undef if $h ne 'bootstrap';
 
 	#
