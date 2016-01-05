@@ -845,7 +845,7 @@ sub get_keys {
 	my ($self, $kt) = @_;
 	my $ctx = $self->{ctx};
 
-	$kt = $self->get_kt() if !defined($kt) || $kt eq '';
+	$kt = $self->get_init_kt() if !defined($kt) || $kt eq '';
 	my @ktkeys = Krb5Admin::C::read_kt($ctx, $kt);
 
 	for my $i (@ktkeys) {
@@ -1063,9 +1063,10 @@ sub check_acls {
 
 sub mk_kt_dir {
 	my ($self) = @_;
-	my $ktdir = $self->{ktdir};
-	my $ktroot = $self->{ktroot};
-	$ktdir //= "/var/spool/keytabs";
+	my $ktdir = $self->{ktdir}	// "/var/spool/keytabs";
+	my $ktroot = $self->{ktroot}	// "/";
+	my $realroot;
+	my $realktdir;
 
 	$ktdir = "$ktroot/$ktdir"	if defined($self->{ktroot});
 
@@ -1073,8 +1074,9 @@ sub mk_kt_dir {
 	chmod(0755, $ktdir);
 	die "$ktdir does not exist or isn't readable" if ! -d "$ktdir";
 
-	my $realroot  = Cwd::realpath($ktroot) . "/";
-	my $realktdir = Cwd::realpath($ktdir);
+	$realroot  = Cwd::realpath($ktroot);
+	$realroot .= "/"			if $realroot ne '/';
+	$realktdir = Cwd::realpath($ktdir);
 
 	if ($realroot ne substr($realktdir, 0, length($realroot))) {
 		die "$realroot not the initial segment of $realktdir\n";
