@@ -84,4 +84,4 @@ if (exists($opts{'M'})) {
 $cli->set_obj($kmdb);
 
 exit($cli->run_cmd(@ARGV))	if $#ARGV >= 0;
-exit($cli->run_cmdline());
+usage();
