@@ -152,13 +152,13 @@ The key value pairs are the same as for
 will create a principal with a random temporary password which is printed
 to stdout. The password must be reset by the user via
 .Xr kpasswd 1 .
-.It reset_password Ar princ
+.It reset_passwd Ar princ
 will reset the password of a principal to a random temporary password
 which is printed to stdout. The password must be reset by the user via
 .Xr kpasswd 1 .
 .It modify Ar princ Oo Ar key=val ... Oc
 will modify a principal or its associated attributes.
-.It is_appid_owner Ar princ Ar appid
+.It is_owner Ar princ Ar appid
 tests whether
 .Ar princ
 is one of the owners of
