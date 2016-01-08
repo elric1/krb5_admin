@@ -2421,20 +2421,17 @@ sub KHARON_ACL_fetch_tickets {
 
 	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $self->{client});
 
-	return if (@sprinc != 3 || $sprinc[0] ne $realm);
+	return if @sprinc != 3;
 	return if $sprinc[1] ne 'host';
 
-	if (!defined($host)) {
-		$host = $sprinc[2];
-	} else {
-		return if $sprinc[2] ne $host;
-	}
+	$host //= $sprinc[2];
+	return if $sprinc[2] ne $host;
 
 	# Now, we must also check to ensure that the client is
 	# in the correct realm for the host that we have in our DB.
 
 	$host = $self->query_host($host);
-	return if (!defined($host) || $host->{realm} ne $realm);
+	return if !defined($host) || $host->{realm} ne $sprinc[0];
 
 	# The request is authorised.
 	return 1;
@@ -2457,9 +2454,7 @@ sub fetch_tickets {
 		my @sprinc = Krb5Admin::C::krb5_parse_name($ctx,
 		    $self->{client});
 
-		if (@sprinc == 3
-		    && $sprinc[0] eq $realm
-		    && $sprinc[1] eq 'host') {
+		if (@sprinc == 3 && $sprinc[1] eq 'host') {
 			$host = $sprinc[2];
 		}
 	}
