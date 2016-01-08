@@ -13,6 +13,7 @@
 .Op Fl D Ar kdb
 .Op Fl S Ar sqlitedb
 .Op Fl a Ar acl_file
+.Op Fl c Ar conf_file
 .Op Fl m Ar master
 .Sh DESCRIPTION
 .Nm
@@ -51,6 +52,10 @@ stores its additional schemas.
 specifies the location of the ACL file.
 Defaults to
 .Pa /etc/krb5/krb5_admin.acl .
+.It Fl c Ar conf_file
+specifies the location of the configuration file.
+Defaults to
+.Pa /etc/krb5/krb5_admind.conf .
 .It Fl m Ar master
 specifies the hostname of the master KDC.
 If a KDC which is not the master is asked to perform a write operation
@@ -58,9 +63,8 @@ it will deliver a redirect to the client which will break the connexion
 and reconnect to the master.
 Defaults to
 .Pa /etc/krb5/master .
-.It Fl v
-increment verbose level.
 .El
 .Sh SEE ALSO
 .Xr knc 1 ,
+.Xr krb5_admind.conf 5 ,
 .Xr krb5_keytab 8 .
