@@ -97,74 +97,93 @@ owner removes the old owner.
 .Pp
 General commands:
 .Bl -ohang -offset ind
-.It Ar master
+.It master
 outputs the name of the master KDC.
+Note, this will actually connect to the master KDC and will fail if
+the master KDC is unavailable.
 .El
 .Pp
-Commands that operate on principals:
+.Ss Principals and Appids
+Principals are simply principals stored in the Kerberos DB.
+Appids are non-human identities used to run batch jobs.
+Appids are both a Kerberos principal and some ancilliary data which
+is used to enable their management.
 .Pp
-.Bl -ohang -offset ind
-.It Ar list Op Ar glob
-will list the principals that match the
-.Ar glob .
-.It Ar query Ar princ
-will display the principal
-.Ar princ .
-.It Ar mquery Ar glob Op Ar glob Ar ...
-Outputs a list of principals.
-.It Ar remove Ar princ
-will remove the principal
-.Ar princ .
-.It Ar enable Ar princ
-will enable the principal
-.Ar princ
-by removing the attribute
-.Fl allow_tix .
-.It Ar disable Ar princ
-will disable the principal
-.Ar princ
-by adding the attribute
-.Fl allow_tix .
-.It Ar create_appid Ar princ Op Ar key=val ...
-will create a principal for use by automated processes.
-This principal will have no assigned passwd and will have a default
-owner set to the calling user.
-The key value pairs are the same as for
-.Ar modify .
-.It Ar create_user Ar princ
-will create a principal with a random temporary password which is printed
-to stdout. The password must be reset by the user via
-.Xr kpasswd 1 .
-.It Ar reset_password Ar princ
-will reset the password of a principal to a random temporary password
-which is printed to stdout. The password must be reset by the user via
-.Xr kpasswd 1 .
-.It Ar modify Ar princ Oo Ar key=val ... Oc
-will modify a principal or its associated attributes.
 The following keys are defined for all principals: princ_expire_time,
 pw_expiration, max_life, max_renewable_life, and attributes.
-The following keys are defined for appids:
+The following keys are also defined for appids:
 owner
 .Pq set-based ,
 desc,
 cstraint
 .Pq set-based .
+.Pp
+Commands that operate on principals and appids:
+.Pp
+.Bl -ohang -offset ind
+.It list Op Ar glob
+will list the principals that match the
+.Ar glob .
+.It query Ar princ
+will display the principal
+.Ar princ .
+.It mquery Ar glob Op Ar glob Ar ...
+Outputs a list of principals.
+.It remove Ar princ
+will remove the principal
+.Ar princ .
+.It enable Ar princ
+will enable the principal
+.Ar princ
+by removing the attribute
+.Fl allow_tix .
+.It disable Ar princ
+will disable the principal
+.Ar princ
+by adding the attribute
+.Fl allow_tix .
+.It create_appid Ar princ Op Ar key=val ...
+will create a principal for use by automated processes.
+This principal will have no assigned passwd and will have a default
+owner set to the calling user.
+The key value pairs are the same as for
+.Ar modify .
+.It create_user Ar princ
+will create a principal with a random temporary password which is printed
+to stdout. The password must be reset by the user via
+.Xr kpasswd 1 .
+.It reset_password Ar princ
+will reset the password of a principal to a random temporary password
+which is printed to stdout. The password must be reset by the user via
+.Xr kpasswd 1 .
+.It modify Ar princ Oo Ar key=val ... Oc
+will modify a principal or its associated attributes.
+.It is_appid_owner Ar princ Ar appid
+tests whether
+.Ar princ
+is one of the owners of
+.Ar appid .
+This test follows group membership.
+There is no output, the return value is set.
 .El
 .Pp
+.Ss Policies
 Commands that operate on policies:
 .Bl -ohang -offset ind
-.It Ar listpols Op Ar glob
+.It listpols Op Ar glob
 will list the policies that match
 .Ar glob .
 .El
 .Pp
-Commands that operate on ``features'':
-.Bl -ohang -offset ind
-.It add_feature Ar feature
-Adds a ``feature'' flag.
-.It has_feature Ar feature
-Check to see if ``feature'' is present, i.e. has been added.
-.El
+.Ss Hosts
+.Nm
+needs to keep track of all of the hosts in an environment.
+This information is used to support bootstrapping of initial
+credentials and for the deployment of prestashed tickets.
+.Pp
+The following keys are defined for all hosts: realm, ip_addr,
+bootbinding, and owner
+.Pq set-based .
 .Pp
 Commands that operate on hosts:
 .Pp
@@ -183,16 +202,91 @@ This commands works the same as
 except the host created is marked as a logical host which means that
 it is either an alias to an existing host or a cluster of hosts.
 .It bind_host Ar host Ar principal
-Bind an existing host to the given ephemeral principal, this
-entitles the host to negotiate its initial keys.
+Bind an existing
+.Ar host
+to the given
+.Ar principal ,
+this entitles the host to negotiate its initial keys.
+This function can also be accomplished using
+.Dq Nm Ar modify_host Ar host Ar bootbinding= Ns Ar princ .
+This function may have different authorisation rules, though.
 .It remove_host Ar host
 Remove
 .Ar host .
 .It modify_host Ar host Op No key=val ...
 will modify the attributes of a host.
-The following keys are defined for all hosts: realm, ip_addr,
-bootbinding, and owner
-.Pq set-based .
+.El
+.Ss Labels
+Lables are placed on hosts to help constrain where prestashed tickets
+are allowed to be placed.
+When tickets are asked to be placed on a host via
+.Xr krb5_prestash ,
+it is required that the host has a label matching each of the
+.Dq cstraints
+defined for the appid.
+These commands are simply to manage the list of acceptable labels,
+to actually set labels on hosts see the
+.Dq Hosts
+sub-section and to set
+the
+.Dq cstraints
+on an appid see the
+.Dq Principals and Appids
+sub-section.
+.Pp
+The following commands work on labels:
+.Bl -ohang -offset ind
+.It add_label
+adds
+.Ar label .
+.It del_label
+removes
+.Ar label .
+.It list_labels
+lists all of the valid labels.
+.El
+.Ss Features
+Features are simply a set of flags defined in the
+.Nm
+database which can be tested by clients to determine if certain
+features have been enabled at a site.  No generic features have been
+defined, yet.
+.Pp
+Commands that operate on ``features'':
+.Bl -ohang -offset ind
+.It add_feature Ar feature
+Adds a ``feature'' flag.
+.It del_feature Ar feature
+Deletes a ``feature'' flag.
+.It has_feature Ar feature
+Check to see if ``feature'' is present, i.e. has been added.
+.El
+.Ss SACLS
+SACLS are Simple Access Control Lists.
+SACLS are usually used to provide administrative access to certain
+functions in
+.Nm .
+When a SACL is set for a principal, the principal can execute the
+command with any arguments.
+Because of this, these are a heavy hammer which should be used with
+some level of discretion and they are designed mainly for either
+administrators or synchronisation jobs which source information
+such as host names from an upstream source.
+.Pp
+Commands that operate on SACLS:
+.Bl -ohang -offset ind
+.It sacls_add Ar verb Ar actor
+grants
+.Ar verb
+to
+.Ar actor .
+.It sacls_del Ar verb Ar actor
+revokes
+.Ar verb
+from
+.Ar actor .
+.It sacls_query
+lists all of the SACLS.
 .El
 .Sh EXIT STATUS
 The
