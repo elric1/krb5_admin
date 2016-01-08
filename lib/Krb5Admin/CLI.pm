@@ -74,40 +74,45 @@ sub CMD_help {
 	my $out = $self->{out};
 
 	$self->print( <<EOM );
-Show a list of available commands:
-       list_commands
-
 General commands:
 
 	master			returns the name of the master KDC
 
-Commands that operate on principals:
+Commands that operate on principals and appids:
 
-	list [wildcard]		lists principals that match the wildcard
-	query princ		displays the principal
-	remove princ		removes a principal
-	enable princ		enables a principal
-	disable	princ		disables a principal
-
-Commands that operate on users:
-
-	create_appid user	creates a new non-human user
-	create_user user	creates a new user account
-	desdeco user		upgrades the user to the strong_human policy
-
-Commands that operate on service principals:
-
-none, yet.
+	list			lists principals that match provided globs
+	query 			displays the principal
+	mquery 			displays all principals matching the globs
+	modify			modifies a principal
+	remove 			removes a principal
+	enable 			enables a principal
+	disable			disables a principal
+	create_appid 		creates a new non-human user
+	create_user 		creates a new user account
+	desdeco 		upgrades the user to the strong_human policy
+	reset_passwd 		resets user's passwd
+	is_owner		tests if princ owns appid
 
 Commands that operate on policies:
 
-	listpols [wildcard]	lists the policies that match the wildcard
+	listpols		lists the policies that match the wildcard
 
-General commands:
+Commands that operate on hosts:
 
-	master			reconnects to the master KDC
+	create_host		create a host
+	create_logical_host	create a logical host, i.e. a cluster
+	bind_host		assign a ``bootbinding'' to a host
+	remove_host		remove a host
+	modify_host		modify the attributes of a host
 
-* unimplemented
+Show a list of available commands:
+
+       list_commands
+
+For a more complete description of commands with usage and examples,
+please refer to the manual page which can be accessed via:
+
+	\$ man krb5_admin
 EOM
 
 	return 0;
