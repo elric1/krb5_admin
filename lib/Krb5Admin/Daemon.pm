@@ -14,6 +14,7 @@ use Kharon::Entitlement::Equals;
 use Kharon::Entitlement::Object;
 use Kharon::Entitlement::Stack;
 use Kharon::Entitlement::SimpleSQL;
+use Kharon::InputValidation::Object;
 
 use Krb5Admin::KerberosDB;
 use Krb5Admin::Log;
@@ -85,6 +86,9 @@ sub mk_kmdb {
 
 	$objacl->set_subobject($ret);
 	$sqlacl->set_dbh($ret->get_dbh());
+
+	my $iv = Kharon::InputValidation::Object->new(subobject => $ret);
+	$pes->set_iv($iv);
 
 	return $ret;
 }

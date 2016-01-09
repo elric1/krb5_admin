@@ -16,6 +16,7 @@ use Krb5Admin::C;
 use Kharon::Entitlement::ACLFile;
 use Kharon::Entitlement::Equals;
 use Kharon::Entitlement::SimpleSQL;
+use Kharon::InputValidation qw(KHARON_IV_NO_ARGS KHARON_IV_ONE_SCALAR);
 
 use Kharon::dbutils qw/sql_command generic_query generic_modify/;
 use Kharon::utils qw/getclassvar/;
@@ -70,6 +71,17 @@ sub require_scalar {
 	    if !defined($arg);
 	die [503, "Syntax error: arg $argnum not a scalar\nusage: $usage"]
 	    if ref($arg) ne '';
+}
+
+sub require_scalars {
+	my ($usage, $argnum, @args) = @_;
+
+	my $i = $argnum;
+	for my $arg (@args) {
+		require_scalar($usage, $i++, $arg);
+	}
+
+	return undef;
 }
 
 sub require_localrealm {
@@ -1034,6 +1046,15 @@ sub internal_create {
 #
 # XXXrcd: this needs to be fixed...
 
+sub KHARON_IV_create_appid {
+	my ($self, $act, $appid, %args) = @_;
+	my $ctx = $self->{ctx};
+	my $usage = "insert <appid> [key=val ...]";
+
+	$appid = canonicalise_fqprinc($ctx, $usage, 1, $appid);
+	return [$appid, %args];
+}
+
 sub KHARON_ACL_create_appid {
 	my ($self, $act, $appid, %args) = @_;
 
@@ -1087,6 +1108,15 @@ sub create_appid {
 	$self->create($appid);
 	$self->internal_modify($appid,
 	    {attributes => [qw/+requires_preauth -allow_svr/]});
+
+	return undef;
+}
+
+sub KHARON_IV_create_user {
+	my ($self, $verb, $name, $passwd) = @_;
+
+	require_scalar("create_user <princ>", 1, $name);
+	die [500, "malformed name"]	if $name =~ m,[^-A-Za-z0-9_/@.],;
 
 	return undef;
 }
@@ -1243,6 +1273,17 @@ sub create_bootstrap_id {
 	return $princ;
 }
 
+sub KHARON_IV_bootstrap_host_key {
+	my ($self, $cmd, $princ, $kvno, %args) = @_;
+	my $ctx  = $self->{ctx};
+	my $usage = "bootstrap_host_key <princ> <kvno> public=>key " .
+	    "enctypes=>etypes";
+
+	require_fqprinc($ctx, $usage, 1, $princ);
+	require_scalar($usage, 2, $kvno);
+	return undef;
+}
+
 sub KHARON_ACL_bootstrap_host_key {
 	my ($self, $cmd, $princ, $kvno, %args)  = @_;
 	my $ctx     = $self->{ctx};
@@ -1276,16 +1317,11 @@ sub KHARON_ACL_bootstrap_host_key {
 sub bootstrap_host_key {
 	my ($self, $princ, $kvno, %args) = @_;
 	my $ctx  = $self->{ctx};
+	my $usage = "bootstrap_host_key <princ> <kvno> public=>key " .
+	    "enctypes=>etypes";
 
-	# XXXrcd: sanity checks?
-
-	require_fqprinc($ctx, "bootstrap_host_key <princ> <kvno> public=>key " .
-	    "enctypes=>etypes", 1, $princ);
-	require_scalar("bootstrap_host_key <princ> <kvno> public=>key " .
-	    "enctypes=>etypes", 2, $kvno);
-
-	#
-	# XXXrcd: any more ACLs?  Fix how we determine the realm.
+	require_fqprinc($ctx, $usage, 1, $princ);
+	require_scalar($usage, 2, $kvno);
 
 	$self->internal_create($princ, $kvno, %args);
 	$self->remove_bootbinding($princ);
@@ -1454,6 +1490,21 @@ sub change {
 	return undef;
 }
 
+sub KHARON_IV_change_passwd {
+	my ($self, $cmd, $name, $passwd, $opt) = @_;
+	my $usage = "change_passwd <princ> [<passwd> [+needchange]]";
+
+	require_scalar($usage, 1, $name);
+	if (defined($passwd)) {
+		require_scalar($usage, 2, $passwd);
+	}
+	if (defined($opt)) {
+		require_scalar($usage, 3, $opt);
+	}
+
+	return undef;
+}
+
 sub change_passwd {
 	my ($self, $name, $passwd, $opt) = @_;
 	my $ctx = $self->{ctx};
@@ -1483,6 +1534,13 @@ sub change_passwd {
 	return $passwd;
 }
 
+sub KHARON_IV_reset_passwd {
+	my ($self, $cmd, $name) = @_;
+
+	require_scalar("reset_passwd <princ>", 1, $name);
+	return undef;
+}
+
 sub reset_passwd {
 	my ($self, $name) = @_;
 	my $ctx = $self->{ctx};
@@ -1494,6 +1552,15 @@ sub reset_passwd {
 	$self->internal_modify($name, {attributes => [ '+needchange' ]});
 
 	return $passwd;
+}
+
+sub KHARON_IV_modify {
+	my ($self, $verb, $name, %mods) = @_;
+	my $ctx = $self->{ctx};
+
+	$name = canonicalise_fqprinc($ctx, "modify <princ> %mods", 1, $name);
+	require_hashref("modify <princ> [key=val ...]", 2, \%mods);
+	return [$name, %mods];
 }
 
 sub KHARON_ACL_modify {
@@ -1656,6 +1723,8 @@ sub query {
 	$ret;
 }
 
+sub KHARON_IV_enable { KHARON_IV_ONE_SCALAR(@_); }
+
 sub enable {
 	my ($self, $princ) = @_;
 	my $ctx  = $self->{ctx};
@@ -1664,6 +1733,8 @@ sub enable {
 	require_scalar("enable <princ>", 1, $princ);
 	$self->internal_modify($princ, { attributes => ['+allow_tix'] });
 }
+
+sub KHARON_IV_disable { KHARON_IV_ONE_SCALAR(@_); }
 
 sub disable {
 	my ($self, $princ) = @_;
@@ -1691,6 +1762,14 @@ sub disable {
 	$self->internal_modify($princ, { attributes => ['-allow_tix'] });
 }
 
+sub KHARON_IV_remove {
+	my ($self, $cmd, $name) = @_;
+	my $ctx  = $self->{ctx};
+
+	$name = canonicalise_fqprinc($ctx, "remove <princ>", 1, $name);
+	return [$name];
+}
+
 sub remove {
 	my ($self, $name) = @_;
 	my $ctx  = $self->{ctx};
@@ -1716,6 +1795,17 @@ sub remove {
 
 	Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $name);
 	return undef;
+}
+
+sub KHARON_IV_is_appid_owner {
+	my ($self, $cmd, $princ, $appid) = @_;
+	my $ctx = $self->{ctx};
+
+	my $usage = "is_appid_owner <princ> <appid>";
+	$princ = canonicalise_fqprinc($ctx, $usage, 1, $princ);
+	$appid = canonicalise_fqprinc($ctx, $usage, 2, $appid);
+
+	return [$princ, $appid];
 }
 
 sub KHARON_ACL_is_appid_owner { return 1; }
@@ -1851,6 +1941,14 @@ sub create_host_internal {
 	return undef;
 }
 
+sub KHARON_IV_create_host {
+	my ($self, $verb, $host, %args) = @_;
+
+	require_scalar("create_host <host> [key=val ...]", 1, $host);
+
+	return undef;
+}
+
 sub create_host {
 	my ($self, $host, %args) = @_;
 	my $dbh = $self->{dbh};
@@ -1860,6 +1958,13 @@ sub create_host {
 	create_host_internal(@_);
 
 	$dbh->commit();
+	return undef;
+}
+
+sub KHARON_IV_modify_host {
+	my ($self, $cmd, $logical, %mods) = @_;
+
+	require_scalar("modify_host <host> [args]", 1, $logical);
 	return undef;
 }
 
@@ -1897,6 +2002,7 @@ sub modify_host {
 	return undef;
 }
 
+sub KHARON_IV_query_host  { KHARON_IV_ONE_SCALAR(@_); }
 sub KHARON_ACL_query_host { return 1; }
 
 sub query_host {
@@ -1907,14 +2013,23 @@ sub query_host {
 	    name => $name);
 }
 
+sub KHARON_IV_bind_host {
+	my ($self, $cmd, $host, $binding) = @_;
+	my $ctx = $self->{ctx};
+
+	require_scalar("bind_host <host> <binding>", 1, $host);
+	require_fqprinc($ctx, "bind_host <host> <binding>", 2, $binding);
+
+	return undef;
+}
+
 sub bind_host {
 	my ($self, $host, $binding) = @_;
 	my $ctx = $self->{ctx};
 	my $dbh = $self->{dbh};
 
 	require_scalar("bind_host <host> <binding>", 1, $host);
-	require_fqprinc($ctx, "bind_host <host> <binding>", 1, $binding)
-		if defined($binding);
+	require_fqprinc($ctx, "bind_host <host> <binding>", 2, $binding);
 
 	my $stmt = "UPDATE hosts SET bootbinding = ? WHERE name = ?";
 	my $sth  = sql_command($dbh, $stmt, $binding, $host);
@@ -1927,6 +2042,14 @@ sub bind_host {
 	$dbh->commit();
 
 	# XXXrcd: we must check if we successfully bound the host.
+	return undef;
+}
+
+sub KHARON_IV_remove_host {
+	my ($self, $cmd, @hosts) = @_;
+
+	require_scalar("remove_host <host> [<host> ...]", 1, $hosts[0]);
+
 	return undef;
 }
 
@@ -1955,6 +2078,15 @@ sub remove_host {
 	$dbh->commit();
 
 	return;
+}
+
+sub KHARON_IV_create_logical_host {
+	my ($self, $cmd, $host, %args) = @_;
+	my $usage = "create_logical_host <logical> [key=val ...]";
+
+	require_scalar("create_logical_host <logical>" , 1, $host);
+
+	return undef;
 }
 
 sub KHARON_ACL_create_logical_host { return 1; }
@@ -1987,6 +2119,15 @@ sub create_logical_host {
 		die [406, $host . " already exists.\n"];
 	}
 
+	return undef;
+}
+
+sub KHARON_IV_insert_hostmap {
+	my ($self, $cmd, @hosts) = @_;
+	my $usage = "$cmd <logical> <physical>";
+
+	require_scalar($cmd, 1, $hosts[0]);
+	require_scalar($cmd, 2, $hosts[1]);
 	return undef;
 }
 
@@ -2066,6 +2207,7 @@ sub is_cluster_member {
 	return generic_query($dbh, \%field_desc, 'hostmap', [keys %w], %w);
 }
 
+sub KHARON_IV_remove_hostmap  { KHARON_IV_insert_hostmap(@_); }
 sub KHARON_ACL_remove_hostmap { return hostmap_acl(@_); }
 
 sub remove_hostmap {
@@ -2138,6 +2280,17 @@ sub _check_hosts {
 		$dbh->rollback();
 		die $deny;
 	}
+}
+
+sub KHARON_IV_insert_ticket {
+	my ($self, $verb, $princ, @hosts) = @_;
+	my $ctx = $self->{ctx};
+	my $usage = "$verb <princ> <host> [<host> ...]";
+
+	require_fqprinc($ctx, $usage, 1, $princ);
+	require_scalars($usage, 2, @hosts);
+
+	return undef;
 }
 
 sub KHARON_ACL_insert_ticket {
@@ -2245,12 +2398,19 @@ sub insert_ticket {
 	return undef;
 }
 
-sub KHARON_ACL_refresh_ticket {
+sub KHARON_IV_refresh_ticket {
 	my ($self, $verb, $princ, @hosts) = @_;
 	my $ctx = $self->{ctx};
 	my $usage = "refresh_ticket <princ> <host> [<host> ...]";
 
 	require_fqprinc($ctx, $usage, 1, $princ);
+	require_scalars($ctx, $usage, 2, @hosts);
+
+	return undef;
+}
+
+sub KHARON_ACL_refresh_ticket {
+	my ($self, $verb, $princ, @hosts) = @_;
 
 	if ($princ eq $self->{client}) {
 		return 1;
@@ -2471,6 +2631,17 @@ sub fetch_tickets {
 	} @$tix };
 }
 
+sub KHARON_IV_remove_ticket {
+	my ($self, $princ, @hosts) = @_;
+	my $usage = "remove_ticket <princ> <host> [<host> ...]";
+	my $ctx = $self->{ctx};
+
+	require_fqprinc($ctx, $usage, 1, $princ);
+	require_scalars($usage, 2, @hosts);
+
+	return undef;
+}
+
 sub KHARON_ACL_remove_ticket { KHARON_ACL_insert_ticket(@_) }
 
 sub remove_ticket {
@@ -2480,15 +2651,7 @@ sub remove_ticket {
 	my $dbh = $self->{dbh};
 
 	require_fqprinc($ctx, $usage, 1, $princ);
-	require_scalar("remove_ticket <princ> <host> [<host> ...]", 2,
-	    $hosts[0]);
-
-	my $host;
-	my $i = 3;
-	for $host (@hosts) {
-		require_scalar("remove_ticket <princ> <host> [<host> ...]",
-		    $i++, $host);
-	}
+	require_scalars($usage, 2, @hosts);
 
 	while (@hosts) {
 		my @curhosts = splice(@hosts, 0, 500);
@@ -2504,6 +2667,15 @@ sub remove_ticket {
 	}
 
 	$dbh->commit();
+
+	return undef;
+}
+
+sub KHARON_IV_add_acl {
+	my ($self, $cmd, $acl, $type) = @_;
+
+	require_scalar("add_acl <acl> <type> [key=val ...]", 1, $acl);
+	require_scalar("add_acl <acl> <type> [key=val ...]", 2, $type);
 
 	return undef;
 }
@@ -2557,6 +2729,15 @@ sub add_acl {
 	return undef;
 }
 
+sub KHARON_IV_del_acl {
+	my ($self, $cmd, $acl) = @_;
+	my $acls = $self->query_acl(name => $acl);
+
+	require_scalar("del_acl <acl>", 1, $acl);
+
+	return undef;
+}
+
 sub KHARON_ACL_del_acl {
 	my ($self, $cmd, $acl) = @_;
 	my $acls = $self->query_acl(name => $acl);
@@ -2590,6 +2771,15 @@ sub query_acl {
 
 # Replacements for aclgroup modifications
 # Allows the "owner" to modify the group
+
+sub KHARON_IV_insert_aclgroup {
+	my ($self, $cmd, @acls) = @_;
+
+	require_scalar("$cmd <aclgroup> <acl>", 1, $acls[0]);
+	require_scalar("$cmd <aclgroup> <acl>", 2, $acls[1]);
+
+	return undef;
+}
 
 sub KHARON_ACL_insert_aclgroup { KHARON_ACL_del_acl(@_); }
 
@@ -2664,7 +2854,7 @@ sub add_acl_owner {
 	my ($self) = @_;
 	my $res = owner_add_f('acls', 'name', @_);
 	$self->{dbh}->commit();
-	return $res;
+	return;
 }
 
 sub KHARON_ACL_remove_acl_owner { return KHARON_ACL_del_acl(@_); }
