@@ -2084,7 +2084,7 @@ sub KHARON_IV_create_logical_host {
 	my ($self, $cmd, $host, %args) = @_;
 	my $usage = "create_logical_host <logical> [key=val ...]";
 
-	require_scalar("create_logical_host <logical>" , 1, $host);
+	require_scalar($usage , 1, $host);
 
 	return undef;
 }
@@ -2094,30 +2094,30 @@ sub KHARON_ACL_create_logical_host { return 1; }
 sub create_logical_host {
 	my ($self, $host, %args) = @_;
 	my $dbh = $self->{dbh};
+	my $usage = "create_logical_host <logical> [key=val ...]";
 
-	require_scalar("create_logical_host <logical> [key=val ...]" ,
-	    1, $host);
+	require_scalar($usage , 1, $host);
 
 	my $lhost = $self->query_host($host);
-	if (!defined($lhost)) {
-		my $drealm = Krb5Admin::C::krb5_get_realm($self->{ctx});
-		my $ret = $self->create_host_internal($host,
-		    ("realm" => $drealm, "is_logical" => 1));
-
-		if (!exists($args{owner})) {
-			$args{owner} = [$self->{client}];
-		}
-
-		generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
-
-		$self->can_user_act("Can't create logical hosts you don't own",
-		    $self->{client}, "add_host_owner", $host);
-
-		$dbh->commit();
-	} else {
+	if (defined($lhost)) {
 		$dbh->rollback();
-		die [406, $host . " already exists.\n"];
+		die [406, "$host already exists.\n"];
 	}
+
+	my $drealm = Krb5Admin::C::krb5_get_realm($self->{ctx});
+	my $ret = $self->create_host_internal($host,
+	    ("realm" => $drealm, "is_logical" => 1));
+
+	if (!exists($args{owner})) {
+		$args{owner} = [$self->{client}];
+	}
+
+	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
+
+	$self->can_user_act("Can't create logical hosts you don't own",
+	    $self->{client}, "add_host_owner", $host);
+
+	$dbh->commit();
 
 	return undef;
 }
