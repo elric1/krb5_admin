@@ -555,7 +555,8 @@ our %field_desc = (
 		fields		=> [qw/name realm ip_addr bootbinding
 				      is_logical/],
 		lists		=> [[qw/host_labels host label/],
-				    [qw/hosts_owner name owner owner/]],
+				    [qw/hosts_owner name owner owner/],
+				    [qw/hostmap logical physical member/]],
 		wontgrow	=> 0,
 	},
 	hostmap		=> {
@@ -1970,21 +1971,21 @@ sub KHARON_IV_modify_host {
 
 sub KHARON_ACL_modify_host {
 	my ($self, $cmd, $logical, %mods) = @_;
+	my $dbh = $self->{dbh};
 	my $lhost = $self->query_host($logical);
 	my @actions = qw{owner add_owner del_owner
-			 label add_label del_label};
+			 label add_label del_label
+			 member add_member del_member};
 
-	if (defined $lhost && $lhost->{is_logical} &&
-	    is_owner($self->{dbh}, 'hosts', $self->{client}, $logical)) {
+	return undef	if !defined($lhost);
+	return undef	if !$lhost->{is_logical};
+	return undef	if !is_owner($dbh, 'hosts', $self->{client}, $logical);
 
-		for my $mod (keys %mods) {
-		    return undef if !grep {$_ eq $mod} @actions;
-		}
-
-		return 1;
+	for my $mod (keys %mods) {
+		return undef if !grep {$_ eq $mod} @actions;
 	}
 
-	return undef;
+	return 1;
 }
 
 sub modify_host {

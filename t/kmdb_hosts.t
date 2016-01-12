@@ -71,19 +71,20 @@ testObjC("Create a host", $kmdb, [undef], 'create_host', 'foo.test.realm',
 	ip_addr => '1.1.1.1', realm => 'TEST.REALM');
 testObjC("Query the host", $kmdb,
 	[{realm => 'TEST.REALM', ip_addr => '1.1.1.1', bootbinding => undef,
-	is_logical=>undef, label => [], owner => []}], 'query_host',
-	'foo.test.realm');
+	is_logical=>undef, label => [], owner => [], member => []}],
+	'query_host', 'foo.test.realm');
 testObjC("Create a host", $kmdb, [undef], 'create_host', 'bar.test.realm',
 	ip_addr => '2.2.2.2', realm => 'TEST.REALM');
 testObjC("Query the host", $kmdb,
 	[{ip_addr => '2.2.2.2', realm => 'TEST.REALM', bootbinding => undef,
-	is_logical=>undef, label => [], owner => []}], 'query_host',
-	'bar.test.realm');
+	is_logical=>undef, label => [], owner => [], member => []}],
+	'query_host', 'bar.test.realm');
 testObjC("Create a host", $kmdb, [undef], 'create_host', 'baz.test.realm',
 	ip_addr => '3.3.3.3', realm => 'TEST.REALM');
 testObjC("Query the host", $kmdb, [{realm => 'TEST.REALM',
 	is_logical=>undef, ip_addr => '3.3.3.3', bootbinding => undef,
-	label => [], owner => []}], 'query_host', 'baz.test.realm');
+	label => [], owner => [], member => []}],
+	'query_host', 'baz.test.realm');
 
 testObjC("Query the hostmap", $kmdb,
 	[undef],
@@ -93,7 +94,6 @@ testObjC("Query the hostmap", $kmdb,
 
 testObjC("Create Logical host", $kmdb, [undef], 'create_logical_host',
 	qw/logical.test.realm/);
-	
 
 testObjC("Create a mapping", $kmdb, [undef], 'insert_hostmap',
 	qw/logical.test.realm bar.test.realm/);
@@ -113,7 +113,8 @@ testMustDie("Don't create a physical host named the same as a logical host",
 
 testObjC("Query the logical host", $kmdb,
 	[{ip_addr => undef, realm => 'TEST.REALM', bootbinding => undef,
-	is_logical=>1, label => [], owner => ['admin_user@TEST.REALM']}],
+	is_logical=>1, label => [], owner => ['admin_user@TEST.REALM'],
+	member => [qw/bar.test.realm baz.test.realm/]}],
 	'query_host', 'logical.test.realm');
 
 #

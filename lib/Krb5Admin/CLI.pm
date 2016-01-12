@@ -23,7 +23,8 @@ our %host_hmap = (
 	ip_addr		=> undef,
 	bootbinding	=> undef,
 	label		=> [],
-	owner		=> []
+	owner		=> [],
+	member		=> [],
 );
 
 our %princ_hmap = (
@@ -48,7 +49,8 @@ our %acl_hmap = (
 );
 
 our %logical_host_hmap = (
-	owner	=> []
+	owner	=> [],
+	member	=> [],
 );
 
 sub KHARON_HASHIFY_COMMANDS {
