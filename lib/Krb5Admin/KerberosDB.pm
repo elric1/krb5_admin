@@ -1919,6 +1919,16 @@ sub create_host_internal {
 	my ($self, $host, %args) = @_;
 	my $dbh = $self->{dbh};
 
+	my $lhost = $self->query_host($host);
+	if (defined($lhost)) {
+		$dbh->rollback();
+		die [406, "$host already exists.\n"];
+	}
+
+	if (!exists($args{realm})) {
+		$args{realm} = Krb5Admin::C::krb5_get_realm($self->{ctx});
+	}
+
 	my %fields = map { $_ => 1 } @{$field_desc{hosts}->{fields}};
 
 	my @args = ('name');
@@ -2099,15 +2109,7 @@ sub create_logical_host {
 
 	require_scalar($usage , 1, $host);
 
-	my $lhost = $self->query_host($host);
-	if (defined($lhost)) {
-		$dbh->rollback();
-		die [406, "$host already exists.\n"];
-	}
-
-	my $drealm = Krb5Admin::C::krb5_get_realm($self->{ctx});
-	my $ret = $self->create_host_internal($host,
-	    ("realm" => $drealm, "is_logical" => 1));
+	my $ret = $self->create_host_internal($host, "is_logical" => 1);
 
 	if (!exists($args{owner})) {
 		$args{owner} = [$self->{client}];
