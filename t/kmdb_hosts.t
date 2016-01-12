@@ -6,6 +6,8 @@ use Krb5Admin::ForkClient;
 
 use Data::Dumper;
 
+use t::utils qw/normalise/;
+
 use strict;
 use warnings;
 
@@ -22,7 +24,8 @@ sub testObjC {
 		ok(0, $testname);
 		diag(Dumper($@));
 	} else {
-		is_deeply(\@ret, $result, $testname) or diag(Dumper(\@ret));
+		is_deeply(normalise(\@ret), normalise($result), $testname)
+		    or diag(Dumper(\@ret));
 	}
 }
 
