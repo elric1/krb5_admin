@@ -175,6 +175,78 @@ will list the policies that match
 .Ar glob .
 .El
 .Pp
+.Ss Subjects and Groups
+Subjects are simply a list of allowable principals which can be used
+in ownerships relationships.
+.Nm
+ensures that all users and appids that are created will have an associated
+krb5 subject in the database, but if you want to refer to principals in
+foreign realms in your ownership relationships then you will need to add
+them using
+.Ar create_subject .
+.Pp
+Groups are just groups of subjects.
+Groups can contain either krb5 principals or other groups nested to
+sixteen
+.Pq 16
+levels.
+Groups are simply subjects where the type is
+.Dq group
+and they are allowed to have
+.Dq members .
+The commands
+.Ar create_group ,
+.Ar modify_group ,
+etc. are equivalent to their _subject variants except that they set
+type=group automatically.
+.Pp
+The following keys are defined for subjects: type, owner 
+.Pq set-based ,
+and member
+.Pq set-based .
+.Pp
+Commands that operate on subjects:
+.Pp
+.Bl -ohang -offset ind
+.It create_subject Ar subj No type= Ns Ar type Op No key= Ns Ar val No ...
+will create a subject
+.Ar subj
+of type
+.Ar type .
+.It list_subject Op No key= Ns Ar val No ...
+will list all of the subjects which satisfy the conditions specified.
+.It modify_subject Ar subj Op No key= Ns Ar val No ...
+will modify the attributes of a subject.
+.It query_subject Ar subj Op field ...
+will display the fields of
+.Ar subj .
+If the optional field parameters are supplied then only the fields
+specified will be displayed.
+.It remove_subject Ar subj
+will remove
+.Ar subj .
+.El
+.Pp
+Commands that operate on groups:
+.Bl -ohang -offset ind
+.It create_group Ar group No type= Ns Ar type Op No key= Ns Ar val No ...
+will create a group
+.Ar group
+of type
+.Ar type .
+.It list_group Op No key= Ns Ar val No ...
+will list all of the groups which satisfy the conditions specified.
+.It modify_group Ar group Op No key= Ns Ar val No ...
+will modify the attributes of a group.
+.It query_group Ar group Op field ...
+will display the fields of
+.Ar group .
+If the optional field parameters are supplied then only the fields
+specified will be displayed.
+.It remove_group Ar group
+will remove
+.Ar group .
+.El
 .Ss Hosts
 .Nm
 needs to keep track of all of the hosts in an environment.
