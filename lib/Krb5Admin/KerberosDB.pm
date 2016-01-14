@@ -518,7 +518,8 @@ our %field_desc = (
 		pkey		=> [qw/name/],
 		uniq		=> [qw/name/],
 		fields		=> [qw/name type/],
-		lists		=> [ [qw/acls_owner name owner owner/],],
+		lists		=> [ [qw/acls_owner name owner owner/],
+				     [qw/aclgroups aclgroup acl member/]],
 		wontgrow	=> 0,
 	},
 	aclgroups	=> {
@@ -2674,6 +2675,155 @@ sub remove_ticket {
 	return undef;
 }
 
+sub KHARON_IV_create_subject {
+	my ($self, $cmd, $subj, %args) = @_;
+	my $ctx = $self->{ctx};
+	my $usage = "$cmd <subj> [key=val ...]";
+
+	require_scalar($usage, 1, $subj);
+
+	die [503, "Must supply type."]	if !defined($args{type});
+	return				if $args{type} eq 'group';
+	die [503, "ACL type invalid."]	if $args{type} ne 'krb5';
+
+	$subj = canonicalise_fqprinc($ctx, $usage, 1, $subj);
+
+	return [$subj, %args];
+}
+
+#
+# XXXrcd: TODO: we must prevent adding members to type != group
+
+sub create_subject {
+	my ($self, $subj, %args) = @_;
+	my $dbh = $self->{dbh};
+	my $ctx = $self->{ctx};
+	my $princ = $self->{client};
+	my $usage = "create_subject <subj> [key=val ...]";
+
+	require_scalar($usage, 1, $subj);
+
+	my $type = $args{type};
+
+	if ($type eq 'group') {
+		if ($subj !~ m/^[A-Za-z0-9][-_A-Za-z0-9]*$/) {
+			die [503, "Invalid group name."];
+		}
+	} elsif ($type eq 'krb5') {
+		$subj = canonicalise_fqprinc($ctx, $usage, 1, $subj);
+	} else {
+		die [503, "ACL type invalid."];
+	}
+
+	my $stmt = "INSERT INTO acls(name, type) VALUES (?, ?)";
+	eval { sql_command($dbh, $stmt, $subj, $type); };
+	if ($@) {
+		if ($@ =~ /unique/i) {
+			die [500, $subj . ' already exists.'];
+		}
+		die $@;
+	}
+
+	generic_modify($dbh, \%field_desc, 'acls', $subj, %args);
+	$dbh->commit();
+	return;
+}
+
+sub KHARON_ACL_list_subject	{ return 1; }
+
+sub list_subject {
+	my ($self, %query) = @_;
+	my $dbh = $self->{dbh};
+
+	my $res = generic_query($dbh, \%field_desc, 'acls', [keys %query],
+	    %query);
+	return keys %$res;
+}
+
+sub KHARON_IV_modify_subject {
+	my ($self, $cmd, $subj, %args) = @_;
+	my $usage = "$cmd <subj> [key=val ...]";
+
+	require_scalar($usage, 1, $subj);
+
+	return;
+}
+
+sub modify_subject {
+	my ($self, $subj, %args) = @_;
+	my $dbh = $self->{dbh};
+	my $ctx = $self->{ctx};
+	my $princ = $self->{client};
+	my $usage = "modify_subject <subj> [key=val ...]";
+
+	generic_modify($dbh, \%field_desc, 'acls', $subj, %args);
+	# XXXrcd: check we still have permissions.
+	$dbh->commit();
+	return;
+}
+
+sub KHARON_ACL_query_subject	{ return 1; }
+
+sub query_subject {
+	my ($self, $subj, @fields) = @_;
+	my $dbh = $self->{dbh};
+	my $ret;
+
+	require_scalar("query_subject <subj>", 1, $subj);
+
+	$ret = generic_query($dbh, \%field_desc, 'acls', ['name'],
+	    name => $subj);
+
+	return $ret			if @fields == 0;
+	return $ret->{$fields[0]}	if @fields == 1;
+	return {%$ret{@fields}};
+}
+
+sub KHARON_IV_remove_subject	{ KHARON_IV_ONE_SCALAR(@_); }
+
+sub remove_subject {
+	my ($self, $subj) = @_;
+	my $dbh = $self->{dbh};
+
+	require_scalar("remove_subject <subj>", 1, $subj);
+
+	my $stmt = "DELETE FROM acls WHERE name = ?";
+	sql_command($dbh, $stmt, $subj);
+	$dbh->commit();
+	return;
+}
+
+#
+# The group interfaces are largely just mapped directly into the subject
+# interfaces and are only provided because we feel that users will understand
+# them more intuitively.
+
+my %gtype = ( type => 'group' );
+sub KHARON_IV_create_group	{ KHARON_IV_create_subject(@_, %gtype); }
+sub KHARON_ACL_create_group	{ KHARON_ACL_create_subject(@_, %gtype); }
+sub create_group		{ create_subject(@_, %gtype); }
+
+sub KHARON_IV_list_group	{ KHARON_IV_list_subject(@_, %gtype); }
+sub KHARON_ACL_list_group	{ KHARON_ACL_list_subject(@_, %gtype); }
+sub list_group			{ list_subject(@_, %gtype); }
+
+sub KHARON_IV_modify_group	{ KHARON_IV_modify_subject(@_, %gtype); }
+sub KHARON_ACL_modify_group	{ KHARON_ACL_modify_subject(@_, %gtype); }
+sub modify_group		{ modify_subject(@_, %gtype); }
+
+sub KHARON_IV_query_group	{ KHARON_IV_query_subject(@_); }
+sub KHARON_ACL_query_group	{ KHARON_ACL_query_subject(@_); }
+sub query_group			{ query_subject(@_); }
+
+sub KHARON_IV_remove_group	{ KHARON_IV_remove_subject(@_); }
+sub KHARON_ACL_remove_group	{ KHARON_ACL_remove_subject(@_); }
+sub remove_group		{ remove_subject(@_); }
+
+#
+# XXXrcd: the {add,del,query}_acl framework will be deprecated at some
+#         point.  It will be replaced with the
+#         {create,query_remove}_{subject,group} interfaces.
+
 sub KHARON_IV_add_acl {
 	my ($self, $cmd, $acl, $type) = @_;
 
@@ -2692,44 +2842,13 @@ sub KHARON_ACL_add_acl {
 
 sub add_acl {
 	my ($self, $acl, $type, %args) = @_;
-	my $dbh = $self->{dbh};
-	my $ctx = $self->{ctx};
-	my $princ = $self->{client};
 	my $usage = "add_acl <acl> <type> [key=val ...]";
 
 	require_scalar($usage, 1, $acl);
 	require_scalar($usage, 2, $type);
 
-	if ($type eq 'group' ) {
-		if ($acl !~ m/^[A-Za-z0-9][-_A-Za-z0-9]*$/) {
-			die [503, "Invalid acl name"];
-		}
-	} elsif ($type eq 'krb5') {
-		$acl = canonicalise_fqprinc($ctx, "add_acl <acl> <type>",
-		    1, $acl);
-	} else {
-		die [503, "ACL type invalid."];
-	}
-
-	my $stmt = "INSERT INTO acls(name, type) VALUES (?, ?)";
-
-	eval {
-		sql_command($dbh, $stmt, $acl, $type);
-	};
-
-	if ($@) {
-		if ($@ =~ /unique/i) {
-			die [500, $acl . ' already exists.'];
-		}
-		die $@;
-	}
-
-	if ($type eq 'group') {
-		$self->add_acl_owner($acl, $args{owner} // $princ);
-	}
-	$dbh->commit();
-
-	return undef;
+	$args{type} = $type;
+	return $self->create_subject($acl, %args);
 }
 
 sub KHARON_IV_del_acl {
@@ -2752,15 +2871,8 @@ sub KHARON_ACL_del_acl {
 
 sub del_acl {
 	my ($self, $acl) = @_;
-	my $dbh = $self->{dbh};
 
-	require_scalar("del_acl <acl>", 1, $acl);
-
-	my $stmt = "DELETE FROM acls WHERE name = ?";
-
-	sql_command($dbh, $stmt, $acl);
-	$dbh->commit();
-	return undef;
+	return $self->remove_subject($acl);
 }
 
 sub KHARON_ACL_query_acl { return 1; }

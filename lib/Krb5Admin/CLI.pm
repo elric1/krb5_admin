@@ -44,6 +44,12 @@ our %appid_hmap = (
 	cstraint	=> [],
 );
 
+our %subject_hmap = (
+	type		=> undef,
+	owner		=> [],
+	member		=> [],
+);
+
 our %acl_hmap = (
 	owner	=> []
 );
@@ -56,10 +62,17 @@ our %logical_host_hmap = (
 sub KHARON_HASHIFY_COMMANDS {
 	return {
 		create_appid		=> [1, \%appid_hmap],
+		create_group		=> [1, \%subject_hmap],
 		create_host		=> [1, \%host_hmap],
 		create_logical_host	=> [1, \%logical_host_hmap],
+		create_subject		=> [1, \%subject_hmap],
 		modify			=> [1, {%princ_hmap, %appid_hmap}],
+		modify_group		=> [1, \%subject_hmap],
 		modify_host		=> [1, \%host_hmap],
+		modify_subject		=> [1, \%subject_hmap],
+		list_subject		=> [0, \%subject_hmap],
+		list_group		=> [0, \%subject_hmap],
+		query_acl		=> [0, \%qacl_hmap],
 		add_acl			=> [2, \%acl_hmap],
 	};
 }

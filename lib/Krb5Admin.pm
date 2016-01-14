@@ -18,7 +18,9 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				create
 				create_appid
 				create_bootstrap_id
+				create_group
 				create_host
+				create_subject
 				create_user
 				curve25519_start
 				curve25519_step
@@ -34,12 +36,16 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				insert_ticket
 				master
 				modify
+				modify_group
 				modify_host
+				modify_subject
 				refresh_ticket
 				remove
 				remove_aclgroup
+				remove_group
 				remove_host
 				remove_hostmap
+				remove_subject
 				remove_ticket
 				reset_passwd
 				sacls_add
@@ -61,8 +67,10 @@ our @KHARON_RO_SC_EXPORT = qw/	is_appid_owner
 				query
 				query_acl
 				query_aclgroup
+				query_group
 				query_host
 				query_hostmap
+				query_subject
 				query_ticket
 				sacls_query
 				principal_map_query
@@ -71,7 +79,9 @@ our @KHARON_RO_SC_EXPORT = qw/	is_appid_owner
 our @KHARON_RO_AC_EXPORT = qw/	fetch
 				fetch_old
 				list
+				list_group
 				list_labels
+				list_subject
 				listpols
 				mquery
 				list_commands
