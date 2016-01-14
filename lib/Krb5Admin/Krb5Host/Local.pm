@@ -1068,7 +1068,7 @@ sub mk_kt_dir {
 	my $realroot;
 	my $realktdir;
 
-	$ktdir = "$ktroot/$ktdir"	if defined($self->{ktroot});
+	$ktdir = "$ktroot/$ktdir";
 
 	mkdir($ktdir, 0755);
 	chmod(0755, $ktdir);
