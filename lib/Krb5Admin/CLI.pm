@@ -72,7 +72,6 @@ sub KHARON_HASHIFY_COMMANDS {
 		modify_subject		=> [1, \%subject_hmap],
 		list_subject		=> [0, \%subject_hmap],
 		list_group		=> [0, \%subject_hmap],
-		query_acl		=> [0, \%qacl_hmap],
 		add_acl			=> [2, \%acl_hmap],
 	};
 }
