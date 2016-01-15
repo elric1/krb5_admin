@@ -9,7 +9,7 @@
 .Nd kerberos administration tool
 .Sh SYNOPSIS
 .Nm
-.Op Fl Mdlv
+.Op Fl JMdlv
 .Op Fl D Ar kdb
 .Op Fl S Ar sqlitedb
 .Op Fl h Ar hostspec
@@ -32,6 +32,8 @@ database.
 Defaults to the location built into the Kerberos libriares.
 Implies
 .Fl l .
+.It Fl J
+output is JSON formatted rather than human readable.
 .It Fl M
 connect to the master KDC rather than a slave.
 .It Fl S Ar sqlitedb

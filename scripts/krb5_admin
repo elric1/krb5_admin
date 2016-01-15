@@ -35,8 +35,9 @@ my $dbname;
 my $sqldbname;
 my @kdcs;
 my $realm;
+my $json = 0;
 
-getopts('D:MS:dh:lr:sv?', \%opts) or usage();
+getopts('D:JMS:dh:lr:sv?', \%opts) or usage();
 
 usage()			if exists($opts{'?'});
 $dbname = $opts{'D'}	if exists($opts{'D'});
@@ -46,6 +47,7 @@ $verbose = 1		if exists($opts{'v'});
 $terse = 1		if exists($opts{'s'});
 @kdcs = ($opts{'h'})	if exists($opts{'h'});
 $realm = $opts{'r'}	if exists($opts{'r'});
+$json = 1		if exists($opts{'J'});
 
 $opts{'l'} = 1		if defined($dbname);
 
@@ -59,7 +61,7 @@ if (defined($sqldbname) && !$opts{'l'}) {
 	usage();
 }
 
-my $cli = Krb5Admin::CLI->new(appname => 'krb5_admin');
+my $cli = Krb5Admin::CLI->new(appname => 'krb5_admin', json => $json);
 
 # We address this up front so that we don't have to connect to the
 # KDC to provide usage.
