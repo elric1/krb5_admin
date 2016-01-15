@@ -4,7 +4,6 @@ use Test::More tests => 48;
 
 use Sys::Hostname;
 
-use Krb5Admin::KerberosDB;
 use Krb5Admin::ForkClient;
 
 use Data::Dumper;

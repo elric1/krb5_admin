@@ -18,6 +18,7 @@ use Kharon::InputValidation::Object;
 
 use Krb5Admin::KerberosDB;
 use Krb5Admin::Log;
+use Krb5Admin::Utils qw/mk_kmdb_with_config/;
 
 use strict;
 use warnings;
@@ -25,7 +26,6 @@ use warnings;
 sub mk_kmdb {
 	my ($pes, $config, %args) = @_;
 	my @acls = ();
-	my $kmdb_class = 'Krb5Admin::KerberosDB';
 
 	my $acl     = Kharon::Entitlement::Stack->new();
 
@@ -61,28 +61,14 @@ sub mk_kmdb {
 	$acl->set_creds($args{CREDS});
 	$pes->set_acl($acl);
 
-	my %kmdb_args = (
-		acl			=> $acl,
-		sacls			=> $sqlacl,
-		client			=> $args{CREDS},
-		addr			=> $args{REMOTE_IP},
-		allow_fetch		=> $config->{allow_fetch},
-		allow_fetch_old		=> $config->{allow_fetch_old},
-		enable_host_subdomain	=> $config->{enable_host_subdomain},
-		xrealm_bootstrap	=> $config->{xrealm_bootstrap},
-		win_xrealm_bootstrap	=> $config->{win_xrealm_bootstrap},
-		prestash_xrealm		=> $config->{prestash_xrealm},
-		sqlite			=> $config->{sqlite},
-		dbname			=> $config->{dbname},
-	);
-
 	if (defined($args{CREDS}) && defined($args{REMOTE_IP})) {
 		$config->{logger}->log('info', $args{CREDS} .
 		    ' connected from ' .  $args{REMOTE_IP});
 	}
 
-	$kmdb_class = $config->{kmdb_class} if defined($config->{kmdb_class});
-	my $ret = $kmdb_class->new(%kmdb_args);
+	$args{acl}   = $acl;
+	$args{sacls} = $sqlacl;
+	my $ret = mk_kmdb_with_config($config, \%args);
 
 	$objacl->set_subobject($ret);
 	$sqlacl->set_dbh($ret->get_dbh());

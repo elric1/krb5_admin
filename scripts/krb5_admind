@@ -5,6 +5,7 @@ use Sys::Hostname;
 use Sys::Syslog;
 
 use Krb5Admin::Daemon;
+use Krb5Admin::Utils qw/load_config/;
 
 use strict;
 use warnings;
@@ -28,52 +29,26 @@ sub usage {
 
 openlog('krb5_admind', 'pid', 'auth');
 
-our $acl_file = ACL_FILE;
-our $config = KRB5_ADMIND_CONFIG;
-our $dbname;
-our $sqlite;
-our $allow_fetch;
-our $allow_fetch_old;
-# If defined it should end in a dot
-our $subdomain_prefix;
-our $master;
-our $kmdb_class;
-our %xrealm_bootstrap;
-our %win_xrealm_bootstrap;
-our %prestash_xrealm;
+my $config = {};
+my $master;
+
+$config->{acl_file}	= ACL_FILE;
+$config->{config}	= KRB5_ADMIND_CONFIG;
 
 my %opts;
 getopts('D:MPS:a:c:d:m:', \%opts) or usage();
 
-$master   = hostname()		if  defined($opts{M});
-$master   = $opts{m}		if !defined($master);
-$acl_file = $opts{a}		if  defined($opts{a});
-$dbname   = $opts{d}		if  defined($opts{d});
-$dbname   = $opts{D}		if  defined($opts{D});
-$sqlite   = $opts{S}		if  defined($opts{S});
-$config   = $opts{c}		if  defined($opts{c});
+$master   = hostname()			if  defined($opts{M});
+$master   = $opts{m}			if !defined($master);
 
-if (-f $config || defined($opts{c})) {
-	my $ret = do $config;
-	die "Couldn't parse $config: $@\n"	if $@;
-	die "Couldn't find $config\n"		if ! -f $config;
-}
+$config->{master}	= $master;
+$config->{acl_file}	= $opts{a}	if  defined($opts{a});
+$config->{dbname}	= $opts{d}	if  defined($opts{d});
+$config->{dbname}	= $opts{D}	if  defined($opts{D});
+$config->{sqlite}	= $opts{S}	if  defined($opts{S});
+$config->{config}	= $opts{c}	if  defined($opts{c});
+$config->{preforked}	= $opts{P};
 
-$kmdb_class = 'Krb5Admin::KerberosDB' if !defined($kmdb_class);
+$config->{config_provided}	= defined($opts{c});
 
-my %config;
-$config{acl_file}		= $acl_file;
-$config{config}			= $config;
-$config{dbname}			= $dbname;
-$config{sqlite}			= $sqlite;
-$config{allow_fetch}		= $allow_fetch;
-$config{allow_fetch_old}	= $allow_fetch_old;
-$config{subdomain_prefix}	= $subdomain_prefix;
-$config{master}			= $master;
-$config{kmdb_class}		= $kmdb_class;
-$config{xrealm_bootstrap}	= \%xrealm_bootstrap;
-$config{win_xrealm_bootstrap}	= \%win_xrealm_bootstrap;
-$config{prestash_xrealm}	= \%prestash_xrealm;
-$config{preforked}		= $opts{P};
-
-Krb5Admin::Daemon::run(\%config) or usage();
+Krb5Admin::Daemon::run($config) or usage();

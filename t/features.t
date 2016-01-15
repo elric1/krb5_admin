@@ -2,19 +2,18 @@
 
 use Test::More tests => 4;
 
-use Krb5Admin::KerberosDB;
+use Krb5Admin::Local;
 
 use strict;
 use warnings;
 
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
-my $kmdb = Krb5Admin::KerberosDB->new(
-    local	=> 1,
+my $kmdb = Krb5Admin::Local->new({
     client	=> 'root@TEST.REALM',
     dbname	=> 'db:t/test-hdb',
     sqlite	=> 't/sqlite.db',
-);
+});
 
 $kmdb->add_feature('BAR-Feature');
 $kmdb->add_feature('BAZ-Feature');

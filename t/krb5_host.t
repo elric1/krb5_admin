@@ -4,7 +4,7 @@ use Test::More tests => 32;
 
 use Sys::Hostname;
 
-use Krb5Admin::KerberosDB;
+use Krb5Admin::Local;
 use Krb5Admin::Krb5Host::Local;
 
 use Data::Dumper;
@@ -142,12 +142,11 @@ sub get_kt {
 
 my $ctx = Krb5Admin::C::krb5_init_context();
 
-my $kmdb = Krb5Admin::KerberosDB->new(
-    local	=> 1,
+my $kmdb = Krb5Admin::Local->new({
     client	=> 'root@TEST.REALM',
     dbname	=> 'db:t/test-hdb',
     sqlite	=> 't/sqlite.db',
-);
+});
 
 do $KRB5_KEYTAB_CONFIG if -f $KRB5_KEYTAB_CONFIG;
 diag $@ if $@;
