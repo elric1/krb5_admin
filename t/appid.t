@@ -56,16 +56,17 @@ my $kmdb = Krb5Admin::ForkClient->new({
 
 my @owner_grp = (owner => ['admin_user@TEST.REALM']);
 my @owner_user = (owner => []);
+my @members = (member => []);
 our $acls = {
-	'admin_user@TEST.REALM'	=> { type => 'krb5', @owner_user},
-	'normal_user@TEST.REALM'=> { type => 'krb5', @owner_user},
-	'elric@IMRRYR.ORG'	=> { type => 'krb5', @owner_user},
-	'yyrkoon@IMRRYR.ORG'	=> { type => 'krb5', @owner_user},
-	'cymoril@IMRRYR.ORG'	=> { type => 'krb5', @owner_user},
-	'sadric@IMRRYR.ORG'	=> { type => 'krb5', @owner_user},
-	'group1'		=> { type => 'group', @owner_grp},
-	'group2'		=> { type => 'group', @owner_grp},
-	'master_group'		=> { type => 'group', @owner_grp},
+	'admin_user@TEST.REALM'	=> { type => 'krb5', @owner_user, @members},
+	'normal_user@TEST.REALM'=> { type => 'krb5', @owner_user, @members},
+	'elric@IMRRYR.ORG'	=> { type => 'krb5', @owner_user, @members},
+	'yyrkoon@IMRRYR.ORG'	=> { type => 'krb5', @owner_user, @members},
+	'cymoril@IMRRYR.ORG'	=> { type => 'krb5', @owner_user, @members},
+	'sadric@IMRRYR.ORG'	=> { type => 'krb5', @owner_user, @members},
+	'group1'		=> { type => 'group', @owner_grp, @members},
+	'group2'		=> { type => 'group', @owner_grp, @members},
+	'master_group'		=> { type => 'group', @owner_grp, @members},
     };
 
 my $i;
@@ -75,7 +76,7 @@ for $i (keys %$acls) {
 	next if $i eq 'admin_user@TEST.REALM';	# now create in 00prepare.t.
 	next if $i eq 'normal_user@TEST.REALM';	# now create in 00prepare.t.
 
-	testObjC("Create ACL: $i", $kmdb, [undef], 'add_acl', $i, $type);
+	testObjC("Create ACL: $i", $kmdb, [], 'add_acl', $i, $type);
 }
 
 testObjC("Query ACLs", $kmdb, [$acls], 'query_acl');
