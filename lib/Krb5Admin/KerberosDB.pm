@@ -2848,6 +2848,7 @@ sub add_acl {
 	require_scalar($usage, 2, $type);
 
 	$args{type} = $type;
+	$args{owner} = [$args{owner}] if defined $args{owner};
 	return $self->create_subject($acl, %args);
 }
 
