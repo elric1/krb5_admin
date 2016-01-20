@@ -224,6 +224,8 @@ will display the fields of
 .Ar subj .
 If the optional field parameters are supplied then only the fields
 specified will be displayed.
+If only one optional field parameter is supplied then the output will
+be a newline separated list of values.
 .It remove_subject Ar subj
 will remove
 .Ar subj .
@@ -289,6 +291,13 @@ Remove
 .Ar host .
 .It modify_host Ar host Op No key=val ...
 will modify the attributes of a host.
+.It query_host Ar host Op field ...
+will display the fields of
+.Ar host .
+If the optional field parameters are supplied then only the fields
+specified will be displayed.
+If only one optional field parameter is supplied then the output will
+be a newline separated list of values.
 .El
 .Ss Labels
 Lables are placed on hosts to help constrain where prestashed tickets

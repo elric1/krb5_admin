@@ -2018,11 +2018,16 @@ sub KHARON_IV_query_host  { KHARON_IV_ONE_SCALAR(@_); }
 sub KHARON_ACL_query_host { return 1; }
 
 sub query_host {
-	my ($self, $name) = @_;
+	my ($self, $name, @fields) = @_;
 	my $dbh = $self->{dbh};
+	my $ret;
 
-	return generic_query($dbh, \%field_desc, 'hosts', ['name'],
+	$ret = generic_query($dbh, \%field_desc, 'hosts', ['name'],
 	    name => $name);
+
+	return $ret			if @fields == 0;
+	return $ret->{$fields[0]}	if @fields == 1;
+	return {%$ret{@fields}};
 }
 
 sub KHARON_IV_bind_host {
