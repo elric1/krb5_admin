@@ -2004,6 +2004,8 @@ sub bootstrap_host_key {
 		    $strprinc, $lib, undef, enctypes => $etypes],
 		    [$kmdb, $self], privfunc => \&curve25519_privfunc);
 
+		$kmdb = $self->get_hostbased_kmdb($princ->[0], $princ->[2]);
+
 		recover_old_keys($user, $strprinc, $lib, $kmdb, $self);
 
 		#
@@ -2048,6 +2050,8 @@ sub bootstrap_host_key {
 	CURVE25519_NWAY::do_nway(['bootstrap_host_key', $user,
 	    $strprinc, $lib, undef, enctypes => $etypes],
 	    [$kmdb, $self], privfunc => \&curve25519_privfunc);
+
+	$kmdb = $self->get_hostbased_kmdb($princ->[0], $princ->[2]);
 
 	recover_old_keys($user, $strprinc, $lib, $kmdb, $self);
 
