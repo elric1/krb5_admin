@@ -368,8 +368,10 @@ revokes
 .Ar verb
 from
 .Ar actor .
-.It sacls_query
-lists all of the SACLS.
+.It sacls_query Oo No subject= Ns Ar subject Oc Oo No verb= Ns Ar verb Oc
+lists SACLS.
+If either of the filters is specified, only results conforming to the
+filter are displayed.
 .El
 .Sh EXIT STATUS
 The

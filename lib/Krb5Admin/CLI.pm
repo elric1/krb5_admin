@@ -59,6 +59,11 @@ our %logical_host_hmap = (
 	member	=> [],
 );
 
+our %sacls_query_hmap = (
+	subject	=> undef,
+	verb	=> undef,
+);
+
 sub KHARON_HASHIFY_COMMANDS {
 	return {
 		create_appid		=> [1, \%appid_hmap],
@@ -73,6 +78,7 @@ sub KHARON_HASHIFY_COMMANDS {
 		list_subject		=> [0, \%subject_hmap],
 		list_group		=> [0, \%subject_hmap],
 		add_acl			=> [2, \%acl_hmap],
+		sacls_query		=> [0, \%sacls_query_hmap],
 	};
 }
 
