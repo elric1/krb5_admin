@@ -1190,7 +1190,7 @@ sub create_bootstrap_id {
 	}
 
 	if (defined($realm)) {
-		require_localrealm($ctx, $hdnl, $realm);
+		require_localrealm($ctx, $hndl, $realm);
 	}
 
 	my $passwd = $self->generate_ecdh_key2($args{public});
