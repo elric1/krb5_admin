@@ -2510,6 +2510,7 @@ sub insert_ticket {
 	$realms ||= [$prealm];
 	$self->_check_hosts($princ, $prealm, $realms, @hosts);
 
+	my @notify_hosts;
 	for my $host (map {lc($_)} @hosts) {
 		my $sth;
 
@@ -2531,6 +2532,18 @@ sub insert_ticket {
 			" WHERE host = ?", $host);
 
 		my ($count) = $sth->fetchrow_array();
+
+		if ($count > MAX_TIX_PER_HOST) {
+			dbh->rollback();
+			die [500, 'limit exceeded: you can only prestash ' .
+				  MAX_TIX_PER_HOST .
+				  ' tickets on a single host or service address']
+		}
+		push(@notify_hosts, $host);
+	}
+	$dbh->commit();
+
+	for my $host (@notify_hosts) {
 		eval {
 			Krb5Admin::NotifyClient::notify_update_required($self,
 			    $host);
@@ -2538,14 +2551,7 @@ sub insert_ticket {
 		if ($@) {
 			print STDERR "$@";
 		}
-		if ($count > MAX_TIX_PER_HOST) {
-			dbh->rollback();
-			die [500, 'limit exceeded: you can only prestash ' .
-				  MAX_TIX_PER_HOST .
-				  ' tickets on a single host or service address']
-		}
 	}
-	$dbh->commit();
 
 	return undef;
 }
