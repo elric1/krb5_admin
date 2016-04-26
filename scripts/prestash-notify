@@ -6,25 +6,10 @@ use strict;
 use warnings;
 use Env;
 use Sys::Hostname;
-use IO::Pipe;
 use Data::Dumper;
 
-sub exec_stdout {
-	my $pw;
-	my $p = IO::Pipe->new();
-	$p->reader(@_);
-	local $_;
-	while (<$p>) {
-		$pw = $_;
-		last;
-	}
-	$p->close();
-	chomp($pw);
-	return $pw;
-}
-
 my $uname = getpwuid($<);
-my $fqdn = exec_stdout(qw{uname -n});
+my $fqdn = hostname();
 
 my $KINIT="/opt/heimdal/bin/kinit";
 my $KTAB ="/var/spool/keytabs/$uname";
