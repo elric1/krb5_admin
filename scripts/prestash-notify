@@ -18,25 +18,25 @@ my $PRINC="$uname/$fqdn";
 if (!defined($ENV{'KRB5CCNAME'})) {
 	print "Execing\n";
 	exec($KINIT, "-kt", $KTAB, $PRINC, $0, @ARGV);
-} else {
-	if (@ARGV != 1) {
-		print "Missing hostname\n";
-		print "usage: " . $0 . " <hostname>\n";
-		exit(1);
-	}
+	exit(1);
+}
 
-	eval {
-		my $clnt = Krb5Admin::Krb5Host::Client->new($ARGV[0]);
-		my $resp = $clnt->do_update();
-	};
+if (@ARGV != 1) {
+	print "Missing hostname\n";
+	print "usage: " . $0 . " <hostname>\n";
+	exit(1);
+}
 
+eval {
+	my $clnt = Krb5Admin::Krb5Host::Client->new($ARGV[0]);
+	my $resp = $clnt->do_update();
+};
 
-	# Maybe handle this a little better
-	# right now we just assume that all errors are recoverable
-	# and then we tell postfix to try again soon
-	# maybe not that great of an approach
-	if ($@) {
-		print STDERR Dumper($@);
-		exit(75);
-	}
+# Maybe handle this a little better
+# right now we just assume that all errors are recoverable
+# and then we tell postfix to try again soon
+# maybe not that great of an approach
+if ($@) {
+	print STDERR Dumper($@);
+	exit(75);
 }
