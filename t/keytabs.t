@@ -93,11 +93,11 @@ my  $ctx   = Krb5Admin::C::krb5_init_context();
 our $realm = Krb5Admin::C::krb5_get_realm($ctx);
 
 my @keys;
-my $kt = './test.foo.kt';
+my $kt = './t/test.foo.kt';
 
 @keys = (mk_kte($ctx, $realm, 1, 17));
 
-test_keytab($ctx, $realm, '/tmp/foo.kt', \@keys);
+test_keytab($ctx, $realm, $kt, \@keys);
 
 @keys = (
 	mk_kte($ctx, $realm, 1, 17),
@@ -108,6 +108,6 @@ test_keytab($ctx, $realm, '/tmp/foo.kt', \@keys);
 	mk_kte($ctx, $realm, 2, 23),
 );
 
-test_keytab($ctx, $realm, '/tmp/foo.kt', \@keys);
+test_keytab($ctx, $realm, $kt, \@keys);
 
 exit(0);
