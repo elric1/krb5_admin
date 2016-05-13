@@ -799,6 +799,8 @@ sub drop_db {
 	$dbh->do('DROP TABLE IF EXISTS appids');
 	$dbh->do('DROP TABLE IF EXISTS prestashed');
 	$dbh->do('DROP TABLE IF EXISTS hosts_owner');
+	$dbh->do('DROP TABLE IF EXISTS host_secrets');
+	$dbh->do('DROP TABLE IF EXISTS host_secret_ids');
 	$dbh->do('DROP TABLE IF EXISTS hostmap');
 	$dbh->do('DROP TABLE IF EXISTS host_labels');
 	$dbh->do('DROP TABLE IF EXISTS acls');
