@@ -58,34 +58,37 @@ sub mk_kmdb {
 	push(@acls, $objacl);
 
 	$acl->set_subobjects(@acls);
-	$acl->set_creds($args{CREDS});
 	$pes->set_acl($acl);
-
-	if (defined($args{CREDS}) && defined($args{REMOTE_IP})) {
-		$config->{logger}->log('info', $args{CREDS} .
-		    ' connected from ' .  $args{REMOTE_IP});
-	}
 
 	$args{acl}   = $acl;
 	$args{sacls} = $sqlacl;
-	my $ret = mk_kmdb_with_config($config, \%args);
+	my $kmdb = mk_kmdb_with_config($config, \%args);
 
-	$objacl->set_subobject($ret);
-	$sqlacl->set_dbh($ret->get_dbh());
+	$objacl->set_subobject($kmdb);
+	$sqlacl->set_dbh($kmdb->get_dbh());
 
-	my $iv = Kharon::InputValidation::Object->new(subobject => $ret);
+	my $iv = Kharon::InputValidation::Object->new(subobject => $kmdb);
 	$pes->set_iv($iv);
 
-	return $ret;
+	return (kmdb => $kmdb, acl => $acl);
+}
+
+sub connect_kmdb {
+	my (%args) = @_;
+
+	$args{acl}->set_creds($args{CREDS})	if defined($args{CREDS});
+	$args{kmdb}->set_addr($args{REMOTE_IP})	if defined($args{REMOTE_IP});
+
+	if (defined($args{CREDS}) && defined($args{REMOTE_IP})) {
+		$args{logger}->log('info', $args{CREDS} .
+		    ' connected from ' .  $args{REMOTE_IP});
+	}
+
+	return $args{kmdb};
 }
 
 sub run {
 	my ($config, %inargs) = @_;
-
-	my $creds	= $inargs{CREDS};
-	   $creds	= $ENV{KNC_CREDS}	if !defined($creds);
-	my $remote_ip	= $inargs{REMOTE_IP};
-	   $remote_ip	= $ENV{KNC_REMOTE_IP}	if !defined($remote_ip);
 
 	$config->{logger} //= Krb5Admin::Log->new();
 
@@ -97,14 +100,20 @@ sub run {
 	my %args;
 	$args{master} = $config->{master}	if defined($config->{master});
 
+	my %kal = mk_kmdb($pes, $config);
+	$kal{logger} = $config->{logger};
+
 	if (defined($config->{preforked}) && $config->{preforked}) {
-		$args{object}	= sub { mk_kmdb($pes, $config, @_) };
+		$args{object} = sub { connect_kmdb(%kal, @_) };
 		$pes->RunKncAcceptor(%args);
-	} else {
-		$args{object}	= mk_kmdb($pes, $config, CREDS => $creds,
-		    REMOTE_IP => $remote_ip);
-		$pes->RunObj(%args);
+		return;
 	}
+
+	$kal{CREDS}	= $inargs{CREDS}	// $ENV{KNC_CREDS};
+	$kal{REMOTE_IP}	= $inargs{REMOTE_IP}	// $ENV{KNC_REMOTE_IP};
+
+	$args{object} = connect_kmdb(%kal);
+	$pes->RunObj(%args);
 }
 
 1;

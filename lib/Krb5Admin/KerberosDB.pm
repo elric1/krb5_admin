@@ -163,16 +163,14 @@ sub unparse_princ {
 sub KHARON_SET_CREDS {
 	my ($self, @creds) = @_;
 
-	if (@creds == 0) {
-		die "Must provide a credential to set_creds";
-	}
+	return if @creds == 0;
 
 	if (@creds > 1) {
 		die "Krb5Admin::KerberosDB does not support multiple " .
 		    "credentials";
 	}
 
-	$self->{client} = $creds[0];
+	$self->set_creds(@creds);
 }
 
 #
@@ -412,9 +410,7 @@ sub new {
 	$self->{client}	  = $args{client};
 	$self->{addr}	  = $args{addr};
 	$self->{hostname} = undef;
-	$self->{ctx}	  = $ctx;
-	$self->{hndl}	  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, $dbname,
-	    $self->{client});
+	$self->{dbname}	  = $dbname;
 	$self->{acl}	  = $args{acl};
 	$self->{sacls}	  = $args{sacls};
 	$self->{dbh}	  = $dbh;
@@ -430,6 +426,11 @@ sub new {
 	$self->{xrealm_bootstrap}	= $args{xrealm_bootstrap};
 	$self->{win_xrealm_bootstrap}	= $args{win_xrealm_bootstrap};
 	$self->{prestash_xrealm}	= $args{prestash_xrealm};
+
+	if (defined($self->{client})) {
+		$self->{hndl} = Krb5Admin::C::krb5_get_kadm5_hndl($ctx,
+		    $dbname, $self->{client});
+	}
 
 	#
 	# If we are not provided with sacls, then we make them in the
@@ -459,6 +460,22 @@ sub new {
 	bless($self, $class);
 }
 
+sub set_addr {
+	my ($self, $addr) = @_;
+
+	$self->{addr} = $addr;
+}
+
+sub set_creds {
+	my ($self, $creds) = @_;
+
+	$self->{client} = $creds;
+
+	undef($self->{hndl});
+	$self->{hndl} = Krb5Admin::C::krb5_get_kadm5_hndl($self->{ctx},
+	    $self->{dbname}, $self->{client});
+}
+
 sub DESTROY {
 	my ($self) = @_;
 
@@ -466,7 +483,9 @@ sub DESTROY {
 		$self->{dbh}->disconnect();
 		undef($self->{dbh});
 	}
-	undef $self->{acl};
+	undef($self->{acl});
+	undef($self->{sacls});
+	undef($self->{dbh});
 }
 
 sub get_dbh {
