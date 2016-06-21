@@ -39,7 +39,7 @@ Krb5Admin::Local - locally manipulate a Kerberos DB
 
 	use Krb5Admin::Local;
 
-	my $kmdb = Krb5Admin::Client->new();
+	my $kmdb = Krb5Admin::Local->new();
 
 =head1 DESCRIPTION
 
