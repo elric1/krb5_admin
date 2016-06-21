@@ -14,7 +14,6 @@ use Kharon::Entitlement::SimpleSQL;
 use Kharon::Log::Null;
 
 use Krb5Admin::Daemon;
-use Krb5Admin::KerberosDB;
 
 use POSIX qw/dup2 _exit/;
 use Sys::Hostname;
