@@ -65,7 +65,7 @@ eval {
 	Krb5Admin::C::krb5_setkey($ctx, $hndl, $sprinc, 3,
 	   [{enctype => 17, key => '0123456789abcdef'}]);
 
-	my @keys = Krb5Admin::C::krb5_getkey($ctx, $hndl, $sprinc);
+	my @keys = @{Krb5Admin::C::krb5_getkey($ctx, $hndl, $sprinc)};
 
 	@keys = grep { $_->{kvno} == 3 } @keys;
 
@@ -85,7 +85,7 @@ eval {
 	Krb5Admin::C::krb5_createkey($ctx, $hndl, $sprinc, []);
 	Krb5Admin::C::krb5_randkey($ctx, $hndl, $sprinc);
 
-	my @keys = Krb5Admin::C::krb5_getkey($ctx, $hndl, $sprinc);
+	my @keys = @{Krb5Admin::C::krb5_getkey($ctx, $hndl, $sprinc)};
 
 	@keys = grep { $_->{kvno} == 3 } @keys;
 

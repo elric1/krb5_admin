@@ -1447,7 +1447,7 @@ sub fetch {
 	my $hndl = $self->{hndl};
 
 	require_scalar("fetch <princ>", 1, $name);
-	Krb5Admin::C::krb5_getkey($ctx, $hndl, $name);
+	@{Krb5Admin::C::krb5_getkey($ctx, $hndl, $name)};
 }
 
 sub KHARON_ACL_fetch_old {
@@ -1467,7 +1467,7 @@ sub fetch_old {
 
 	require_scalar("fetch_old <princ>", 1, $name);
 
-	my @ret = Krb5Admin::C::krb5_getkey($ctx, $hndl, $name);
+	my @ret = @{Krb5Admin::C::krb5_getkey($ctx, $hndl, $name)};
 	return @ret if (@ret == 0);
 
 	# Return only keys with a kvno less than the largest
@@ -1739,7 +1739,7 @@ sub query {
 	}
 	$ret->{attributes} = \@flags;
 
-	my @tmp = Krb5Admin::C::krb5_getkey($ctx, $hndl, $name);
+	my @tmp = @{Krb5Admin::C::krb5_getkey($ctx, $hndl, $name)};
 
 	$ret->{keys} = [ map {
 		{ kvno => $_->{kvno}, enctype => $_->{enctype} }

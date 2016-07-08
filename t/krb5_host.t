@@ -208,7 +208,7 @@ eval { $kt->install_keytab($me, undef, $me); };
 ok(!$@, Dumper($@));
 
 my @keys;
-eval { @keys = Krb5Admin::C::read_kt($ctx, "$keytabs/$me"); };
+eval { @keys = @{Krb5Admin::C::read_kt($ctx, "$keytabs/$me")}; };
 ok(!$@, Dumper($@));
 ok((grep { $_->{kvno} == 3 } @keys) == 0, "install is not idempotent");
 
@@ -239,7 +239,7 @@ for my $etype (16, 17, 18, 23) {
 eval { $kt->install_keytab($me, 'mitkrb5/1.3', $me); };
 ok(!$@, Dumper($@));
 
-eval { @keys = Krb5Admin::C::read_kt($ctx, "$keytabs/$me"); };
+eval { @keys = @{Krb5Admin::C::read_kt($ctx, "$keytabs/$me")}; };
 ok(!$@, Dumper($@));
 ok((grep { $_->{kvno} == 3 } @keys) > 0, "install replaced faulty keys");
 

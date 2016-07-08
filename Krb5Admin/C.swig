@@ -111,16 +111,18 @@
 }
 
 %typemap(out) key {
-	key	k;
-	key	tmp;
+	key	 k;
+	key	 tmp;
+	AV	*av;
 
 	/* XXXrcd: clean up the data while I am using it... */
+
+	av = newAV();
 
 	for (k=$1; k; k = tmp) {
 		HV		*hv = newHV();
 
 		tmp = k->next;
-		EXTEND(sp,1);
 
 		HV_STORE_PVN(hv, (*k), princ);
 		HV_STORE_IV(hv, (*k), kvno);
@@ -132,9 +134,11 @@
 
 		free(k);
 
-		$result = sv_2mortal(newRV_noinc((SV*)hv));
-		argvi++;
+		av_push(av, newRV_noinc((SV*)hv));
 	}
+
+	$result = sv_2mortal(newRV_noinc((SV*)av));
+	argvi++;
 }
 
 

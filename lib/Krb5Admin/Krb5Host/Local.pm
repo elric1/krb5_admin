@@ -846,7 +846,7 @@ sub get_keys {
 	my $ctx = $self->{ctx};
 
 	$kt = $self->get_init_kt() if !defined($kt) || $kt eq '';
-	my @ktkeys = Krb5Admin::C::read_kt($ctx, $kt);
+	my @ktkeys = @{Krb5Admin::C::read_kt($ctx, $kt)};
 
 	for my $i (@ktkeys) {
 		$i->{enctype} = $enctypes{$i->{enctype}};
@@ -862,7 +862,7 @@ sub del_kt_princ {
 	my $ctx = $self->{ctx};
 
 	$kt = "WRFILE:" . $DEFAULT_KEYTAB if !defined($kt) || $kt eq '';
-	my @ktents = Krb5Admin::C::read_kt($ctx, $kt);
+	my @ktents = @{Krb5Admin::C::read_kt($ctx, $kt)};
 
 	for my $ktent (@ktents) {
 		next if ($ktent->{"princ"} ne $strprinc);
@@ -1207,7 +1207,7 @@ sub need_new_key {
 
 	my @ktkeys;
 	eval {
-		@ktkeys = Krb5Admin::C::read_kt($ctx, $kt);
+		@ktkeys = @{Krb5Admin::C::read_kt($ctx, $kt)};
 		@ktkeys = grep { $_->{princ} eq $princ} @ktkeys;
 		if (defined($kvno)) {
 			@ktkeys = grep { $_->{kvno} == $kvno} @ktkeys;
@@ -1323,7 +1323,7 @@ sub write_keys_kt {
 	}
 
 	my @ktkeys;
-	eval { @ktkeys = Krb5Admin::C::read_kt($ctx, $kt); };
+	eval { @ktkeys = @{Krb5Admin::C::read_kt($ctx, $kt)}; };
 
 	for my $ktent (@ktkeys) {
 		#
@@ -1369,7 +1369,7 @@ sub write_keys_kt {
 	# nothing went horribly wrong...
 
 	@ktkeys = ();
-	eval { @ktkeys = Krb5Admin::C::read_kt($ctx, $kt); };
+	eval { @ktkeys = @{Krb5Admin::C::read_kt($ctx, $kt)}; };
 
 	return if $self->{force} < 2 && !$self->is_quirky($lib, @ktkeys);
 

@@ -46,7 +46,7 @@ sub test_remove_one {
 
 	$keys = [ @{$keys}[0..$i-1], @{$keys}[$i+1..@$keys - 1] ];
 
-	my @nkeys = Krb5Admin::C::read_kt($ctx, $kt);
+	my @nkeys = @{Krb5Admin::C::read_kt($ctx, $kt)};
 
 	for my $key (@nkeys) {
 		delete $key->{timestamp};
@@ -66,7 +66,7 @@ sub test_keytab {
 		Krb5Admin::C::write_kt($ctx, 'WRFILE:' . $kt, $key);
 	}
 
-	my @nkeys = Krb5Admin::C::read_kt($ctx, 'FILE:' . $kt);
+	my @nkeys = @{Krb5Admin::C::read_kt($ctx, 'FILE:' . $kt)};
 
 	for my $key (@nkeys) {
 		delete $key->{timestamp};
