@@ -1720,6 +1720,17 @@ sub mquery {
 sub KHARON_ACL_query { return 1; }
 
 sub query {
+	my ($self, @names) = @_;
+ 
+	my @ret;
+	for my $name (@names) {
+		push(@ret, $self->internal_query($name));
+	}
+ 
+	return @ret;
+}
+
+sub internal_query {
 	my ($self, $name) = @_;
 	my $ctx  = $self->{ctx};
 	my $hndl = $self->{hndl};
