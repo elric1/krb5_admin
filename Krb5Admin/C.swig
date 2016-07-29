@@ -154,7 +154,7 @@
 }
 
 %typemap(in) (kadm5_principal_ent_rec, long) {
-	krb5_context		  ctx;
+	krb5_context		  ctx = NULL;
 	kadm5_principal_ent_rec	  p;
 	HV			 *hv;
 	SV			**sv;
@@ -197,6 +197,9 @@
 		mask |= KADM5_POLICY_CLR;
 	}
 done:
+	if (ctx)
+		krb5_free_context(ctx);
+
 	if (ret)
 		croak("%s", croakstr);
 
@@ -229,6 +232,8 @@ done:
 	krb5_unparse_name(ctx, $1.mod_name, &tmp);
 	HV_STORE_PVN_F(hv, "mod_name", tmp);
 	free(tmp);
+
+	krb5_free_context(ctx);
 
 	HV_STORE_IV(hv, $1, mod_date);
 	HV_STORE_IV(hv, $1, attributes);
@@ -345,7 +350,7 @@ done:
 %typemap(in) krb5_keyblock * {
 	HV			 *hv;
 	AV			 *av;
-	krb5_context		  ctx;
+	krb5_context		  ctx = NULL;
 	krb5_keyblock		 *k = NULL;
 	krb5_error_code		  ret = 0;
 	SV			**sv;
@@ -401,7 +406,9 @@ done:
 	}
 
 done:
-	/* XXXrcd: free ctx.  mondo memory leak... */
+	if (ctx)
+		krb5_free_context(ctx);
+
 	if (ret) {
 		free(k);
 		croak("%s", croakstr);
@@ -437,8 +444,6 @@ done:
 	if (!ret)
 		ret = krb5_parse_name(ctx, tmp, &($1));
 
-	if (ctx)
-		krb5_free_context(ctx);
 	if (ret) {
 #ifdef HAVE_HEIMDAL 
 		krb5_context	 nullctx = 0;
@@ -453,11 +458,16 @@ done:
 			snprintf(croakstr, sizeof(croakstr),
 			"unknown error: %ld", (long)ret);
 		}
-		croak(croakstr);
 #else
-		croak(error_message(ret));
+		snprintf(croakstr, sizeof(croakstr), (error_message(ret)));
 #endif
 	}
+
+	if (ctx)
+		krb5_free_context(ctx);
+
+	if (croakstr[0])
+		croak(croakstr);
 }
 
 %typemap(in,numinputs=0) krb5_principal * {
@@ -465,7 +475,7 @@ done:
 }
 %typemap(argout) krb5_principal * {
 	krb5_error_code	ret;
-	krb5_context	ctx;
+	krb5_context	ctx = NULL;
 	krb5_principal	princ;
 	int		i;
 	char		croakstr[2048] = "";
@@ -487,16 +497,19 @@ done:
 	}
 
 done:
-	if (ret)
-		croak("%s", croakstr);
 	krb5_free_principal(ctx, princ);
 	free($1);
+	if (ctx)
+		krb5_free_context(ctx);
+
+	if (ret)
+		croak("%s", croakstr);
 }
 
 %typemap(in) krb5_creds * {
 	HV			 *hv;
 	HV			 *hvsession;
-	krb5_context		  ctx;
+	krb5_context		  ctx = NULL;
 	krb5_creds		 *creds = NULL;
 	krb5_error_code		  ret = 0;
 	SV			**sv;
@@ -511,13 +524,11 @@ done:
 
 	K5BAIL(krb5_init_context(&ctx));
 
-	creds = malloc(sizeof(*creds));
+	creds = calloc(sizeof(*creds), 1);
 	if (!creds) {
 		ret = ENOMEM;
 		goto done;
 	}
-
-	memset(creds, 0x0, sizeof(*creds));
 
 	HV_FETCH_INTO(hv, tmp, "client", SvPV_nolen);
 	K5BAIL(krb5_parse_name(ctx, tmp, &creds->client));
@@ -568,7 +579,9 @@ done:
 	/* XXXrcd: Punt on addresses */
 
 done:
-	/* XXXrcd: free ctx.  mondo memory leak... */
+	if (ctx)
+		krb5_free_context(ctx);
+
 	if (ret)
 		croak("%s", croakstr);
 
@@ -624,7 +637,7 @@ done:
 #ifdef HAVE_HEIMDAL
 
 %typemap(out) krb5_creds * {
-	krb5_context	 ctx;
+	krb5_context	 ctx = NULL;
 	HV		*hv = newHV();
 	HV		*hvsession = newHV();
 	krb5_creds	*creds;
@@ -663,7 +676,9 @@ done:
 	    creds->ticket.length);
 
 done:
-	/* XXXrcd: free ctx.  mondo memory leak... */
+	if (ctx)
+		krb5_free_context(ctx);
+
 	if (ret)
 		croak("%s", croakstr);
 
@@ -696,9 +711,11 @@ done:
 	for (i = 0; i < len ; i++) {
 		svs[i] = sv_newmortal();
 		sv_setpv((SV*)svs[i],$1[i]);
+		free($1[i]);
 	};
 	myav =	av_make(len,svs);
 	free(svs);
+	free($1);
 	$result = newRV((SV*)myav);
 	sv_2mortal($result);
 	argvi++;
