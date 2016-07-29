@@ -49,6 +49,24 @@ is an integer which specifies the maximum number of connexions that
 will process when using the
 .Fl P
 option.
+.It Ar %prestash_xrealm
+is a hash that maps a principal's realm to a list of realms on which the
+principal is allowed to be prestashed.
+E.g.
+.Bd -literal
+	%prestash_xrealm = (
+		'REALM1' => ['REALM2', 'REALM3'],
+	);
+.Ed
+.Pp
+means that principals in REALM1 may be prestashed on hosts that are in
+REALM2 or REALM3.
+.It Ar %win_xrealm_bootstrap
+is a hash that maps a Windows principal to a list of host principals which
+it may retrieve.
+The Windows principal's components must be lower case.
+This hash can be used when migrating from using Windows Active Directory
+to provide Kerberos for UNIX hosts to a strictly UNIX KDC framework.
 .It Ar %xrealm_bootstrap
 is a hash which has keys that are Kerberos realms with values that are
 an array ref of Kerberos realms.
@@ -70,24 +88,6 @@ can retrieve keys for
 .Ar host/foo@REALM2
 and
 .Ar host/foo@REALM3 .
-.It Ar %win_xrealm_bootstrap
-is a hash that maps a Windows principal to a list of host principals which
-it may retrieve.
-The Windows principal's components must be lower case.
-This hash can be used when migrating from using Windows Active Directory
-to provide Kerberos for UNIX hosts to a strictly UNIX KDC framework.
-.It Ar %prestash_xrealm
-is a hash that maps a principal's realm to a list of realms on which the
-principal is allowed to be prestashed.
-E.g.
-.Bd -literal
-	%prestash_xrealm = (
-		'REALM1' => ['REALM2', 'REALM3'],
-	);
-.Ed
-.Pp
-means that principals in REALM1 may be prestashed on hosts that are in
-REALM2 or REALM3.
 .El
 .Pp
 Syntax errors will terminate parsing causing all subsequent configuration
