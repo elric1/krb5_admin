@@ -94,6 +94,7 @@ sub load_config {
 	$config{allow_fetch_old}	= $allow_fetch_old;
 	$config{subdomain_prefix}	= $subdomain_prefix;
 	$config{master}			= $master;
+	$config{maxconns}		= $maxconns;
 	$config{kmdb_class}		= $kmdb_class;
 	$config{xrealm_bootstrap}	= \%xrealm_bootstrap;
 	$config{win_xrealm_bootstrap}	= \%win_xrealm_bootstrap;

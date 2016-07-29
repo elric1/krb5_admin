@@ -43,6 +43,12 @@ is a boolean variable that if true allows hosts to manage keys for services
 whose instance is a direct subdomain of the host.  This supports multiple
 service namespaces on the same machine provided the subdomains all map
 to the same address (as with e.g. a wildcard *.hostname A record).
+.It Ar $maxconns
+is an integer which specifies the maximum number of connexions that
+.Xr krb5_admind 8
+will process when using the
+.Fl P
+option.
 .It Ar %xrealm_bootstrap
 is a hash which has keys that are Kerberos realms with values that are
 an array ref of Kerberos realms.

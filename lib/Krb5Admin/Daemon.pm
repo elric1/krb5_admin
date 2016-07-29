@@ -99,6 +99,7 @@ sub run {
 
 	my %args;
 	$args{master} = $config->{master}	if defined($config->{master});
+	$args{maxconns} = $config->{maxconns}   if defined($config->{maxconns});
 
 	my %kal = mk_kmdb($pes, $config);
 	$kal{logger} = $config->{logger};
