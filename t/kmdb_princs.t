@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 43;
+use Test::More tests => 47;
 
 use Sys::Hostname;
 
@@ -134,6 +134,40 @@ compare_keys($result, [
 		{enctype=>16,kvno=>2},
 		{enctype=>23,kvno=>2}
 	], "service has correct key types 1");
+
+#
+# Change some attributes:
+
+my $result0;
+my $result1;
+my $result2;
+eval {
+		$kmdb->modify($uprinc, del_attributes => ['needchange']);
+		$result0 = $kmdb->query($uprinc);
+
+		$kmdb->modify($uprinc, del_attributes => ['allow_tix']);
+		$result1 = $kmdb->query($uprinc);
+
+		$kmdb->modify($uprinc, add_attributes => ['allow_tix']);
+		$result2 = $kmdb->query($uprinc);
+};
+if ($@) {
+	ok(0, "Exception: " . Dumper($@));
+	ok(1, "user has correct attributes after modification #0");
+	ok(1, "user has correct attributes after modification #1");
+	ok(1, "user has correct attributes after modification #2");
+} else {
+	ok(1, "Exception: ");
+	compare_princ_to_attrs($result0,
+	    [qw/+requires_preauth -allow_svr/],
+	    "user has correct attributes after modification #0");
+	compare_princ_to_attrs($result1,
+	    [qw/+requires_preauth -allow_svr -allow_tix/],
+	    "user has correct attributes after modification #1");
+	compare_princ_to_attrs($result2,
+	    [qw/+requires_preauth -allow_svr/],
+	    "user has correct attributes after modification #2");
+}
 
 #
 # MODIFY AND TEST...

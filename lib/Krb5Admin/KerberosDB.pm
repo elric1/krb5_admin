@@ -1677,7 +1677,11 @@ sub internal_modify {
 	my $tmp = Krb5Admin::C::krb5_query_princ($ctx, $hndl, $name);
 	my $attrs = $tmp->{attributes};
 
-	for my $i (@{$mods->{attributes}}) {
+	my %attrs = ((map {       $_ => 1 } @{$mods->{attributes}}),
+		     (map { '+' . $_ => 1 } @{$mods->{add_attributes}}),
+		     (map { '-' . $_ => 1 } @{$mods->{del_attributes}}));
+
+	for my $i (keys %attrs) {
 		$i =~ s/^(.)//;
 		my $sign = $1;
 

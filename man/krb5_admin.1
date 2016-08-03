@@ -112,13 +112,33 @@ Appids are both a Kerberos principal and some ancilliary data which
 is used to enable their management.
 .Pp
 The following keys are defined for all principals: princ_expire_time,
-pw_expiration, max_life, max_renewable_life, and attributes.
+pw_expiration, max_life, max_renewable_life, and attributes
+.Pq set-based .
 The following keys are also defined for appids:
 owner
 .Pq set-based ,
 desc,
 cstraint
 .Pq set-based .
+.Pp
+Attributes are boolean flags.  Attributes are only displayed in queries
+when in their non-default setting.  The attributes are:
+.Bl -column -offset indent ".Sy password_changing_serviceXXXXX" ".Sy default"
+.It Sy attribute Ta Sy default
+.It allow_postdated Ta true
+.It allow_forwardable Ta true
+.It allow_tgs_req Ta true
+.It allow_renewable Ta true
+.It allow_proxiable Ta true
+.It allow_dup_skey Ta true
+.It allow_tix Ta true
+.It requires_preauth Ta false
+.It requires_hwauth Ta false
+.It needchange Ta false
+.It allow_svr Ta true
+.It password_changing_service Ta false
+.It support_desmd5 Ta false
+.El
 .Pp
 Commands that operate on principals and appids:
 .Pp
