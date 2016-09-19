@@ -1388,7 +1388,9 @@ krb5_list_princs(krb5_context ctx, kadm5_handle hndl, char *exp)
 	out[i] = NULL;
 
 done:
-	/* XXXrcd: leaks like a sieve. */
+	if (princs)
+		free(princs);
+
 	if (ret)
 		croak("%s", croakstr);
 	return out;

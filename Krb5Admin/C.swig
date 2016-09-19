@@ -716,7 +716,7 @@ done:
 	myav = av_make(len,svs);
 	free(svs);
 	free($1);
-	$result = newRV((SV*)myav);
+	$result = newRV_noinc((SV*)myav);
 	sv_2mortal($result);
 	argvi++;
 }
