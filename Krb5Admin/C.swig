@@ -713,7 +713,7 @@ done:
 		sv_setpv((SV*)svs[i],$1[i]);
 		free($1[i]);
 	};
-	myav =	av_make(len,svs);
+	myav = av_make(len,svs);
 	free(svs);
 	free($1);
 	$result = newRV((SV*)myav);
