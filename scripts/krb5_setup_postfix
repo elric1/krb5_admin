@@ -50,11 +50,6 @@ postmulti -i prestash -x postconf -e 'default_transport = prestash:$myhostname'
 printf 'prestash   unix  -       n       n       -       -       pipe\n  flags=hu user=krb5notify argv=/usr/bin/prestash-notify ${domain}' >> /etc/postfix-prestash/master.cf
 
 postconf -e -c /etc/postfix-prestash/ export_environment="TZ MAIL_CONFIG LANG KRB5CCNAME=/var/spool/tickets/krb5notify"
-useradd krb5notify -m
-su krb5notify -c /usr/sbin/krb5_keytab $(id -un)/$(uname -n)
-krb5_prestash fetch
-
-
 
 # Start the second instance.
 #
