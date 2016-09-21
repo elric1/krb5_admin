@@ -48,6 +48,7 @@ $config->{dbname}	= $opts{D}	if  defined($opts{D});
 $config->{sqlite}	= $opts{S}	if  defined($opts{S});
 $config->{config}	= $opts{c}	if  defined($opts{c});
 $config->{preforked}	= $opts{P};
+$config->{timeout}	= $opts{t};
 
 $config->{config_provided}	= defined($opts{c});
 

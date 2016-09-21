@@ -98,6 +98,12 @@ sub run {
 	my $pes = Kharon::Engine::Server->new(protocols => [$ahr],
 	    logger => $config->{logger});
 	$pes->Connect();
+	if (defined($config->{timeout})) {
+		# XXXrcd: eventually:
+		# $pes->set_timeout($config->{timeout});
+
+		$pes->{DataTimeout} = $config->{timeout};
+	}
 
 	my %args;
 	$args{master} = $config->{master}	if defined($config->{master});

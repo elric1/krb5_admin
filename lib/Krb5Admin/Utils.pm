@@ -90,6 +90,7 @@ sub load_config {
 	$config->{xrealm_bootstrap}	= \%xrealm_bootstrap;
 	$config->{win_xrealm_bootstrap}	= \%win_xrealm_bootstrap;
 	$config->{prestash_xrealm}	= \%prestash_xrealm;
+	$config->{timeout}		= $timeout;
 
 	return $config;
 }

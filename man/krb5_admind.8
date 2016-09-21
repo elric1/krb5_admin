@@ -63,6 +63,10 @@ it will deliver a redirect to the client which will break the connexion
 and reconnect to the master.
 Defaults to
 .Pa /etc/krb5/master .
+.It Fl t Ar timeout
+sets the timeout for reading a command from the network to
+.Ar timeout .
+The default value is 300.
 .El
 .Sh SEE ALSO
 .Xr knc 1 ,
