@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 32;
+use Test::More tests => 34;
 
 use Sys::Hostname;
 
@@ -64,17 +64,19 @@ no warnings;
 system(qw{hxtool issue-certificate --self-signed --issue-ca
     --generate-key=rsa --subject=CN=CA,DC=test,DC=realm
     --lifetime=1hour --certificate=FILE:t/ca.pem});
+ok($? == 0);
 
 system(qw{hxtool issue-certificate --ca-certificate=FILE:t/ca.pem
     --generate-key=rsa --type=pkinit-kdc
     --pk-init-principal=krbtgt/TEST.REALM@TEST.REALM
     --subject=uid=kdc,DC=test,DC=realm
     --certificate=FILE:t/kdc.pem});
+ok($? == 0);
 
 use warnings;
 
 my $kdc_pid = fork();
-exit(1) if $kdc_pid == -1;
+exit(1) if !defined($kdc_pid);
 if ($kdc_pid == 0) {
 	exec { "$KRB5DIR/libexec/kdc" } qw/kdc/;
 	exit(1);
@@ -82,7 +84,7 @@ if ($kdc_pid == 0) {
 ok(1);
 
 my $krb5_admind_pid = fork();
-exit(1) if $krb5_admind_pid == -1;
+exit(1) if !defined($krb5_admind_pid);
 if ($krb5_admind_pid == 0) {
 	exec {'knc'} (qw{knc -l -- krb5_admin}, $^X,
 		      qw{-Iblib/lib -Iblib/arch ./scripts/krb5_admind -M
