@@ -43,17 +43,6 @@ sub force_symlink {
 
 sub mk_kmdb_with_config {
 	my ($config, $args) = @_;
-	my $cf;
-
-	$cf = load_config($config->{config}, $config->{config_provided});
-
-	$cf->{acl_file}		= $config->{acl_file};
-	$cf->{dbname}		= $config->{dbname};
-	$cf->{master}		= $config->{master};
-	$cf->{preforked}	= $config->{preforked};
-	$cf->{sqlite}		= $config->{sqlite};
-
-	my $kmdb_class = 'Krb5Admin::KerberosDB';
 
 	my %kmdb_args = (
 		acl			=> $args->{acl},
@@ -71,37 +60,38 @@ sub mk_kmdb_with_config {
 		dbname			=> $config->{dbname},
 	);
 
-	$kmdb_class = $config->{kmdb_class} if defined($config->{kmdb_class});
+	my $kmdb_class   = $config->{kmdb_class};
+	   $kmdb_class //= 'Krb5Admin::KerberosDB';
+
 	return $kmdb_class->new(%kmdb_args);
 }
 
 sub load_config {
-	my ($config, $provided) = @_;
+	my ($config) = @_;
+	my $file = $config->{config};
+	my $provided = $config->{config_provided};
 
-	return {}				if ! -f $config && !$provided;
-        die "Couldn't find $config\n"           if ! -f $config;
+	return $config				if ! -f $file && !$provided;
+        die "Couldn't find $file\n"		if ! -f $file;
 
         my $ret = do $config;
-        die "Couldn't parse $config: $@\n"      if $@;
-	die "Couldn't open $config: $!\n"	if !defined($ret);
+        die "Couldn't parse $file: $@\n"	if $@;
+	die "Couldn't open $file: $!\n"		if !defined($ret);
 
-	my %config;
-	$config{acl_file}		= $acl_file;
-	$config{config}			= $config;
-	$config{dbname}			= $dbname;
-	$config{sqlite}			= $sqlite;
-	$config{allow_fetch}		= $allow_fetch;
-	$config{allow_fetch_old}	= $allow_fetch_old;
-	$config{subdomain_prefix}	= $subdomain_prefix;
-	$config{master}			= $master;
-	$config{maxconns}		= $maxconns;
-	$config{kmdb_class}		= $kmdb_class;
-	$config{xrealm_bootstrap}	= \%xrealm_bootstrap;
-	$config{win_xrealm_bootstrap}	= \%win_xrealm_bootstrap;
-	$config{prestash_xrealm}	= \%prestash_xrealm;
-	$config{preforked}		= $opts{P};
+	$config->{acl_file}		= $acl_file;
+	$config->{dbname}		= $dbname;
+	$config->{sqlite}		= $sqlite;
+	$config->{allow_fetch}		= $allow_fetch;
+	$config->{allow_fetch_old}	= $allow_fetch_old;
+	$config->{subdomain_prefix}	= $subdomain_prefix;
+	$config->{master}		= $master;
+	$config->{maxconns}		= $maxconns;
+	$config->{kmdb_class}		= $kmdb_class;
+	$config->{xrealm_bootstrap}	= \%xrealm_bootstrap;
+	$config->{win_xrealm_bootstrap}	= \%win_xrealm_bootstrap;
+	$config->{prestash_xrealm}	= \%prestash_xrealm;
 
-	return \%config;
+	return $config;
 }
 
 1;

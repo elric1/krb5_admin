@@ -18,7 +18,7 @@ use Kharon::InputValidation::Object;
 
 use Krb5Admin::KerberosDB;
 use Krb5Admin::Log;
-use Krb5Admin::Utils qw/mk_kmdb_with_config/;
+use Krb5Admin::Utils qw/load_config mk_kmdb_with_config/;
 
 use strict;
 use warnings;
@@ -89,6 +89,8 @@ sub connect_kmdb {
 
 sub run {
 	my ($config, %inargs) = @_;
+
+	$config = load_config($config);
 
 	$config->{logger} //= Krb5Admin::Log->new();
 

@@ -9,7 +9,7 @@ use base qw(Kharon::Class::Local);
 use Kharon::InputValidation::Object;
 
 use Krb5Admin::KerberosDB;
-use Krb5Admin::Utils qw/mk_kmdb_with_config/;
+use Krb5Admin::Utils qw/load_config mk_kmdb_with_config/;
 
 use strict;
 use warnings;
@@ -17,6 +17,8 @@ use warnings;
 sub new {
 	my ($proto, $config, $args) = @_;
 	my $class = ref($proto) || $proto;
+
+	$config = load_config($config);
 
 	$args->{local} = 1;
 	my $kmdb = mk_kmdb_with_config($config, $args);
