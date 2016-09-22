@@ -1137,9 +1137,18 @@ sub create_appid {
 
 	my $stmt = "INSERT INTO appids(appid) VALUES (?)";
 
-	sql_command($dbh, $stmt, $appid);
-
-	generic_modify($dbh, \%field_desc, 'appids', $appid, %args);
+	eval {
+		sql_command($dbh, $stmt, $appid);
+		generic_modify($dbh, \%field_desc, 'appids', $appid, %args);
+	};
+	if ($@) {
+		my $err = $@;
+		$dbh->rollback();
+		if ($err =~ /unique/i) {
+			die [500, "Appid $appid already exists."];
+		}
+		die $err;
+	}
 
 	$self->can_user_act("Can't create appid's you don't own",
 	    $self->{client}, "modify" , $appid, %args);
