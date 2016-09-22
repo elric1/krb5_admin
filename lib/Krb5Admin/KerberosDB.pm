@@ -1109,18 +1109,8 @@ sub can_user_act {
 sub KHARON_IV_create_appid {
 	my ($self, $act, $appid, %args) = @_;
 	my $ctx = $self->{ctx};
-	my $usage = "insert <appid> [key=val ...]";
-
-	$appid = canonicalise_fqprinc($ctx, $usage, 1, $appid);
-	return [$appid, %args];
-}
-
-sub create_appid {
-	my ($self, $appid, %args) = @_;
-	my $dbh = $self->{dbh};
-	my $ctx = $self->{ctx};
 	my $hndl = $self->{hndl};
-	my $usage = "insert <appid> [key=val ...]";
+	my $usage = "create_appid <appid> [key=val ...]";
 
 	$appid = canonicalise_fqprinc($ctx, $usage, 1, $appid);
 
@@ -1130,6 +1120,16 @@ sub create_appid {
 	}
 
 	require_localrealm($ctx, $hndl, $app_name[0]);
+
+	return [$appid, %args];
+}
+
+sub create_appid {
+	my ($self, $appid, %args) = @_;
+	my $dbh = $self->{dbh};
+	my $ctx = $self->{ctx};
+	my $hndl = $self->{hndl};
+	my $usage = "insert <appid> [key=val ...]";
 
 	if (!$self->{local} && !exists($args{owner})) {
 		$args{owner} = [$self->{client}];
