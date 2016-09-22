@@ -1094,13 +1094,6 @@ sub KHARON_IV_create_appid {
 	return [$appid, %args];
 }
 
-sub KHARON_ACL_create_appid {
-	my ($self, $act, $appid, %args) = @_;
-
-	return undef;
-}
-
-
 #
 # determine if a user can execute the
 # $act function with args @r
