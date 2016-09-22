@@ -1083,18 +1083,6 @@ sub internal_create {
 }
 
 #
-# XXXrcd: this needs to be fixed...
-
-sub KHARON_IV_create_appid {
-	my ($self, $act, $appid, %args) = @_;
-	my $ctx = $self->{ctx};
-	my $usage = "insert <appid> [key=val ...]";
-
-	$appid = canonicalise_fqprinc($ctx, $usage, 1, $appid);
-	return [$appid, %args];
-}
-
-#
 # determine if a user can execute the
 # $act function with args @r
 # if not then catch exceptions and rollback any database commits
@@ -1113,6 +1101,18 @@ sub can_user_act {
 			die [503, $msg];
 		}
 	}
+}
+
+#
+# XXXrcd: this needs to be fixed...
+
+sub KHARON_IV_create_appid {
+	my ($self, $act, $appid, %args) = @_;
+	my $ctx = $self->{ctx};
+	my $usage = "insert <appid> [key=val ...]";
+
+	$appid = canonicalise_fqprinc($ctx, $usage, 1, $appid);
+	return [$appid, %args];
 }
 
 sub create_appid {
