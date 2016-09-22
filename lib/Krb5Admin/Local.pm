@@ -4,7 +4,7 @@
 
 package Krb5Admin::Local;
 
-use base qw(Kharon::Class::Local);
+use base qw(Kharon::Class::Local Krb5Admin);
 
 use Kharon::InputValidation::Object;
 

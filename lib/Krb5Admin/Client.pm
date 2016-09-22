@@ -10,6 +10,7 @@ use Kharon::Protocol::ArrayHash;
 use Kharon::Engine::Client;
 use Kharon::Engine::Client::Knc;
 
+use Krb5Admin;
 use Krb5Admin::C;
 
 use strict;

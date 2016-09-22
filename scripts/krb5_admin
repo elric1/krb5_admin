@@ -4,7 +4,7 @@ use Getopt::Std;
 
 use Kharon::Entitlement::SimpleSQL;
 
-use Krb5Admin::KerberosDB;
+use Krb5Admin::Local;
 use Krb5Admin::Client;
 use Krb5Admin::CLI;
 
@@ -73,8 +73,8 @@ if ($#ARGV == -1) {
 my $kmdb;
 eval {
 	if (exists($opts{'l'})) {
-		$kmdb = Krb5Admin::KerberosDB->new(local=>1, dbname=>$dbname,
-		    sqlite=>$sqldbname);
+		$kmdb = Krb5Admin::Local->new({dbname=>$dbname,
+		    sqlite=>$sqldbname});
 	} else {
 		my %args;
 		$args{realm} = $realm	if defined($realm);
