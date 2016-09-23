@@ -2285,6 +2285,16 @@ sub KHARON_IV_remove_host {
 	return undef;
 }
 
+sub KHARON_ACL_remove_host {
+	my ($self, $cmd, @hosts) = @_;
+
+	for my $host (@hosts) {
+		my $perm = $self->KHARON_ACL_modify_host($cmd, $host);
+
+		return undef if !defined($perm) || $perm ne '1';
+	}
+}
+
 sub remove_host {
 	my ($self, @hosts) = @_;
 	my $dbh = $self->{dbh};
