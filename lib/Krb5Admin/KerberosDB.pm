@@ -643,6 +643,7 @@ sub init_db {
 			FOREIGN KEY (appid) REFERENCES appids(appid)
 				ON DELETE CASCADE
 			FOREIGN KEY (acl)   REFERENCES acls(name)
+				ON DELETE CASCADE
 		)
 	});
 
@@ -675,6 +676,7 @@ sub init_db {
 			FOREIGN KEY (name) REFERENCES acls(name)
 				ON DELETE CASCADE
 			FOREIGN KEY (owner) REFERENCES acls(name)
+				ON DELETE CASCADE
 		)
 	});
 
@@ -751,6 +753,7 @@ sub init_db {
 			FOREIGN KEY (name) REFERENCES hosts(name)
 				ON DELETE CASCADE
 			FOREIGN KEY (owner) REFERENCES acls(name)
+				ON DELETE CASCADE
 		)
 	});
 
@@ -761,6 +764,7 @@ sub init_db {
 
 			PRIMARY KEY (principal, host)
 			FOREIGN KEY (host) REFERENCES hosts(name)
+				ON DELETE CASCADE
 		)
 	});
 
