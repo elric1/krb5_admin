@@ -499,7 +499,7 @@ sub fetch_tickets {
 
 	$self->reset_krb5ccname();
 
-	die join("\n", @errs) if @errs > 0;
+	die join("\n", format_err(@errs)) . "\n" if @errs > 0;
 }
 
 
