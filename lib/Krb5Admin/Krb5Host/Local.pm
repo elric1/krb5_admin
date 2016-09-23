@@ -429,7 +429,7 @@ sub install_ticket {
 	# krb5cc_:$user, so that rpc.gssd finds it.
 
 	my $alt_fn  = "$tixdir/krb5cc_:$user";
-	my $alt_tmp = ".$tixdir/krb5cc_:$user";
+	my $alt_tmp = "$tixdir/.krb5cc_:$user";
 	link($ccache_fn, $alt_tmp) or
 		die "$0: link($ccache_fn, $alt_tmp): $!\n";
 	rename($alt_tmp, $alt_fn) or
