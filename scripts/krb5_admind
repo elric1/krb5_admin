@@ -36,7 +36,7 @@ $config->{acl_file}	= ACL_FILE;
 $config->{config}	= KRB5_ADMIND_CONFIG;
 
 my %opts;
-getopts('D:MPS:a:c:d:m:', \%opts) or usage();
+getopts('D:MPS:a:c:d:m:t:', \%opts) or usage();
 
 $master   = hostname()			if  defined($opts{M});
 $master   = $opts{m}			if !defined($master);
