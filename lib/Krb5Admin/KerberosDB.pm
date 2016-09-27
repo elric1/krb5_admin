@@ -615,6 +615,16 @@ sub init_db {
 	$dbh->{AutoCommit} = 1;
 
 	$dbh->do(qq{
+		CREATE TABLE db_version (
+			version		INTEGER
+		)
+	});
+
+	$dbh->do(qq{
+		INSERT INTO db_version (version) VALUES (1)
+	});
+
+	$dbh->do(qq{
 		CREATE TABLE features (
 			feature		VARCHAR PRIMARY KEY
 		)
@@ -795,9 +805,45 @@ sub init_db {
 
 	$dbh->{AutoCommit} = 0;
 
+	$self->upgrade_db();
+
 	$sacls->init_db([[qw/subject acls name/]])	if defined($sacls);
 
 	return undef;
+}
+
+sub upgrade_replace_tables {
+	my ($self, %new_tables) = @_;
+	my $dbh = $self->{dbh};
+
+	for my $t (keys %new_tables) {
+		$dbh->do("DROP TABLE IF EXISTS TMPNEW_$t");
+		$dbh->do($new_tables{$t});
+		$dbh->do("INSERT INTO TMPNEW_$t SELECT * FROM $t");
+		$dbh->do("DROP TABLE $t");
+		$dbh->do("ALTER TABLE TMPNEW_$t RENAME TO $t");
+	}
+}
+
+my %schema_upgrades = (
+);
+
+sub upgrade_db {
+	my ($self) = @_;
+	my $dbh = $self->{dbh};
+	my $sth;
+
+	my $version;
+	eval {
+		my $sth = sql_command($dbh, "SELECT version FROM db_version");
+		$version = $sth->fetchrow();
+	};
+	die "Can't upgrade because we don't know the current version: $@\n"
+	    if $@;
+
+	while ($schema_upgrades{$version}) {
+		$version = $schema_upgrades{$version}($self);
+	}
 }
 
 sub drop_db {
