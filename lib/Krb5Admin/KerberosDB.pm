@@ -825,7 +825,69 @@ sub upgrade_replace_tables {
 	}
 }
 
+sub upgrade_db_add_more_cascades {
+        my ($self) = @_;
+        my $dbh = $self->{dbh};
+
+	$self->upgrade_replace_tables(
+		appid_acls => qq{
+			CREATE TABLE TMPNEW_appid_acls (
+				appid		VARCHAR NOT NULL,
+				acl		VARCHAR NOT NULL,
+
+				PRIMARY KEY (appid, acl)
+				FOREIGN KEY (appid) REFERENCES appids(appid)
+					ON DELETE CASCADE
+				FOREIGN KEY (acl)   REFERENCES acls(name)
+					ON DELETE CASCADE
+			)
+		},
+		acls_owner => qq{
+			CREATE TABLE TMPNEW_acls_owner (
+				name		VARCHAR,
+				owner		VARCHAR,
+
+				PRIMARY KEY (name, owner)
+				FOREIGN KEY (name) REFERENCES acls(name)
+					ON DELETE CASCADE
+				FOREIGN KEY (owner) REFERENCES acls(name)
+					ON DELETE CASCADE
+			)
+		},
+		hosts_owner => qq{
+			CREATE TABLE TMPNEW_hosts_owner (
+				name		VARCHAR,
+				owner		VARCHAR,
+
+				PRIMARY KEY (name, owner)
+				FOREIGN KEY (name) REFERENCES hosts(name)
+					ON DELETE CASCADE
+				FOREIGN KEY (owner) REFERENCES acls(name)
+					ON DELETE CASCADE
+			)
+		},
+		prestashed => qq{
+			CREATE TABLE TMPNEW_prestashed (
+				principal	VARCHAR NOT NULL,
+				host		VARCHAR NOT NULL,
+
+				PRIMARY KEY (principal, host)
+				FOREIGN KEY (host) REFERENCES hosts(name)
+					ON DELETE CASCADE
+			)
+		},
+	);
+
+	$dbh->do("UPDATE db_version SET version = 2");
+
+	$dbh->commit();
+	print STDERR "Upgraded: add_more_cascades\n";
+
+	return 2;
+}
+
 my %schema_upgrades = (
+	1	=> \&upgrade_db_add_more_cascades,
 );
 
 sub upgrade_db {
