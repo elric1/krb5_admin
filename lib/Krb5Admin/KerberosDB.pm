@@ -1713,6 +1713,12 @@ sub KHARON_IV_modify {
 
 	$name = canonicalise_fqprinc($ctx, "modify <princ> %mods", 1, $name);
 	require_hashref("modify <princ> [key=val ...]", 2, \%mods);
+
+	#
+	# We query the principal here to make sure that it exists:
+
+	$self->query($name);
+
 	return [$name, %mods];
 }
 
