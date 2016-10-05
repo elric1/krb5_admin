@@ -918,6 +918,7 @@ sub drop_db {
 	$sacls->drop_db()	if defined($sacls);
 
 	$dbh->{AutoCommit} = 1;
+	$dbh->do('DROP TABLE IF EXISTS db_version');
 	$dbh->do('DROP TABLE IF EXISTS features');
 	$dbh->do('DROP TABLE IF EXISTS aclgroups');
 	$dbh->do('DROP TABLE IF EXISTS appid_cstraints');
