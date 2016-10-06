@@ -186,7 +186,6 @@ our @KRB5_USER_COMMANDS = (
 "query_aclgroup       - show membership information about krb5_admin groups",
 "query_host           - show information about a host",
 "query_hostmap        - show cluster memberships",
-"query_ticket         - list prestashed hosts of a principal",
 "sacls_query          - list the assigned administrative privileges",
 "add_acl              - create a krb5_admin user or group",
 "add_label            - add a label",
