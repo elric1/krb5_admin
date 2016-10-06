@@ -86,6 +86,7 @@ sub KHARON_COMMAND_ALIASES {
 	return {
 		is_owner	=> 'is_appid_owner',
 		is_pwner	=> 'is_appid_owner',
+		reset_password	=> 'reset_passwd',
 	};
 }
 
