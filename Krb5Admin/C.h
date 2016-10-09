@@ -4,6 +4,11 @@
  * between the Heimdal and MIT krb5 APIs.
  */
 
+/* Kerberos includes */
+
+#include <krb5.h>
+#include <kadm5/admin.h>
+
 #ifdef HAVE_HEIMDAL
 
 /* krb5_keyblock stuff */
@@ -87,6 +92,83 @@
 		    NULL, (params), KADM5_STRUCT_VERSION,		\
 		    KADM5_API_VERSION_2, (hndl))
 #endif
+
+/* Our macros */
+
+#define BAIL(x, y)	do {						\
+		ret = x;						\
+		if (ret) {						\
+			snprintf(croakstr, sizeof(croakstr),		\
+			    "%s: %s", #x, y);				\
+			ret = 1;					\
+			goto done;					\
+		}							\
+	} while (0)
+
+#ifdef HAVE_HEIMDAL
+static void
+k5bail(krb5_context ctx, char *croakstr, size_t len, krb5_error_code ret,
+       const char *line, const char *func)
+{
+	const char	*k5err = NULL;
+	const char	*shortfunc;
+	char		*rubbish = NULL;
+
+	*croakstr = 0;
+	shortfunc = line;
+	rubbish = strdup(line);
+	if (rubbish) {
+		char	*tmp;
+
+		tmp = index(rubbish, '(');
+		if (tmp)
+			*tmp = 0;
+
+		shortfunc = rubbish;
+	}
+
+	k5err = krb5_get_error_message(ctx, ret);
+	if (k5err) {
+		snprintf(croakstr, len, "%s in %s:%s",
+		    k5err, func, shortfunc);
+		krb5_free_error_message(ctx, k5err);
+	} else {
+		snprintf(croakstr, len, "unknown error %d in %s:%s",
+		    ret, func, shortfunc);
+	}
+
+	free(rubbish);
+}
+
+#define K5BAIL(x)	do {						\
+		ret = x;						\
+		if (ret) {						\
+			k5bail(ctx, croakstr, sizeof(croakstr), ret,	\
+			    #x, __func__);				\
+			ret = 1;					\
+			goto done;					\
+		}							\
+	} while (0)
+#else
+#define K5BAIL(x)	BAIL(x, error_message(ret))
+#endif
+
+
+
+/* Some internal types */
+
+struct _key {
+	char		*princ;
+	krb5_timestamp	 timestamp;
+	int		 kvno;
+	int		 enctype;
+	int		 length;
+	char		 data[1024];
+	struct _key	*next;
+};
+
+typedef struct _key	*key;
+typedef	void		*kadm5_handle;
 
 /* And finally the function prototypes */
 

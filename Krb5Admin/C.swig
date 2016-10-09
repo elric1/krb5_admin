@@ -1,6 +1,8 @@
 %module "Krb5Admin::C"
 %{
 
+#include "C.h"
+
 /*
  * First we define lots of nasty macros to put things in and get things
  * out of hashes quickly:
@@ -64,7 +66,7 @@
 #define HV_STORE_IV_F(hv, key, val) HV_STORE_INTERNAL_F(hv, key, newSViv(val))
 #define HV_STORE_IV(hv, base, key)  HV_STORE_IV_F((hv), #key, base . key)
 
-#include "C.c"
+
 
 %}
 

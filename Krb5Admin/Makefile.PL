@@ -48,7 +48,7 @@ if (-f "$KRB5DIR/include/krb5/hdb.h") {
 my %args;
 
 $args{NAME}	= 'Krb5Admin::C';
-$args{OBJECT}	= 'C_wrap.o curve25519-donna.o hkdf.o hmac.o sha1.o ' .
+$args{OBJECT}	= 'C_wrap.o C.o curve25519-donna.o hkdf.o hmac.o sha1.o ' .
 		  'sha224-256.o sha384-512.o shatest.o usha.o';
 
 $args{INC}	= "-I${KRB5DIR}/include";
