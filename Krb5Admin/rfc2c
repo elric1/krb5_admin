@@ -24,5 +24,9 @@ while (<STDIN>) {
 
 	next if !defined($fh);
 
+	# Now fix up some conflicts:
+
+	$_ =~ s/hmac\(/Krb5Admin_hmac\(/go;
+
 	print $fh "$_\n";
 }
