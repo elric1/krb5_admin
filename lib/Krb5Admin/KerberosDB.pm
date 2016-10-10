@@ -2528,35 +2528,14 @@ sub _deny_nohost {
 
 sub _check_hosts {
 	my ($self, $princ, $prealm, $realms, @hosts) = @_;
-	my $dbh = $self->{dbh};
-	my $stmt = "SELECT realm FROM hosts WHERE name = ?";
-	my $sth = eval { $dbh->prepare($stmt); };
-	my $deny;
 
-	if (!defined($sth)) {
-		$dbh->rollback();
-		die [510, "SQL ERROR: ".$dbh->errstr];
-	}
+	for my $host (@hosts) {
+		my $hrealm = $self->query_host($host, 'realm');
 
-	my $hrealm;
-	$sth->bind_columns(\$hrealm);
-	eval {
-		for my $host (@hosts) {
-			$sth->execute($host);
-			if (! $sth->fetch) {
-				_deny_nohost($host);
-			}
-			if (!grep($_ eq $hrealm, @$realms)) {
-				_deny_xrealm($princ, $prealm, $host, $hrealm);
-			}
+		_deny_nohost($host)	if !defined($hrealm);
+		if (!grep($_ eq $hrealm, @$realms)) {
+			_deny_xrealm($princ, $prealm, $host, $hrealm);
 		}
-	};
-	$deny = $@ if $@;
-	$deny = [510, "SQL ERROR: ".$sth->errstr] if ($sth->err);
-
-	if ($deny) {
-		$dbh->rollback();
-		die $deny;
 	}
 }
 
