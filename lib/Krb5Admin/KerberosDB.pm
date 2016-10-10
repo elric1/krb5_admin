@@ -20,7 +20,7 @@ use Kharon::Entitlement::Equals;
 use Kharon::Entitlement::SimpleSQL;
 use Kharon::InputValidation qw(KHARON_IV_NO_ARGS KHARON_IV_ONE_SCALAR);
 
-use Kharon::dbutils qw/sql_command generic_query generic_modify/;
+use Kharon::dbutils qw/sql_exec generic_query generic_modify/;
 use Kharon::utils qw/getclassvar/;
 
 use Krb5Admin::dbutils qw/generic_query_union/;
@@ -908,7 +908,7 @@ sub upgrade_db {
 
 	my $version;
 	eval {
-		my $sth = sql_command($dbh, "SELECT version FROM db_version");
+		my $sth = sql_exec($dbh, "SELECT version FROM db_version");
 		$version = $sth->fetchrow();
 	};
 	die "Can't upgrade because we don't know the current version: $@\n"
@@ -970,7 +970,7 @@ sub add_feature {
 
 	my $stmt = 'INSERT INTO features(feature) VALUES (?)';
 
-	sql_command($dbh, $stmt, $feature);
+	sql_exec($dbh, $stmt, $feature);
 
 	return undef;
 }
@@ -983,7 +983,7 @@ sub del_feature {
 
 	my $stmt = 'DELETE FROM features WHERE feature = ?';
 
-	sql_command($dbh, $stmt, $feature);
+	sql_exec($dbh, $stmt, $feature);
 
 	return undef;
 }
@@ -1252,7 +1252,7 @@ sub create_appid {
 	my $stmt = "INSERT INTO appids(appid) VALUES (?)";
 
 	eval {
-		sql_command($dbh, $stmt, $appid);
+		sql_exec($dbh, $stmt, $appid);
 		generic_modify($dbh, \%field_desc, 'appids', $appid, %args);
 	};
 	if ($@) {
@@ -1461,7 +1461,7 @@ sub KHARON_ACL_bootstrap_host_key {
 		SELECT COUNT(*) FROM hosts
 		WHERE realm = ? AND name = ? AND bootbinding = ?
 	};
-	my $sth = sql_command($dbh, $stmt, $realm, $host, $subject);
+	my $sth = sql_exec($dbh, $stmt, $realm, $host, $subject);
 
 	if ($sth->fetchrow_arrayref()->[0] != 1) {
 		return "Permission denied: you are not bound to $host";
@@ -1501,7 +1501,7 @@ sub remove_bootbinding {
 	#         bootstrap key from the Kerberos database.
 
 	$stmt = "UPDATE hosts SET bootbinding = NULL WHERE name = ?";
-	sql_command($dbh, $stmt, $host);
+	sql_exec($dbh, $stmt, $host);
 
 	#
 	# We do not want to remove principals from the Kerberos DB if
@@ -1521,7 +1521,7 @@ sub remove_bootbinding {
 	# counter instead of a random number, perhaps...
 
 	$stmt = "SELECT COUNT(name) FROM hosts WHERE bootbinding = ?";
-	$sth = sql_command($dbh, $stmt, $binding);
+	$sth = sql_exec($dbh, $stmt, $binding);
 
 	if ($sth->fetch()->[0] == 0) {
 		Krb5Admin::C::krb5_deleteprinc($ctx, $hndl, $binding);
@@ -1951,7 +1951,7 @@ sub remove {
 
 	my $stmt = "DELETE FROM appids WHERE appid = ?";
 
-	sql_command($dbh, $stmt, $name);
+	sql_exec($dbh, $stmt, $name);
 
 	#
 	# And then we nuke the princ:
@@ -2010,7 +2010,7 @@ sub is_appid_owner {
 	    join(' ', @joins) . ' WHERE appid_acls.appid = ? AND (' .
 	    join(' OR ', @where) . ")";
 
-	my $sth = sql_command($dbh, $stmt, $appid, @bindv);
+	my $sth = sql_exec($dbh, $stmt, $appid, @bindv);
 
 	return $sth->fetch()->[0] ? 1 : 0;
 }
@@ -2046,7 +2046,7 @@ sub add_label {
 
 	my $stmt = 'INSERT INTO labels(label, desc) VALUES (?, ?)';
 
-	sql_command($dbh, $stmt, $label, $desc);
+	sql_exec($dbh, $stmt, $label, $desc);
 
 	return undef;
 }
@@ -2059,7 +2059,7 @@ sub del_label {
 
 	my $stmt = 'DELETE FROM labels WHERE label = ?';
 
-	sql_command($dbh, $stmt, $label);
+	sql_exec($dbh, $stmt, $label);
 
 	# toss errors if label not found...
 
@@ -2126,7 +2126,7 @@ sub create_host_internal {
 	my $stmt = "INSERT INTO hosts(" . join(',', @args) . ")" .
 		   "VALUES (" . join(',', map {"?"} @args) . ")";
 
-	sql_command($dbh, $stmt, @vals);
+	sql_exec($dbh, $stmt, @vals);
 
 	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
 
@@ -2197,7 +2197,7 @@ sub bind_host_secret {
 
 	if (@args < 2) {
 		$stmt = qq{ SELECT max(id) as maxid FROM host_secret_ids };
-		$sth = sql_command($dbh, $stmt);
+		$sth = sql_exec($dbh, $stmt);
 		my $results = $sth->fetchall_arrayref({});
 		$maxid = $results->[0]->{"maxid"};
 		if ($sth->rows != 1 || ! $maxid) {
@@ -2209,9 +2209,9 @@ sub bind_host_secret {
 
 	my $host = @args ? $args[0] : $sprinc[2];
 	$stmt = qq { DELETE FROM host_secrets WHERE name = ? };
-	sql_command($dbh, $stmt, $host);
+	sql_exec($dbh, $stmt, $host);
 	$stmt = qq { INSERT INTO host_secrets(name, id) VALUES (?, ?) };
-	sql_command($dbh, $stmt, $host, $maxid) ;
+	sql_exec($dbh, $stmt, $host, $maxid) ;
 
 	# Self-service calls from hosts, get id and value,
 	# While administrators binding the host get only the id.
@@ -2250,14 +2250,14 @@ sub read_host_secret {
 				ON host_secrets.id = host_secret_ids.id
 			WHERE hosts.name = ?
 		};
-		$sth = sql_command($dbh, $stmt, $sprinc[2]);
+		$sth = sql_exec($dbh, $stmt, $sprinc[2]);
 	} else {
 		my $stmt = qq {
 			SELECT secret
 			FROM host_secret_ids
 			WHERE id = ?
 		};
-		$sth = sql_command($dbh, $stmt, $args[1]);
+		$sth = sql_exec($dbh, $stmt, $args[1]);
 	}
 	my $results = $sth->fetchall_arrayref({});
 
@@ -2276,13 +2276,13 @@ sub new_host_secret {
 	my $rnd = Krb5Admin::C::krb5_make_a_key($ctx, 18)->{key};
 
 	my $stmt = qq{ SELECT max(id) as maxid FROM host_secret_ids };
-	my $sth = sql_command($dbh, $stmt);
+	my $sth = sql_exec($dbh, $stmt);
 	my $results = $sth->fetchall_arrayref({});
 	my $maxid = $results->[0]->{"maxid"};
 	$maxid //= 0;
 
 	$stmt = qq { INSERT INTO host_secret_ids(id, secret) VALUES(?, ?) };
-	$sth = sql_command($dbh, $stmt, $maxid + 1, encode_base64($rnd, ""));
+	$sth = sql_exec($dbh, $stmt, $maxid + 1, encode_base64($rnd, ""));
 	$dbh->commit();
 }
 
@@ -2354,7 +2354,7 @@ sub bind_host {
 	require_fqprinc($ctx, "bind_host <host> <binding>", 2, $binding);
 
 	my $stmt = "UPDATE hosts SET bootbinding = ? WHERE name = ?";
-	my $sth  = sql_command($dbh, $stmt, $binding, $host);
+	my $sth  = sql_exec($dbh, $stmt, $binding, $host);
 
 	if ($sth->rows != 1) {
 		die [500, "Host $host does not exist."];
@@ -2397,7 +2397,7 @@ sub remove_host {
 	while (@hosts) {
 		my @curhosts = splice(@hosts, 0, 500);
 
-		sql_command($dbh, "DELETE FROM hosts WHERE "
+		sql_exec($dbh, "DELETE FROM hosts WHERE "
 		    . join(' OR ', map {"name=?"} @curhosts), @curhosts);
 
 		#
@@ -2479,7 +2479,7 @@ sub insert_hostmap {
 
 	my $stmt = "INSERT INTO hostmap (logical, physical) VALUES (?, ?)";
 	eval {
-		sql_command($dbh, $stmt, @hosts);
+		sql_exec($dbh, $stmt, @hosts);
 	};
 
 	if ($@) {
@@ -2542,7 +2542,7 @@ sub remove_hostmap {
 
 	my $stmt = "DELETE FROM hostmap WHERE logical = ? AND physical = ?";
 
-	sql_command($dbh, $stmt, @hosts);
+	sql_exec($dbh, $stmt, @hosts);
 
 	return;
 }
@@ -2683,7 +2683,7 @@ sub insert_ticket {
 		};
 
 		eval {
-			$sth = sql_command($dbh, $stmt, $princ, $host);
+			$sth = sql_exec($dbh, $stmt, $princ, $host);
 		};
 
 		if ($@) {
@@ -2691,7 +2691,7 @@ sub insert_ticket {
 			die $@;
 		}
 
-		$sth = sql_command($dbh,
+		$sth = sql_exec($dbh,
 			"SELECT count(principal) FROM prestashed" .
 			" WHERE host = ?", $host);
 
@@ -2758,7 +2758,7 @@ sub refresh_ticket {
 	# lc() and de-dup host list
 	@hosts = keys %{{map { lc($_) => 1 } @hosts}};
 
-	my ($sth, $str) = sql_command($dbh,
+	my ($sth, $str) = sql_exec($dbh,
 		"SELECT count(host) FROM prestashed" .
 		"  WHERE principal = ?".
 		"  AND host IN (".
@@ -2838,7 +2838,7 @@ sub query_ticket {
 
 	my $stmt = "SELECT $fields FROM $from $where";
 
-	my $sth = sql_command($dbh, $stmt, @bindv);
+	my $sth = sql_exec($dbh, $stmt, @bindv);
 
 	#
 	# We now reformat the result to be comprised of the simplest
@@ -2977,7 +2977,7 @@ sub remove_ticket {
 	while (@hosts) {
 		my @curhosts = splice(@hosts, 0, 500);
 
-		sql_command($dbh, qq{
+		sql_exec($dbh, qq{
 			DELETE FROM prestashed WHERE principal = ? AND (
 		    } . join(' OR ', map {"host=?"} @curhosts) . qq{
 			)
@@ -3031,7 +3031,7 @@ sub create_subject {
 	}
 
 	my $stmt = "INSERT INTO acls(name, type) VALUES (?, ?)";
-	eval { sql_command($dbh, $stmt, $subj, $type); };
+	eval { sql_exec($dbh, $stmt, $subj, $type); };
 	if ($@) {
 		if ($@ =~ /unique/i) {
 			die [500, $subj . ' already exists.'];
@@ -3101,7 +3101,7 @@ sub remove_subject {
 	require_scalar("remove_subject <subj>", 1, $subj);
 
 	my $stmt = "DELETE FROM acls WHERE name = ?";
-	sql_command($dbh, $stmt, $subj);
+	sql_exec($dbh, $stmt, $subj);
 	return;
 }
 
@@ -3228,7 +3228,7 @@ sub insert_aclgroup {
 	my $stmt = "INSERT INTO aclgroups (aclgroup, acl) VALUES (?, ?)";
 
 	eval {
-		sql_command($dbh, $stmt, @acls);
+		sql_exec($dbh, $stmt, @acls);
 	};
 
 	if ($@) {
@@ -3254,7 +3254,7 @@ sub remove_aclgroup {
 
 	my $stmt = "DELETE FROM aclgroups WHERE aclgroup = ? AND acl = ?";
 
-	sql_command($dbh, $stmt, @acls);
+	sql_exec($dbh, $stmt, @acls);
 
 	return;
 }
@@ -3301,13 +3301,13 @@ sub hostmap_acl {
 sub remove_object_owner {
 	my ($dbh, $obj_type, $objname, $ownerprinc) = @_;
 	my $stmt = "DELETE FROM ${obj_type}_owner where owner = ? and name = ?";
-	sql_command($dbh, $stmt, $ownerprinc, $objname);
+	sql_exec($dbh, $stmt, $ownerprinc, $objname);
 }
 
 sub add_object_owner {
 	my ($dbh, $obj_type, $objname, $ownerprinc) = @_;
 	my $stmt= "INSERT INTO ${obj_type}_owner(name, owner) VALUES (?,?)";
-	sql_command($dbh, $stmt, $objname, $ownerprinc);
+	sql_exec($dbh, $stmt, $objname, $ownerprinc);
 }
 
 sub owner_del_f {
@@ -3407,7 +3407,7 @@ sub is_owner {
 	    join(' ', @joins) . " WHERE ${obj_type}_owner.name = ? AND (" .
 	    join(' OR ', @where) . ")";
 
-	my $sth = sql_command($dbh, $stmt, $obj_id, @bindv);
+	my $sth = sql_exec($dbh, $stmt, $obj_id, @bindv);
 
 	my $res = $sth->fetch()->[0] ? 1 : 0;
 
@@ -3418,7 +3418,7 @@ sub is_owner {
 sub query_owner_f {
 	my ($obj_type, $self, @r)  = @_;
 	my $sql = "SELECT * from ".$obj_type."_owner where name=?";
-	my $sth = sql_command($self->{dbh}, $sql, @r);
+	my $sth = sql_exec($self->{dbh}, $sql, @r);
 
 	my $ret =  $sth->fetchall_arrayref({});
 	$sth->finish;
@@ -3461,7 +3461,7 @@ sub principal_map_remove {
 	my $stmt = "DELETE FROM account_principal_map " .
 	    "WHERE accountname=? AND realm=? AND servicename=? AND instance=?";
 
-	sql_command($dbh, $stmt, $account, @sprinc);
+	sql_exec($dbh, $stmt, $account, @sprinc);
 	return 1;
 }
 
@@ -3485,7 +3485,7 @@ sub principal_map_add {
 	my $stmt = "INSERT INTO account_principal_map " .
 	    "(accountname, realm, servicename, instance) VALUES (?, ?, ?, ?)";
 
-	sql_command($dbh, $stmt, $account, @sprinc);
+	sql_exec($dbh, $stmt, $account, @sprinc);
 	return 1;
 }
 
