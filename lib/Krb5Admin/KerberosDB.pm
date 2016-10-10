@@ -2095,20 +2095,25 @@ sub list_table {
     die [500, "Raw query of $table unsupported"] ;
 }
 
+sub KHARON_IV_create_host {
+	my ($self, $verb, $host, %args) = @_;
 
-sub create_host_internal {
+	require_scalar("create_host <host> [key=val ...]", 1, $host);
+
+	return undef;
+}
+
+sub create_host {
 	my ($self, $host, %args) = @_;
+	my $ctx = $self->{ctx};
 	my $dbh = $self->{dbh};
 
-	my $lhost = $self->query_host($host);
-	if (defined($lhost)) {
-		$dbh->rollback();
-		die [406, "$host already exists.\n"];
-	}
+	my $is_logical = $args{is_logical} // 0;
+	$args{owner} //= [$self->{client}]	if $is_logical;
+	$args{realm} //= Krb5Admin::C::krb5_get_realm($ctx);
 
-	if (!exists($args{realm})) {
-		$args{realm} = Krb5Admin::C::krb5_get_realm($self->{ctx});
-	}
+	my $lhost = $self->query_host($host);
+	die [406, "$host already exists.\n"] if defined($lhost);
 
 	my %fields = map { $_ => 1 } @{$field_desc{hosts}->{fields}};
 
@@ -2130,26 +2135,17 @@ sub create_host_internal {
 
 	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
 
-	return undef;
-}
-
-sub KHARON_IV_create_host {
-	my ($self, $verb, $host, %args) = @_;
-
-	require_scalar("create_host <host> [key=val ...]", 1, $host);
+	if ($is_logical) {
+		$self->can_user_act("Can't create logical hosts you don't own",
+		    $self->{client}, "add_host_owner", $host);
+	}
 
 	return undef;
 }
 
-sub create_host {
-	my ($self, $host, %args) = @_;
-	my $dbh = $self->{dbh};
-
-	require_scalar("create_host <host> [key=val ...]", 1, $host);
-
-	create_host_internal(@_);
-	return undef;
-}
+sub KHARON_ACL_create_logical_host	{ return 1; }
+sub KHARON_IV_create_logical_host	{ KHARON_IV_create_host(@_); }
+sub create_logical_host			{ create_host(@_, is_logical => 1); }
 
 sub KHARON_IV_modify_host {
 	my ($self, $cmd, $logical, %mods) = @_;
@@ -2405,40 +2401,6 @@ sub remove_host {
 	}
 
 	return;
-}
-
-sub KHARON_IV_create_logical_host {
-	my ($self, $cmd, $host, %args) = @_;
-	my $usage = "create_logical_host <logical> [key=val ...]";
-
-	require_scalar($usage , 1, $host);
-
-	return undef;
-}
-
-sub KHARON_ACL_create_logical_host { return 1; }
-
-sub create_logical_host {
-	my ($self, $host, %args) = @_;
-	my $dbh = $self->{dbh};
-	my $usage = "create_logical_host <logical> [key=val ...]";
-
-	require_scalar($usage , 1, $host);
-
-	my $ret = $self->create_host_internal($host, "is_logical" => 1);
-
-	if (!exists($args{owner})) {
-		$args{owner} = [$self->{client}];
-	}
-
-	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
-
-	$self->can_user_act("Can't create logical hosts you don't own",
-	    $self->{client}, "add_host_owner", $host);
-
-	$dbh->commit();
-
-	return undef;
 }
 
 sub KHARON_IV_insert_hostmap {
