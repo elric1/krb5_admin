@@ -401,7 +401,6 @@ sub new {
 	}
 	$dbh->{PrintError} = 0;
 	$dbh->{RaiseError} = 1;
-	$dbh->{AutoCommit} = 0;
 
 	my $ctx = $self->{ctx};
 
@@ -474,6 +473,25 @@ sub set_creds {
 	undef($self->{hndl});
 	$self->{hndl} = Krb5Admin::C::krb5_get_kadm5_hndl($self->{ctx},
 	    $self->{dbname}, $self->{client});
+}
+ 
+#
+# We use KHARON_{PRE,POST}COMMAND to deal with our database transactions.
+
+sub KHARON_PRECOMMAND {
+	my ($self) = @_;
+	my $dbh = $self->{dbh};
+
+	$dbh->begin_work();
+}
+
+sub KHARON_POSTCOMMAND {
+	my ($self, $cmd, $code) = @_;
+	my $dbh = $self->{dbh};
+
+	return			if $dbh->{AutoCommit};
+	return $dbh->rollback()	if $code >= 500;
+	return $dbh->commit();
 }
 
 sub DESTROY {
@@ -611,8 +629,6 @@ sub init_db {
 	my $sacls = $self->{sacls};
 
 	Krb5Admin::C::init_kdb($self->{ctx}, $self->{hndl});
-
-	$dbh->{AutoCommit} = 1;
 
 	$dbh->do(qq{
 		CREATE TABLE db_version (
@@ -803,8 +819,6 @@ sub init_db {
 		)
 	});
 
-	$dbh->{AutoCommit} = 0;
-
 	$self->upgrade_db();
 
 	$sacls->init_db([[qw/subject acls name/]])	if defined($sacls);
@@ -880,9 +894,6 @@ sub upgrade_db_add_more_cascades {
 
 	$dbh->do("UPDATE db_version SET version = 2");
 
-	$dbh->commit();
-	print STDERR "Upgraded: add_more_cascades\n";
-
 	return 2;
 }
 
@@ -917,7 +928,6 @@ sub drop_db {
 
 	$sacls->drop_db()	if defined($sacls);
 
-	$dbh->{AutoCommit} = 1;
 	$dbh->do('DROP TABLE IF EXISTS db_version');
 	$dbh->do('DROP TABLE IF EXISTS features');
 	$dbh->do('DROP TABLE IF EXISTS aclgroups');
@@ -936,7 +946,6 @@ sub drop_db {
 	$dbh->do('DROP TABLE IF EXISTS labels');
 	$dbh->do('DROP TABLE IF EXISTS account_principal_map');
 	$dbh->do('DROP TABLE IF EXISTS external_account_principal_map');
-	$dbh->{AutoCommit} = 0;
 }
 
 sub KHARON_ACL_master { return 1; }
@@ -963,7 +972,6 @@ sub add_feature {
 
 	sql_command($dbh, $stmt, $feature);
 
-	$dbh->commit();
 	return undef;
 }
 
@@ -977,7 +985,6 @@ sub del_feature {
 
 	sql_command($dbh, $stmt, $feature);
 
-	$dbh->commit();
 	return undef;
 }
 
@@ -1194,7 +1201,6 @@ sub internal_create {
 #
 # determine if a user can execute the
 # $act function with args @r
-# if not then catch exceptions and rollback any database commits
 #
 # This is for use in the typical, make DB update, check new state of db for
 # policy consistency, rollback on violation
@@ -1206,7 +1212,6 @@ sub can_user_act {
 	if (defined($self->{acl})) {
 		eval { $self->{acl}->check($act, @r); };
 		if ($@) {
-			$dbh->rollback();
 			die [503, $msg];
 		}
 	}
@@ -1252,7 +1257,6 @@ sub create_appid {
 	};
 	if ($@) {
 		my $err = $@;
-		$dbh->rollback();
 		if ($err =~ /unique/i) {
 			die [500, "Appid $appid already exists."];
 		}
@@ -1261,8 +1265,6 @@ sub create_appid {
 
 	$self->can_user_act("Can't create appid's you don't own",
 	    $self->{client}, "modify" , $appid, %args);
-
-	$dbh->commit();
 
 	$self->create($appid);
 	$self->internal_modify($appid,
@@ -1500,7 +1502,6 @@ sub remove_bootbinding {
 
 	$stmt = "UPDATE hosts SET bootbinding = NULL WHERE name = ?";
 	sql_command($dbh, $stmt, $host);
-	$dbh->commit();
 
 	#
 	# We do not want to remove principals from the Kerberos DB if
@@ -1768,22 +1769,10 @@ sub modify {
 		eval {
 			$self->{acl}->check('modify', $name);
 		};
-
-		if ($@) {
-			$dbh->rollback();
-			die [503, "You cannot relinquish permissions."];
-		}
+		die [503, "You cannot relinquish permissions."] if $@;
 	}
 
-	eval {
-		$self->internal_modify($name, \%mods);
-	};
-	if ($@) {
-		$dbh->rollback();
-		die $@;
-	}
-
-	$dbh->commit();
+	$self->internal_modify($name, \%mods);
 	return undef;
 }
 
@@ -1963,7 +1952,6 @@ sub remove {
 	my $stmt = "DELETE FROM appids WHERE appid = ?";
 
 	sql_command($dbh, $stmt, $name);
-	$dbh->commit();
 
 	#
 	# And then we nuke the princ:
@@ -2060,7 +2048,6 @@ sub add_label {
 
 	sql_command($dbh, $stmt, $label, $desc);
 
-	$dbh->commit();
 	return undef;
 }
 
@@ -2076,7 +2063,6 @@ sub del_label {
 
 	# toss errors if label not found...
 
-	$dbh->commit();
 	return undef;
 }
 
@@ -2162,8 +2148,6 @@ sub create_host {
 	require_scalar("create_host <host> [key=val ...]", 1, $host);
 
 	create_host_internal(@_);
-
-	$dbh->commit();
 	return undef;
 }
 
@@ -2217,7 +2201,6 @@ sub bind_host_secret {
 		my $results = $sth->fetchall_arrayref({});
 		$maxid = $results->[0]->{"maxid"};
 		if ($sth->rows != 1 || ! $maxid) {
-			$dbh->rollback();
 			die [500, "No host_secrets found."];
 		}
 	} else {
@@ -2229,7 +2212,6 @@ sub bind_host_secret {
 	sql_command($dbh, $stmt, $host);
 	$stmt = qq { INSERT INTO host_secrets(name, id) VALUES (?, ?) };
 	sql_command($dbh, $stmt, $host, $maxid) ;
-	$dbh->commit();
 
 	# Self-service calls from hosts, get id and value,
 	# While administrators binding the host get only the id.
@@ -2281,11 +2263,9 @@ sub read_host_secret {
 
 	if ($sth->rows != 1 ||
 	    !defined($secret = $results->[0]->{"secret"})) {
-		$dbh->rollback();
 		die [500, "Host key not found."];
 	}
 
-	$dbh->commit();
 	return hmac_sha256_base64($secret, $subject);
 }
 
@@ -2336,7 +2316,6 @@ sub modify_host {
 	$self->can_user_act("Can't create logical hosts you don't own",
 	    $self->{client}, "modify_host", $host);
 
-	$dbh->commit();
 	return undef;
 }
 
@@ -2378,11 +2357,8 @@ sub bind_host {
 	my $sth  = sql_command($dbh, $stmt, $binding, $host);
 
 	if ($sth->rows != 1) {
-		$dbh->rollback();
 		die [500, "Host $host does not exist."];
 	}
-
-	$dbh->commit();
 
 	# XXXrcd: we must check if we successfully bound the host.
 	return undef;
@@ -2427,8 +2403,6 @@ sub remove_host {
 		#
 		# XXXrcd: error handling and all that.
 	}
-
-	$dbh->commit();
 
 	return;
 }
@@ -2516,6 +2490,7 @@ sub insert_hostmap {
 		die $@;
 	}
 
+	# Always commit before notify_update_required.
 	$dbh->commit();
 
 	# A cluster member has been added, its important for the new member
@@ -2568,10 +2543,6 @@ sub remove_hostmap {
 	my $stmt = "DELETE FROM hostmap WHERE logical = ? AND physical = ?";
 
 	sql_command($dbh, $stmt, @hosts);
-
-	# remove_object_owner($dbh, 'hosts', @hosts);
-
-	$dbh->commit();
 
 	return;
 }
@@ -2727,13 +2698,13 @@ sub insert_ticket {
 		my ($count) = $sth->fetchrow_array();
 
 		if ($count > MAX_TIX_PER_HOST) {
-			dbh->rollback();
 			die [500, 'limit exceeded: you can only prestash ' .
 				  MAX_TIX_PER_HOST .
 				  ' tickets on a single host or service address']
 		}
 		push(@notify_hosts, $host);
 	}
+	# Always commit before notify_update_required.
 	$dbh->commit();
 
 	for my $host (@notify_hosts) {
@@ -2805,7 +2776,6 @@ sub refresh_ticket {
 			    $host);
 		};
 	}
-	$dbh->rollback();
 	return undef;
 }
 
@@ -3017,8 +2987,6 @@ sub remove_ticket {
 		# XXXrcd: error handling and all that.
 	}
 
-	$dbh->commit();
-
 	return undef;
 }
 
@@ -3072,7 +3040,6 @@ sub create_subject {
 	}
 
 	generic_modify($dbh, \%field_desc, 'acls', $subj, %args);
-	$dbh->commit();
 	return;
 }
 
@@ -3105,7 +3072,6 @@ sub modify_subject {
 
 	generic_modify($dbh, \%field_desc, 'acls', $subj, %args);
 	# XXXrcd: check we still have permissions.
-	$dbh->commit();
 	return;
 }
 
@@ -3136,7 +3102,6 @@ sub remove_subject {
 
 	my $stmt = "DELETE FROM acls WHERE name = ?";
 	sql_command($dbh, $stmt, $subj);
-	$dbh->commit();
 	return;
 }
 
@@ -3274,8 +3239,6 @@ sub insert_aclgroup {
 		die $@;
 	}
 
-	$dbh->commit();
-
 	return undef;
 }
 
@@ -3292,8 +3255,6 @@ sub remove_aclgroup {
 	my $stmt = "DELETE FROM aclgroups WHERE aclgroup = ? AND acl = ?";
 
 	sql_command($dbh, $stmt, @acls);
-
-	$dbh->commit();
 
 	return;
 }
@@ -3383,9 +3344,8 @@ sub owner_add_f {
 		$type_key=>$obj);
 
 	my $owner_res = generic_query($dbh, \%field_desc, "acls", ["name"],
-	    name=>$princ );
+	    name=>$princ);
 	if (!defined $owner_res) {
-		$dbh->rollback();
 		die [504, $princ. " doesn't exists"];
 	}
 
@@ -3400,7 +3360,6 @@ sub owner_add_f {
 		}
 		return 1;
 	} else {
-		$dbh->rollback();
 		die [503, "$type_name object $obj must exists before " .
 		    "attaching additional owners"];
 	}
@@ -3413,7 +3372,6 @@ sub KHARON_ACL_add_host_owner { return hostmap_acl(@_); }
 sub add_host_owner {
 	my ($self)  = @_;
 	my $res = owner_add_f('hosts', 'name', @_);
-	$self->{dbh}->commit();
 	return $res;
 }
 
@@ -3471,7 +3429,6 @@ sub KHARON_ACL_query_host_owner { return 1; }
 sub query_host_owner {
 	my $self = $_[0];
 	my $r = query_owner_f('hosts', @_);
-	$self->{dbh}->commit();
 	return $r;
 }
 
@@ -3479,7 +3436,6 @@ sub KHARON_ACL_query_acl_owner { return 1; }
 sub query_acl_owner {
 	my $self = $_[0];
 	my $r = query_owner_f('acls', @_);
-	$self->{dbh}->commit();
 	return $r;
 }
 
@@ -3506,8 +3462,7 @@ sub principal_map_remove {
 	    "WHERE accountname=? AND realm=? AND servicename=? AND instance=?";
 
 	sql_command($dbh, $stmt, $account, @sprinc);
-
-	$dbh->commit();
+	return 1;
 }
 
 # add some principal mappings...
@@ -3531,8 +3486,7 @@ sub principal_map_add {
 	    "(accountname, realm, servicename, instance) VALUES (?, ?, ?, ?)";
 
 	sql_command($dbh, $stmt, $account, @sprinc);
-
-	$dbh->commit();
+	return 1;
 }
 
 sub KHARON_ACL_principal_map_query { return 1;}
