@@ -9,6 +9,10 @@ use Exporter;
 @EXPORT_OK = qw/reverse_the host_list force_symlink
 		load_config mk_kmdb_with_config/;
 
+BEGIN {
+	eval { require Krb5Admin::SiteKerberosDB; };
+}
+
 #
 # Host list will, given an IP/Hostname return a list of all of the valid
 # host principals which we would expect that host to contain in their
@@ -61,7 +65,16 @@ sub mk_kmdb_with_config {
 	);
 
 	my $kmdb_class   = $config->{kmdb_class};
-	   $kmdb_class //= 'Krb5Admin::KerberosDB';
+
+	if (!defined($kmdb_class)) {
+		eval {
+			if (defined(Krb5Admin::SiteKerberosDB->can('new'))) {
+				$kmdb_class = 'Krb5Admin::SiteKerberosDB';
+			}
+		};
+	}
+
+	$kmdb_class //= 'Krb5Admin::KerberosDB';
 
 	return $kmdb_class->new(%kmdb_args);
 }
