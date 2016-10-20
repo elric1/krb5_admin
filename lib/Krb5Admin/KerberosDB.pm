@@ -393,7 +393,8 @@ sub new {
 	# initialize our database handle
 	if (!defined($dbh)) {
 		$dbh = DBI->connect("dbi:SQLite:$sqlite", "", "",
-		    {RaiseError => 1, PrintError => 0, AutoCommit => 1});
+		    {RaiseError => 1, PrintError => 0, AutoCommit => 1,
+		      sqlite_use_immediate_transaction => 0});
 		die "Could not open database " . DBI::errstr if !defined($dbh);
 		$dbh->do("PRAGMA foreign_keys = ON");
 		$dbh->do("PRAGMA journal_mode = WAL");
