@@ -63,13 +63,6 @@ if (defined($sqldbname) && !$opts{'l'}) {
 
 my $cli = Krb5Admin::CLI->new(appname => 'krb5_admin', json => $json);
 
-# We address this up front so that we don't have to connect to the
-# KDC to provide usage.
-if ($#ARGV == -1) {
-	$cli->CMD_help();
-	exit(0);
-}
-
 my $kmdb;
 eval {
 	if (exists($opts{'l'})) {
@@ -93,3 +86,4 @@ if (exists($opts{'M'})) {
 $cli->set_obj($kmdb);
 
 exit($cli->run_cmd(@ARGV))	if $#ARGV >= 0;
+exit($cli->run_cmdline());
