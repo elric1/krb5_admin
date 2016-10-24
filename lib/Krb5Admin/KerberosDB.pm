@@ -2151,7 +2151,7 @@ sub create_logical_host			{ create_host(@_, is_logical => 1); }
 sub KHARON_IV_modify_host {
 	my ($self, $cmd, $logical, %mods) = @_;
 
-	require_scalar("modify_host <host> [args]", 1, $logical);
+	require_scalar("modify_host <host> [key=val ...]", 1, $logical);
 	return undef;
 }
 
