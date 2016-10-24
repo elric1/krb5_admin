@@ -2337,7 +2337,8 @@ sub KHARON_IV_bind_host {
 	my $ctx = $self->{ctx};
 
 	require_scalar("bind_host <host> <binding>", 1, $host);
-	require_fqprinc($ctx, "bind_host <host> <binding>", 2, $binding);
+	require_fqprinc($ctx, "bind_host <host> <binding>", 2, $binding)
+	    if defined($binding);
 
 	return undef;
 }
@@ -2348,7 +2349,8 @@ sub bind_host {
 	my $dbh = $self->{dbh};
 
 	require_scalar("bind_host <host> <binding>", 1, $host);
-	require_fqprinc($ctx, "bind_host <host> <binding>", 2, $binding);
+	require_fqprinc($ctx, "bind_host <host> <binding>", 2, $binding)
+	    if defined($binding);
 
 	my $stmt = "UPDATE hosts SET bootbinding = ? WHERE name = ?";
 	my $sth  = sql_exec($dbh, $stmt, $binding, $host);
