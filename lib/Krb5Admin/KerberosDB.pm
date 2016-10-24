@@ -2569,7 +2569,7 @@ sub KHARON_ACL_insert_ticket {
 		for my $host (@hosts) {
 			my $h = $self->query_host($host);
 			if (!defined($h)) {
-				die "Host $h does not exist.\n";
+				die "Host $host does not exist.\n";
 			}
 
 			for my $c (@{$appid->{cstraint}}) {
