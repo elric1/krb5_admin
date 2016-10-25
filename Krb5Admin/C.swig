@@ -105,9 +105,9 @@
 			snprintf(croakstr, sizeof(croakstr),
 			"unknown error: %ld", (long)ret);
 		}
-		croak(croakstr);
+		croak("%s", croakstr);
 #else
-		croak(error_message($1));
+		croak("%s", error_message($1));
 #endif
 	}
 }
@@ -469,7 +469,7 @@ done:
 		krb5_free_context(ctx);
 
 	if (croakstr[0])
-		croak(croakstr);
+		croak("%s", croakstr);
 }
 
 %typemap(in,numinputs=0) krb5_principal * {
