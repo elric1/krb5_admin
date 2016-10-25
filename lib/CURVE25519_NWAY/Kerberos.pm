@@ -79,14 +79,14 @@ sub curve25519_final {
 
 	my $counter = 0;
 	my @keys;
-	
+
 	die "No enctypes\n" if @{$args{enctypes}} == 0;
 
 	for my $enctype (@{$args{enctypes}}) {
 		# Make sure we've got a numeric enctype... XXXrcd ???
 		my $etype = $revenctypes{$enctype};
 		$etype = $enctype if !defined($etype);
-		
+
 		my $size = $revenctypesize{$etype};
 		my $info = "$counter|$etype|$size|$name";
 		my $key  = Krb5Admin::C::hkdf_expand($prk, $info, $size);

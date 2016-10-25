@@ -18,7 +18,7 @@ use warnings;
 my $KRB5DIR = $ENV{KRB5DIR};
 
 if (!defined($KRB5DIR)) {
-	die "Must have KRB5DIR set before building this Makefile.PL, " . 
+	die "Must have KRB5DIR set before building this Makefile.PL, " .
 	    "this should be done by the parent Makefile.PL.\n";
 }
 

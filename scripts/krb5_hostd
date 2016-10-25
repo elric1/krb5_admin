@@ -12,7 +12,7 @@ use warnings;
 
 use constant {
 	KRB5_KEYTAB_CONFIG	=> '/etc/krb5/krb5_hostd.conf',
-	ACL_FILE                => '/etc/krb5/krb5_host.acl', # XXX TODO
+	ACL_FILE		=> '/etc/krb5/krb5_host.acl', # XXX TODO
 };
 
 #

@@ -85,10 +85,10 @@ sub load_config {
 	my $provided = $config->{config_provided};
 
 	return $config				if ! -f $file && !$provided;
-        die "Couldn't find $file\n"		if ! -f $file;
+	die "Couldn't find $file\n"		if ! -f $file;
 
-        my $ret = do $config;
-        die "Couldn't parse $file: $@\n"	if $@;
+	my $ret = do $config;
+	die "Couldn't parse $file: $@\n"	if $@;
 	die "Couldn't open $file: $!\n"		if !defined($ret);
 
 	$config->{acl_file}		= $acl_file;

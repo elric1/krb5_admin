@@ -79,7 +79,7 @@ krb5_query_princ(krb5_context ctx, kadm5_handle hndl, char *in)
 	memset(&dprinc, 0, sizeof(dprinc));
 
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
-	K5BAIL(kadm5_get_principal(hndl, princ, &dprinc, 
+	K5BAIL(kadm5_get_principal(hndl, princ, &dprinc,
 	    KADM5_PRINCIPAL_NORMAL_MASK));
 
 done:
@@ -386,7 +386,7 @@ krb5_getkey(krb5_context ctx, kadm5_handle hndl, char *in)
 	memset(&dprinc, 0, sizeof(dprinc));
 
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
-	K5BAIL(kadm5_get_principal(hndl, princ, &dprinc, 
+	K5BAIL(kadm5_get_principal(hndl, princ, &dprinc,
 	    KADM5_PRINCIPAL_NORMAL_MASK | KADM5_KEY_DATA));
 	got_dprinc = 1;
 
@@ -572,7 +572,7 @@ is_next_kvno(krb5_context ctx, kadm5_handle hndl, krb5_principal princ,
 	if (kvno < 2)
 		return 1;
 
-	K5BAIL(kadm5_get_principal(hndl, princ, &dprinc, 
+	K5BAIL(kadm5_get_principal(hndl, princ, &dprinc,
 	    KADM5_PRINCIPAL_NORMAL_MASK | KADM5_KEY_DATA));
 
 	if (max_kvno(dprinc) != (kvno - 1)) {
@@ -1259,7 +1259,7 @@ krb5_list_pols(krb5_context ctx, kadm5_handle hndl, char *exp)
 {
 	kadm5_ret_t	  ret;
 	char		**out = NULL;
-        char		**pols = NULL;
+	char		**pols = NULL;
 	char		  croakstr[2048] = "";
 	int		  count;
 	int		  i;
@@ -1416,7 +1416,7 @@ mint_ticket(krb5_context ctx, kadm5_handle hndl, char *princ, int lifetime,
 	K5BAIL(krb5_make_principal(ctx, &krbtgt, client_realm, KRB5_TGS_NAME,
 	    client_realm, NULL));
 
-	K5BAIL(kadm5_get_principal(hndl, krbtgt, &dprinc, 
+	K5BAIL(kadm5_get_principal(hndl, krbtgt, &dprinc,
 	    KADM5_PRINCIPAL_NORMAL_MASK | KADM5_KEY_DATA));
 
 	for (i=0; i < dprinc.n_key_data; i++) {

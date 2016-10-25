@@ -475,7 +475,7 @@ sub set_creds {
 	$self->{hndl} = Krb5Admin::C::krb5_get_kadm5_hndl($self->{ctx},
 	    $self->{dbname}, $self->{client});
 }
- 
+
 #
 # We use KHARON_{PRE,POST}COMMAND to deal with our database transactions.
 
@@ -841,8 +841,8 @@ sub upgrade_replace_tables {
 }
 
 sub upgrade_db_add_more_cascades {
-        my ($self) = @_;
-        my $dbh = $self->{dbh};
+	my ($self) = @_;
+	my $dbh = $self->{dbh};
 
 	$self->upgrade_replace_tables(
 		appid_acls => qq{
@@ -1841,12 +1841,12 @@ sub KHARON_ACL_query { return 1; }
 
 sub query {
 	my ($self, @names) = @_;
- 
+
 	my @ret;
 	for my $name (@names) {
 		push(@ret, $self->internal_query($name));
 	}
- 
+
 	return @ret;
 }
 
@@ -2078,22 +2078,21 @@ sub list_labels {
 
 # sub KHARON_ACL_list_table { return 1; }
 sub list_table {
-    my ($self, $table) = @_;
-    my $dbh = $self->{dbh};
+	my ($self, $table) = @_;
+	my $dbh = $self->{dbh};
 
-    my %allowed = ('appids' => 1,
-		   'hosts' => 1,
-		   'prestashed' => 1,
-		   'account_principal_map' =>  1);
+	my %allowed = ('appids' => 1,
+		       'hosts' => 1,
+		       'prestashed' => 1,
+		       'account_principal_map' => 1);
 
+	require_scalar("list_table <table> ", 1, $table);
 
-    require_scalar("list_table <table> ", 1, $table);
+	if ($allowed{$table} == 1) {
+		return generic_query($dbh, \%field_desc, $table, []);
+	}
 
-    if ($allowed{$table} == 1) {
-	return generic_query($dbh, \%field_desc, $table, []);
-    }
-
-    die [500, "Raw query of $table unsupported"] ;
+	die [500, "Raw query of $table unsupported"] ;
 }
 
 sub KHARON_IV_create_host {

@@ -91,11 +91,11 @@
 
 %typemap(out) krb5_error_code {
 	if ($1) {
-#ifdef HAVE_HEIMDAL 
+#ifdef HAVE_HEIMDAL
 		krb5_error_code	 ret = $1;
 		krb5_context	 nullctx = 0;
 		char		 croakstr[2048] = "";
-		const char	*tmp; 
+		const char	*tmp;
 
 		tmp = krb5_get_error_message(nullctx, ret);
 		if (tmp) {
@@ -447,10 +447,10 @@ done:
 		ret = krb5_parse_name(ctx, tmp, &($1));
 
 	if (ret) {
-#ifdef HAVE_HEIMDAL 
+#ifdef HAVE_HEIMDAL
 		krb5_context	 nullctx = 0;
 		char		 croakstr[2048] = "";
-		const char	*tmp; 
+		const char	*tmp;
 
 		tmp = krb5_get_error_message(nullctx, ret);
 		if (tmp) {

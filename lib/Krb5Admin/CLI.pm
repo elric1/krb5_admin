@@ -102,16 +102,16 @@ General commands:
 Commands that operate on principals and appids:
 
 	list			lists principals that match provided globs
-	query 			displays the principal
-	mquery 			displays all principals matching the globs
+	query			displays the principal
+	mquery			displays all principals matching the globs
 	modify			modifies a principal
-	remove 			removes a principal
-	enable 			enables a principal
+	remove			removes a principal
+	enable			enables a principal
 	disable			disables a principal
-	create_appid 		creates a new non-human user
-	create_user 		creates a new user account
-	desdeco 		upgrades the user to the strong_human policy
-	reset_passwd 		resets user's passwd
+	create_appid		creates a new non-human user
+	create_user		creates a new user account
+	desdeco			upgrades the user to the strong_human policy
+	reset_passwd		resets user's passwd
 	is_owner		tests if princ owns appid
 
 Commands that operate on policies:
@@ -128,7 +128,7 @@ Commands that operate on hosts:
 
 Show a list of available commands:
 
-       list_commands
+	list_commands
 
 For a more complete description of commands with usage and examples,
 please refer to the manual page which can be accessed via:
