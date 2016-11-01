@@ -8,7 +8,7 @@ Homepage: http://oskt.secure-endpoints.com/krb5_admin
 
 Package: libkrb5admin-perl
 Architecture: any
-Depends: ${perl:Depends}, ${shlibs:Depends}, ${misc:Depends}, heimdal, perl-modules, libdbi-perl, libdbd-sqlite3-perl, knc, libkharon-perl
+Depends: ${perl:Depends}, ${shlibs:Depends}, ${misc:Depends}, heimdal, perl-modules, libdbi-perl, libdbd-sqlite3-perl, knc, libkharon-perl (>= 0.7)
 Description: Kerberos administration framework
  Kerberos administration framework
 
