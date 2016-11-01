@@ -154,8 +154,19 @@ sub FORMAT_change_passwd {
 	return 0;
 }
 
+sub FORMAT_mquery {
+	my ($self, $cmd, $args, @rets) = @_;
+
+	for my $i (@rets) {
+		$self->FORMAT_query($cmd, $args, $i);
+		$self->print("\n");
+	}
+
+	return 0;
+}
+
 our $QUERY_FMT = "%- 25.25s ";
-sub print_princ {
+sub FORMAT_query {
 	my ($self, $cmd, $args, $ret) = @_;
 
 	# First fix up some fields:
@@ -204,20 +215,6 @@ sub print_princ {
 
 		$enctype = $enctypes{$enctype} if exists($enctypes{$enctype});
 		$self->printf("Key: kvno % 5d, %s\n", $k->{kvno}, $enctype);
-	}
-
-	return 0;
-}
-
-sub FORMAT_mquery { FORMAT_query(@_) }
-sub FORMAT_query {
-	my ($self, $cmd, $args, @rets) = @_;
-	my $first = 1;
-
-	for my $i (@rets) {
-		$self->print("\n") if !$first;
-		$self->print_princ($cmd, $args, $i);
-		$first = 0;
 	}
 
 	return 0;
