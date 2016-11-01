@@ -29,6 +29,9 @@ sub mk_kmdb {
 
 	my $acl     = Kharon::Entitlement::Stack->new();
 
+	my $objacl  = Kharon::Entitlement::Object->new();
+	push(@acls, $objacl);
+
 	my $sqlacl  = Kharon::Entitlement::SimpleSQL->new(
 	    table => 'krb5_admin_simple_acls');
 	$sqlacl->set_del_check(sub {
@@ -53,9 +56,6 @@ sub mk_kmdb {
 					subobject => $subacls);
 		push(@acls, $aclfile);
 	}
-
-	my $objacl  = Kharon::Entitlement::Object->new();
-	push(@acls, $objacl);
 
 	$acl->set_subobjects(@acls);
 	$pes->set_acl($acl);
