@@ -3030,7 +3030,8 @@ sub add_acl {
 	my $usage = "add_acl <acl> <type> [key=val ...]";
 
 	$args{type} = $type;
-	$args{owner} = [$args{owner}] if defined $args{owner};
+	$args{owner} = [$args{owner}] if exists($args{owner}) &&
+					 ref($args{owner}) eq '';
 	return $self->create_subject($acl, %args);
 }
 

@@ -76,7 +76,10 @@ for $i (keys %$acls) {
 	next if $i eq 'admin_user@TEST.REALM';	# now create in 00prepare.t.
 	next if $i eq 'normal_user@TEST.REALM';	# now create in 00prepare.t.
 
-	testObjC("Create ACL: $i", $kmdb, [], 'add_acl', $i, $type);
+	my %args = %{$acls->{$i}};
+	delete $args{type};
+
+	testObjC("Create ACL: $i", $kmdb, [], 'add_acl', $i, $type, %args);
 }
 
 testObjC("Query ACLs", $kmdb, [$acls], 'query_acl');
