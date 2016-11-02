@@ -2301,7 +2301,7 @@ sub query_host {
 
 	return $ret			if @fields == 0;
 	return $ret->{$fields[0]}	if @fields == 1;
-	return {%$ret{@fields}};
+	return {map { $_ => $ret->{$_} } @fields};
 }
 
 sub KHARON_IV_bind_host {
@@ -2963,7 +2963,7 @@ sub query_subject {
 
 	return $ret			if @fields == 0;
 	return $ret->{$fields[0]}	if @fields == 1;
-	return {%$ret{@fields}};
+	return {map { $_ => $ret->{$_} } @fields};
 }
 
 sub KHARON_IV_remove_subject	{ KHARON_IV_ONE_SCALAR(@_); }
