@@ -6,6 +6,7 @@ ${PERLLIB}/Krb5Admin/KerberosDB.pm
 ${PERLLIB}/Krb5Admin/Utils.pm
 ${PERLLIB}/Krb5Admin/Daemon.pm
 ${PERLLIB}/Krb5Admin/Client.pm
+${PERLLIB}/Krb5Admin/Local.pm
 ${PERLLIB}/Krb5Admin/ForkClient.pm
 ${PERLLIB}/Krb5Admin/Krb5Host/Daemon.pm
 ${PERLLIB}/Krb5Admin/Krb5Host/Local.pm
