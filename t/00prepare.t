@@ -3,7 +3,7 @@
 
 use Test::More tests => 1;
 
-use File::Path qw(make_path remove_tree);
+use File::Path;
 use Sys::Hostname;
 
 use Kharon::Entitlement::SimpleSQL;
@@ -25,9 +25,9 @@ $ENV{KRB5_CONFIG} = './t/krb5.conf';
 
 chomp(my $me = qx{id -nu});
 unlink('t/test-hdb.db');
-remove_tree('t/rootdir');
-make_path('t/rootdir/etc', 't/rootdir/var/spool/keytabs',
-	  't/rootdir/var/spool/tickets');
+rmtree(['t/rootdir']);
+mkpath(['t/rootdir/etc', 't/rootdir/var/spool/keytabs',
+	't/rootdir/var/spool/tickets']);
 
 my  $ctx   = Krb5Admin::C::krb5_init_context();
 our $hndl  = Krb5Admin::C::krb5_get_kadm5_hndl($ctx, 'db:t/test-hdb', undef);
