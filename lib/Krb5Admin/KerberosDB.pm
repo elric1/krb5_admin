@@ -3010,12 +3010,20 @@ sub remove_group		{ remove_subject(@_); }
 #         {create,query_remove}_{subject,group} interfaces.
 
 sub KHARON_IV_add_acl {
-	my ($self, $cmd, $acl, $type) = @_;
+	my ($self, $cmd, $acl, $type, %args) = @_;
+	my $ctx = $self->{ctx};
+	my $usage = "add_acl <acl> <type> [key=val ...]";
 
-	require_scalar("add_acl <acl> <type> [key=val ...]", 1, $acl);
-	require_scalar("add_acl <acl> <type> [key=val ...]", 2, $type);
+	require_scalar($usage, 1, $acl);
+	require_scalar($usage, 2, $type);
 
-	return undef;
+	die [503, "Must supply type."]	if !defined($type);
+	return				if $type eq 'group';
+	die [503, "ACL type invalid."]	if $type ne 'krb5';
+
+	$acl = canonicalise_fqprinc($ctx, $usage, 1, $acl);
+
+	return [$acl, $type, %args];
 }
 
 sub KHARON_ACL_add_acl {
@@ -3027,7 +3035,6 @@ sub KHARON_ACL_add_acl {
 
 sub add_acl {
 	my ($self, $acl, $type, %args) = @_;
-	my $usage = "add_acl <acl> <type> [key=val ...]";
 
 	$args{type} = $type;
 	$args{owner} = [$args{owner}] if exists($args{owner}) &&
