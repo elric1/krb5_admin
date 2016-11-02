@@ -1,14 +1,14 @@
 Source: libkrb5admin-perl
 Section: perl
 Priority: optional
-Build-Depends: debhelper (>= 7), dh-autoreconf, perl, swig, sqlite3, libdbi-perl, libdbd-sqlite3-perl, heimdal, opt-heimdal-dev, knc, libkharon-perl
+Build-Depends: debhelper (>= 7), dh-autoreconf, perl, swig, sqlite3, libdbi-perl, libdbd-sqlite3-perl, heimdal (>= 20160423), opt-heimdal-dev, knc, libkharon-perl
 Maintainer: elric <elric@imrryr.org>
 Standards-Version: 3.8.3
 Homepage: http://oskt.secure-endpoints.com/krb5_admin
 
 Package: libkrb5admin-perl
 Architecture: any
-Depends: ${perl:Depends}, ${shlibs:Depends}, ${misc:Depends}, heimdal, perl-modules, libdbi-perl, libdbd-sqlite3-perl, knc, libkharon-perl (>= 0.7)
+Depends: ${perl:Depends}, ${shlibs:Depends}, ${misc:Depends}, heimdal (>= 20160423), perl-modules, libdbi-perl, libdbd-sqlite3-perl, knc, libkharon-perl (>= 0.7)
 Description: Kerberos administration framework
  Kerberos administration framework
 
