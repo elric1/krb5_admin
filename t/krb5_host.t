@@ -192,7 +192,7 @@ ok(!$@, Dumper($@));
 # Okay, now we have a host key and so we can try to install some service
 # keys...
 
-my $me = `id -un`;
+my $me = 'daemon';
 chomp($me);
 
 eval { $kt->install_keytab('root', undef, 'nfs'); };
