@@ -1478,8 +1478,6 @@ sub KHARON_ACL_bootstrap_host_key {
 sub bootstrap_host_key {
 	my ($self, $princ, $kvno, %args) = @_;
 	my $ctx  = $self->{ctx};
-	my $usage = "bootstrap_host_key <princ> <kvno> public=>key " .
-	    "enctypes=>etypes";
 
 	$self->internal_create($princ, $kvno, %args);
 	$self->remove_bootbinding($princ);
@@ -2381,7 +2379,6 @@ sub KHARON_ACL_insert_hostmap { return hostmap_acl(@_); }
 sub insert_hostmap {
 	my ($self, @hosts) = @_;
 	my $dbh = $self->{dbh};
-	my $usage = "insert_hostmap <logical> <physical>";
 
 	@hosts = map { lc($_) } @hosts;
 
@@ -2456,7 +2453,6 @@ sub KHARON_ACL_remove_hostmap { return hostmap_acl(@_); }
 sub remove_hostmap {
 	my ($self, @hosts) = @_;
 	my $dbh = $self->{dbh};
-	my $usage = "remove_hostmap <logical> <physical>";
 
 	@hosts = map { lc($_) } @hosts;
 
@@ -2848,7 +2844,6 @@ sub KHARON_ACL_remove_ticket { KHARON_ACL_insert_ticket(@_) }
 
 sub remove_ticket {
 	my ($self, $princ, @hosts) = @_;
-	my $usage = "remove_ticket <princ> <host> [<host> ...]";
 	my $ctx = $self->{ctx};
 	my $dbh = $self->{dbh};
 
@@ -2894,7 +2889,6 @@ sub create_subject {
 	my $dbh = $self->{dbh};
 	my $ctx = $self->{ctx};
 	my $princ = $self->{client};
-	my $usage = "create_subject <subj> [key=val ...]";
 
 	my $type = $args{type};
 
@@ -3092,7 +3086,6 @@ sub KHARON_ACL_insert_aclgroup { KHARON_ACL_del_acl(@_); }
 sub insert_aclgroup {
 	my ($self, @acls) = @_;
 	my $dbh = $self->{dbh};
-	my $usage = "insert_aclgroup <aclgroup> <acl>";
 
 	my $acls = $self->query_acl(name => $acls[0]);
 
@@ -3122,7 +3115,6 @@ sub KHARON_ACL_remove_aclgroup { return KHARON_ACL_insert_aclgroup (@_); }
 sub remove_aclgroup {
 	my ($self, @acls) = @_;
 	my $dbh = $self->{dbh};
-	my $usage = "remove_aclgroup <aclgroup> <acl>";
 
 	my $stmt = "DELETE FROM aclgroups WHERE aclgroup = ? AND acl = ?";
 
