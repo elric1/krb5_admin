@@ -164,8 +164,6 @@ sub unparse_princ {
 sub KHARON_SET_CREDS {
 	my ($self, @creds) = @_;
 
-	return if @creds == 0;
-
 	if (@creds > 1) {
 		die "Krb5Admin::KerberosDB does not support multiple " .
 		    "credentials";
@@ -470,9 +468,11 @@ sub set_addr {
 sub set_creds {
 	my ($self, $creds) = @_;
 
+	undef($self->{hndl});
 	$self->{client} = $creds;
 
-	undef($self->{hndl});
+	return if !defined($creds);
+
 	$self->{hndl} = Krb5Admin::C::krb5_get_kadm5_hndl($self->{ctx},
 	    $self->{dbname}, $self->{client});
 }
