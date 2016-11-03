@@ -2835,7 +2835,8 @@ sub KHARON_IV_remove_ticket {
 	my $ctx = $self->{ctx};
 
 	require_fqprinc($ctx, $usage, 1, $princ);
-	require_scalars($usage, 2, @hosts);
+	require_scalar($usage, 2, shift(@hosts));
+	require_scalars($usage, 3, @hosts);
 
 	return undef;
 }
