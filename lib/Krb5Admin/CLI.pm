@@ -126,6 +126,12 @@ Commands that operate on hosts:
 	remove_host		remove a host
 	modify_host		modify the attributes of a host
 
+Commands that operate on host secrets:
+
+	new_host_secret		create new master secret
+	bind_host_secret	create/change host secret
+	read_host_secret	return the host's current secret
+
 Show a list of available commands:
 
 	list_commands

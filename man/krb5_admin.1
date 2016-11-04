@@ -323,6 +323,33 @@ specified will be displayed.
 If only one optional field parameter is supplied then the output will
 be a newline separated list of values.
 .El
+.Ss Host Secrets
+.Nm
+provides a framework for storing and vending keys to hosts for full
+disk encryption.
+The host keys are derived from a shared master key which can be periodically
+updated.
+Each host is bound to a particular version of the master key.
+The secrets are derived from the master key and the host's name.
+.Bl -ohang -offset ind
+.It new_host_secret
+creates a new master secret with the next generation number.
+It is necessary to run new_host_secret before using the framework.
+.It bind_host_secret Op Ar host Op Ar generation
+
+.It read_host_secret Op Ar host Op Ar generation
+returns the secret association with the
+.Ar host
+and
+.Ar generation .
+If the client is a host principal,
+.Ar host
+defaults component 1 of the client principal which should be its
+hostname.
+.Ar generation
+defaults to the generation bound to the host in the latest
+invocation of bind_host_secret.
+.El
 .Ss Labels
 Lables are placed on hosts to help constrain where prestashed tickets
 are allowed to be placed.

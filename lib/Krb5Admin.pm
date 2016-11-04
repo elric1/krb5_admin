@@ -214,7 +214,10 @@ our @KRB5_USER_COMMANDS = (
 "add_acl_owner        - add an owner to an acl or aclgroup",
 "remove_acl_owner     - remove an owner from an aclgroup",
 "query_acl_owner      - list the owner of an aclgroup",
-"create_logical_host  - create a logical host "
+"create_logical_host  - create a logical host ",
+"new_host_secret      - create new master secret",
+"bind_host_secret     - create/change host secret",
+"read_host_secret     - return the host's current secret",
 );
 
 1;
