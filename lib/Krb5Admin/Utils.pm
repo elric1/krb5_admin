@@ -85,7 +85,7 @@ sub load_config {
 	my $provided = $config->{config_provided};
 
 	return $config				if ! -f $file && !$provided;
-	die "Couldn't find $file\n"		if ! -f $file;
+	die "Couldn't find config: $file\n"	if ! -f $file;
 
 	my $ret = do $file;
 	die "Couldn't parse $file: $@\n"	if $@;

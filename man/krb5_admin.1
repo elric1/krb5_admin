@@ -12,6 +12,7 @@
 .Op Fl JMdlv
 .Op Fl D Ar kdb
 .Op Fl S Ar sqlitedb
+.Op Fl c Ar conf_file
 .Op Fl h Ar hostspec
 .Op Fl r Ar REALM
 .Ar command Ar arg Oo Ar arg ... Oc
@@ -41,6 +42,9 @@ specifies the location of the sqlite3 adjunct database where
 .Nm
 stores its additional schemas.
 Can only be used if running against a local database.
+.It Fl c Ar conf_file
+specifies the location of the configuration file.  Defaults to
+.Pa /etc/krb5/krb5_admind.conf .
 .It Fl d
 print debugging output.
 .It Fl h Ar hostspec

@@ -31,15 +31,19 @@ EOM
 }
 
 my %opts;
+my $config = "/etc/krb5/krb5_admind.conf";
+my $config_provided = 0;
 my $dbname;
 my $sqldbname;
 my @kdcs;
 my $realm;
 my $json = 0;
 
-getopts('D:JMS:dh:lr:sv?', \%opts) or usage();
+getopts('D:JMS:c:dh:lr:sv?', \%opts) or usage();
 
 usage()			if exists($opts{'?'});
+$config = $opts{'c'}	if exists($opts{'c'});
+$config_provided = 1	if exists($opts{'c'});
 $dbname = $opts{'D'}	if exists($opts{'D'});
 $sqldbname = $opts{'S'}	if exists($opts{'S'});
 $debug = 1		if exists($opts{'d'});
@@ -67,6 +71,7 @@ my $kmdb;
 eval {
 	if (exists($opts{'l'})) {
 		$kmdb = Krb5Admin::Local->new({dbname=>$dbname,
+		    config=>$config, config_provided=>$config_provided,
 		    sqlite=>$sqldbname});
 	} else {
 		my %args;
