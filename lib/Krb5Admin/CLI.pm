@@ -118,6 +118,20 @@ Commands that operate on policies:
 
 	listpols		lists the policies that match the wildcard
 
+Commands that operate of subjects and groups
+
+	create_subject		create a subject
+	list_subject		list subjects
+	modify_subject		modify a subject
+	query_subject		query a subject
+	remove_subject		remove a subject
+
+	create_group		create a group
+	list_group		list groups
+	modify_group		modify a group
+	query_group		query a group
+	remove_group		remove a group
+
 Commands that operate on hosts:
 
 	create_host		create a host
