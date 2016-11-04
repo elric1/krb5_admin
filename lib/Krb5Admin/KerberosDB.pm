@@ -1070,6 +1070,12 @@ sub curve25519_final {
 		Krb5Admin::C::krb5_setkey($ctx, $hndl, $name, $kvno, $keys);
 	}
 
+	my @pprinc = Krb5Admin::C::krb5_parse_name($ctx, $name);
+	if (@pprinc == 3 && $pprinc[1] eq "host") {
+		$self->internal_modify($name,
+		    { attributes => ['-allow_forwardable'] });
+	}
+
 	if ($op eq 'bootstrap_host_key') {
 		$self->remove_bootbinding($name);
 	}
