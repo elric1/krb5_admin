@@ -1383,6 +1383,10 @@ sub write_keys_kt {
 	@ktkeys = ();
 	eval { @ktkeys = @{Krb5Admin::C::read_kt($ctx, $kt)}; };
 
+	if (defined($self->{ext_sync_func})) {
+		$self->{ext_sync_func}->($ctx, $kt, $princ, $kvno);
+	}
+
 	return if $self->{force} < 2 && !$self->is_quirky($lib, @ktkeys);
 
 	$self->vprint("Recreating keytab file fixing quirks...\n");
