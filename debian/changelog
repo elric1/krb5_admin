@@ -1,3 +1,9 @@
+libkrb5admin-perl (0.3.1) unstable; urgency=low
+
+  * Tidy up insert/remove ticket input validation.
+
+ -- Viktor Dukhovni <viktor@twosigma.com>  Tue, 08 Nov 2016 03:49:04 +0000
+
 libkrb5admin-perl (0.3) unstable; urgency=low
 
   * Innumerable new features.
