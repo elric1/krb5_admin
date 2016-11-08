@@ -2500,12 +2500,13 @@ sub _check_hosts {
 }
 
 sub KHARON_IV_insert_ticket {
-	my ($self, $verb, $princ, @hosts) = @_;
+	my ($self, $verb, $princ, $host, @hosts) = @_;
 	my $ctx = $self->{ctx};
 	my $usage = "$verb <princ> <host> [<host> ...]";
 
 	require_fqprinc($ctx, $usage, 1, $princ);
-	require_scalars($usage, 2, @hosts);
+	require_scalar($ctx, $usage, 2, $host);
+	require_scalars($usage, 3, @hosts);
 
 	return undef;
 }
@@ -2836,12 +2837,12 @@ sub fetch_tickets {
 }
 
 sub KHARON_IV_remove_ticket {
-	my ($self, $princ, @hosts) = @_;
+	my ($self, $princ, $host, @hosts) = @_;
 	my $usage = "remove_ticket <princ> <host> [<host> ...]";
 	my $ctx = $self->{ctx};
 
 	require_fqprinc($ctx, $usage, 1, $princ);
-	require_scalar($usage, 2, shift(@hosts));
+	require_scalar($usage, 2, $host);
 	require_scalars($usage, 3, @hosts);
 
 	return undef;
