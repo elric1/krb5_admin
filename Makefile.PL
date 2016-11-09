@@ -129,9 +129,10 @@ sub installbin {
 	    s#\$\(INST_SCRIPT\)/krb5_hostd#\$(INST_SBIN_SCRIPT)/krb5_hostd#g;
 
 	$txt =~
-	    s#^(..INST_SBIN.*)#$1 \$(INST_SBIN_SCRIPT)\$(DFSEP).exists#m;
+	    s#^(..INST_SBIN.*)#$1 \$(INST_SBIN_SCRIPT)\$(DFSEP).exists#mg;
 
-	return "INST_SBIN_SCRIPT = \$(INST_SCRIPT)/../sbin\n\n" . $txt . "\n" .
+	return "INST_SBIN_SCRIPT = blib/sbin\n\n" .
+	    "$txt\n" .
 	    "\$(INST_SBIN_SCRIPT)\$(DFSEP).exists :: Makefile.PL\n" .
 	    "	\$(NOECHO) \$(MKPATH) \$(INST_SBIN_SCRIPT)\n" .
 	    "	\$(NOECHO) \$(CHMOD) \$(PERM_RWX) \$(INST_SBIN_SCRIPT)\n" .
@@ -146,7 +147,7 @@ sub install {
 	$txt =~ s#^(doc_install.*)$#$1 manpage_install#m;
 
 	$txt =~
-	    s#^(\s*..INST)(_SCRIPT.*)(SCRIPT\).*)$#\1\2\3\n\1_SBIN\2SBIN\3#mg;
+	    s#^(\s*"?..INST)(_SCRIPT.*)(SCRIPT\).*)$#\1\2\3\n\1_SBIN\2SBIN\3#mg;
 
 	my %manhash;
 	for my $manpage (@manpages) {
