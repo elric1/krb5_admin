@@ -1,3 +1,9 @@
+libkrb5admin-perl (0.3.2) unstable; urgency=low
+
+  * Fix build for perl 5.24.
+
+ -- Roland C. Dowdeswell <roland.dowdeswell@twosigma.com>  Wed, 9 Nov 2016 18:28:56 +0000
+
 libkrb5admin-perl (0.3.1) unstable; urgency=low
 
   * Tidy up insert/remove ticket input validation.
