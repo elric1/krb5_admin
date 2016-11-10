@@ -105,10 +105,21 @@ if ($ExtUtils::MakeMaker::VERSION >= 6.3002) {
 WriteMakefile(%args);
 
 package MY;
+
+#
+# Here we override the standard ExtUtils::MakeMaker definitions to
+# deal with the fact that we need to install a few scripts into
+# $PREFIX/sbin rather than $PREFIX/bin and we install a few man
+# pages which the Perl framework doesn't handle.
+
 sub constants {
 	my ($self, @args) = @_;
 
 	my $txt = $self->SUPER::constants(@args);
+
+	#
+	# Add {,DE}INSTALLSBINSCRIPT definitions by cloning the
+	# existing {,DE}INSTALLBINSCRIPT definitions.
 
 	$txt =~ s#^(INSTALL.*)(SCRIPT.*)bin#\1\2bin\n\1SBIN\2sbin#mg;
 	$txt =~
@@ -122,14 +133,25 @@ sub installbin {
 
 	my $txt = $self->SUPER::installbin(@args);
 
+	#
+	# Move krb5_admind and krb5_hostd into blib/sbin.
+
 	$txt =~
 	    s#\$\(INST_SCRIPT\)/krb5_admind#\$(INST_SBIN_SCRIPT)/krb5_admind#g;
 
 	$txt =~
 	    s#\$\(INST_SCRIPT\)/krb5_hostd#\$(INST_SBIN_SCRIPT)/krb5_hostd#g;
 
+	#
+	# Append blib/sbin/.exists to the dependencies of the above targets
+	# using the appropriate variables.
+
 	$txt =~
 	    s#^(..INST_SBIN.*)#$1 \$(INST_SBIN_SCRIPT)\$(DFSEP).exists#mg;
+
+	#
+	# Prepend a definition of INST_SBIN_SCRIPT and append a target
+	# definition for blib/sbin/.exists using the right variables.
 
 	return "INST_SBIN_SCRIPT = blib/sbin\n\n" .
 	    "$txt\n" .
@@ -145,6 +167,10 @@ sub install {
 	my $txt = $self->SUPER::install(@args);
 
 	$txt =~ s#^(doc_install.*)$#$1 manpage_install#m;
+
+	#
+	# Clone the INST_SCRIPT line in all of the pure_*_install
+	# targets and create an INST_SBIN_SCRIPT to match it.
 
 	$txt =~
 	    s#^(\s*"?..INST)(_SCRIPT.*)(SCRIPT\).*)$#\1\2\3\n\1_SBIN\2SBIN\3#mg;
