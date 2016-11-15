@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 39;
+use Test::More tests => 44;
 
 use Krb5Admin::ForkClient;
 
@@ -231,6 +231,18 @@ testObjC("Query logical.test.realm's tickets", $kmdb,
 	[{$proid4 => [['logical.test.realm','bar.test.realm'],
 		      ['logical.test.realm','baz.test.realm']]}],
 	"query_ticket", host => 'logical.test.realm', verbose => 1);
+
+testObjC("Insert a ticket", $kmdb, [undef], 'remove_ticket', $proid1,
+	'foo.test.realm');
+testObjC("Insert a ticket", $kmdb, [undef], 'remove_ticket', $proid2,
+	'bar.test.realm');
+testObjC("Insert a ticket", $kmdb, [undef], 'remove_ticket', $proid3,
+	'baz.test.realm');
+testObjC("Insert a ticket", $kmdb, [undef], 'remove_ticket', $proid4,
+	'logical.test.realm');
+
+testObjC("Query all tickets", $kmdb,
+	[{ }], "query_ticket");
 
 for my $p ($proid1, $proid2, $proid3, $proid4) {
 	$kmdb->remove($p);

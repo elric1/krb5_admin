@@ -2837,7 +2837,7 @@ sub fetch_tickets {
 }
 
 sub KHARON_IV_remove_ticket {
-	my ($self, $princ, $host, @hosts) = @_;
+	my ($self, $cmd, $princ, $host, @hosts) = @_;
 	my $usage = "remove_ticket <princ> <host> [<host> ...]";
 	my $ctx = $self->{ctx};
 
