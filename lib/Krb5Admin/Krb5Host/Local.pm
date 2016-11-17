@@ -60,6 +60,7 @@ our %kt_opts = (
 	kadmin			=> 0,
 	invoking_user		=> undef,
 	disabled_user_defaults  => {},
+	ext_sync_func		=> sub {},
 	user2service		=> {},
 	subdomain_prefix	=> '',
 	allowed_enctypes	=> [],
