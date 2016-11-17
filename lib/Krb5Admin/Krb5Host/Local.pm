@@ -426,13 +426,14 @@ sub install_ticket {
 	die "$warn\n" if defined($warn);
 
 	# Workaround for rpc.gssd which expects tickets to be of the
-	# form krb5cc_*.  We install an alternate hardlink of the name
+	# form krb5cc_*.  We install an alternate ccache of the name
 	# krb5cc_:$user, so that rpc.gssd finds it.
 
 	my $alt_fn  = "$tixdir/krb5cc_:$user";
 	my $alt_tmp = "$tixdir/.krb5cc_:$user";
-	link($ccache_fn, $alt_tmp) or
-		die "$0: link($ccache_fn, $alt_tmp): $!\n";
+	$ccache = "FILE:$ccache_tmp";
+	Krb5Admin::C::init_store_creds($ctx, $ccache, $tix->{$princstr});
+	chown($uid, 0, $alt_tmp); # XXXrcd: chown() may fail in test mode.
 	rename($alt_tmp, $alt_fn) or
 		die "$0: rename($alt_tmp, $alt_fn): $!\n";
 
