@@ -431,7 +431,7 @@ sub install_ticket {
 
 	my $alt_fn  = "$tixdir/krb5cc_:$user";
 	my $alt_tmp = "$tixdir/.krb5cc_:$user";
-	$ccache = "FILE:$ccache_tmp";
+	$ccache = "FILE:$alt_tmp";
 	Krb5Admin::C::init_store_creds($ctx, $ccache, $tix->{$princstr});
 	chown($uid, 0, $alt_tmp); # XXXrcd: chown() may fail in test mode.
 	rename($alt_tmp, $alt_fn) or
