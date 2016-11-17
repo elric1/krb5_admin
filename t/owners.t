@@ -337,7 +337,6 @@ testMustDie("normal user should not modify aclgroup",
 testMustNotDie("add owner of test_group1", $kmdb, "add_acl_owner",
 	qw/test_group3 normal_user@TEST.REALM/);
 
-$kmdb_user = create_normal_user_connect();
 testMustNotDie("add a group", $kmdb_user, "insert_aclgroup",
     qw/test_group3 normal_user@TEST.REALM/);
 

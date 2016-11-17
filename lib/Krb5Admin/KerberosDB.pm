@@ -2898,7 +2898,7 @@ sub create_subject {
 	my $ctx = $self->{ctx};
 	my $princ = $self->{client};
 
-	my $type = $args{type};
+	my $type = delete $args{type};
 
 	my $stmt = "INSERT INTO acls(name, type) VALUES (?, ?)";
 	eval { sql_exec($dbh, $stmt, $subj, $type); };
@@ -2908,6 +2908,8 @@ sub create_subject {
 		}
 		die $@;
 	}
+
+	$args{owner} //= [$self->{client}]	if $type eq 'group';
 
 	generic_modify($dbh, \%field_desc, 'acls', $subj, %args);
 	return;
