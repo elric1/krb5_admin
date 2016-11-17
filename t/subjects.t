@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-use Test::More;
+use Test::More tests => 6;
 
 use Sys::Hostname;
 
@@ -98,5 +98,3 @@ testObjC("query_subject", $kmdb,
 testObjC("query_subject", $kmdb,
     [{ member => [], owner => ['normal_user@TEST.REALM'], type => 'group' }],
     "query_subject", "test_subject4");
-
-done_testing();
