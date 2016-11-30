@@ -6,7 +6,7 @@ use Getopt::Std;
 
 use Krb5Admin::C;
 use Krb5Admin::Client;
-use Krb5Admin::KerberosDB;
+use Krb5Admin::Local;
 use Krb5Admin::Krb5Host::Local;
 use Krb5Admin::Utils qw/host_list/;
 use Sys::Hostname;
@@ -210,17 +210,27 @@ my %cmds = (
 );
 
 our %opts;
+my $config = "/etc/krb5/krb5_admind.conf";
+my $config_provided = 0;
+my $dbname;
+my $sqldbname;
 my @kdcs;
 my $realm;
 
-getopts('EMh:lr:v', \%opts);
+getopts('D:EMS:c:h:lr:v', \%opts) or usage();
 
-$use_master = 1    if defined($opts{M});
-@kdcs = ($opts{h}) if defined($opts{h});
-$realm = $opts{r}  if defined($opts{r});
-$expand_srvloc = 1 if defined($opts{E});
-$expand_srvloc = 1 if defined($opts{v});	# -v ==> -E
-$verbose = 1       if defined($opts{v});
+$use_master = 1		if defined($opts{M});
+$config = $opts{'c'}	if exists($opts{'c'});
+$config_provided = 1	if exists($opts{'c'});
+$dbname = $opts{'D'}	if exists($opts{'D'});
+$sqldbname = $opts{'S'} if exists($opts{'S'});
+@kdcs = ($opts{h})	if defined($opts{h});
+$realm = $opts{r}	if defined($opts{r});
+$expand_srvloc = 1	if defined($opts{E});
+$expand_srvloc = 1	if defined($opts{v});	# -v ==> -E
+$verbose = 1		if defined($opts{v});
+
+$opts{'l'} = 1		if defined($dbname) || defined($sqldbname);
 
 if (@kdcs + ($opts{l}?1:0) + ($opts{r}?1:0) > 1) {
 	print STDERR "-h, -l, and -r are mutually exclusive.\n";
@@ -246,7 +256,9 @@ $ctx = Krb5Admin::C::krb5_init_context();
 eval {
 	my $kmdb;
 	if (defined($opts{l})) {
-		$kmdb = Krb5Admin::KerberosDB->new(local => 1);
+		$kmdb = Krb5Admin::Local->new({dbname=>$dbname,
+		    config=>$config, config_provided=>$config_provided,
+		    sqlite=>$sqldbname});
 	}
 	if (@kdcs || defined($realm)) {
 		my %args;
