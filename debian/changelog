@@ -1,3 +1,13 @@
+libkrb5admin-perl (0.3.7) unstable; urgency=low
+
+   * Krb5Admin::KerberosDB: need to cleanup kadm5 handles.
+   * krb5_prestash: add json output with -J.
+   * krb5_prestash: use Krb5Admin::Local like krb5_admin does
+     for consistency.  We also implement the -D, -S, and -c
+     options in the same way as krb5_admin(1).
+
+ -- Viktor Dukhovni <viktor@twosigma.com>  Mon, 05 Dec 2016 22:27:23 +0000
+
 libkrb5admin-perl (0.3.6) unstable; urgency=low
 
   * krb5_prestash now creates krb5cc_:* as separate files.
