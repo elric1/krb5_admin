@@ -468,6 +468,9 @@ sub set_addr {
 sub set_creds {
 	my ($self, $creds) = @_;
 
+	if (defined($self->{hndl})) {
+		Krb5Admin::C::kadm5_destroy($self->{hndl});
+	}
 	undef($self->{hndl});
 	$self->{client} = $creds;
 
@@ -498,6 +501,11 @@ sub KHARON_POSTCOMMAND {
 
 sub DESTROY {
 	my ($self) = @_;
+
+	if (defined($self->{hndl})) {
+		Krb5Admin::C::kadm5_destroy($self->{hndl});
+	}
+	undef($self->{hndl});
 
 	if ($self->{my_dbh} && defined($self->{dbh})) {
 		$self->{dbh}->disconnect();
