@@ -65,7 +65,6 @@ sub mk_kmdb {
 	my $kmdb = mk_kmdb_with_config($config, \%args);
 
 	$objacl->set_subobject($kmdb);
-	$sqlacl->set_dbh($kmdb->get_dbh());
 
 	my $iv = Kharon::InputValidation::Object->new(subobject => $kmdb);
 	$pes->set_iv($iv);

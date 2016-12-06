@@ -361,6 +361,41 @@ sub acl_keytab {
 	return undef;
 }
 
+sub connect_sqlite {
+	my ($self) = @_;
+	my $sqldbname = $self->{sqldbname};
+	my $dbh;
+
+	# initialize our database handle
+	$dbh = DBI->connect($sqldbname, "", "",
+	    {RaiseError => 1, PrintError => 0, AutoCommit => 1,
+	    sqlite_use_immediate_transaction => 0});
+	die "Could not open database " . DBI::errstr if !defined($dbh);
+	$dbh->do("PRAGMA foreign_keys = ON");
+	$dbh->do("PRAGMA journal_mode = WAL");
+	$dbh->{PrintError} = 0;
+	$dbh->{RaiseError} = 1;
+
+	$self->{my_dbh} = 1;
+	$self->{dbh} = $dbh;
+}
+
+sub reconnect_sqlite {
+	my ($self) = @_;
+
+	return if $self->{my_dbh} == 0;
+
+	my $master;
+	eval { $master = $self->KHARON_MASTER(); };
+	return if defined($master) && $master eq hostname();
+
+	$self->{dbh}->disconnect();
+	undef($self->{dbh});
+
+	$self->connect_sqlite();
+	$self->{sacls}->set_dbh($self->{dbh});
+}
+
 sub new {
 	my ($proto, %args) = @_;
 	my $class = ref($proto) || $proto;
@@ -390,17 +425,12 @@ sub new {
 	$sqlite   = $args{sqlite}	if defined($args{sqlite});
 
 	# initialize our database handle
+	$self->{dbh} = $dbh;
 	if (!defined($dbh)) {
-		$dbh = DBI->connect("dbi:SQLite:$sqlite", "", "",
-		    {RaiseError => 1, PrintError => 0, AutoCommit => 1,
-		      sqlite_use_immediate_transaction => 0});
-		die "Could not open database " . DBI::errstr if !defined($dbh);
-		$dbh->do("PRAGMA foreign_keys = ON");
-		$dbh->do("PRAGMA journal_mode = WAL");
-		$self->{my_dbh} = 1;
+		$self->{sqldbname} = "dbi:SQLite:$sqlite";
+		$self->connect_sqlite();
+		$dbh = $self->{dbh};
 	}
-	$dbh->{PrintError} = 0;
-	$dbh->{RaiseError} = 1;
 
 	my $ctx = $self->{ctx};
 
@@ -412,7 +442,6 @@ sub new {
 	$self->{dbname}	  = $dbname;
 	$self->{acl}	  = $args{acl};
 	$self->{sacls}	  = $args{sacls};
-	$self->{dbh}	  = $dbh;
 
 	$self->{my_dbh} = 0			if !defined($self->{my_dbh});
 	$self->{local}	= 0			if !defined($self->{local});
@@ -438,8 +467,8 @@ sub new {
 	if (!defined($self->{sacls})) {
 		$self->{sacls} = Kharon::Entitlement::SimpleSQL->new(
 		    table => 'krb5_admin_simple_acls');
-		$self->{sacls}->set_dbh($dbh);
 	}
+	$self->{sacls}->set_dbh($dbh);
 
 	my @rosccmds = getclassvar($self, "KHARON_RO_SC_EXPORT");
 	my @roaccmds = getclassvar($self, "KHARON_RO_AC_EXPORT");
@@ -478,6 +507,8 @@ sub set_creds {
 
 	$self->{hndl} = Krb5Admin::C::krb5_get_kadm5_hndl($self->{ctx},
 	    $self->{dbname}, $self->{client});
+
+	$self->reconnect_sqlite();
 }
 
 #
