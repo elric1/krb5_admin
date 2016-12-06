@@ -1,3 +1,9 @@
+libkrb5admin-perl (0.3.8) unstable; urgency=low
+
+  * Krb5Admin::KerberosDB: re-open sqlite DBs on slaves for each connexion.
+
+ -- Roland C. Dowdeswell <roland.dowdeswell@twosigma.com>  Tue, 06 Dec 2016 19:43:16 +0000
+
 libkrb5admin-perl (0.3.7) unstable; urgency=low
 
    * Krb5Admin::KerberosDB: need to cleanup kadm5 handles.
