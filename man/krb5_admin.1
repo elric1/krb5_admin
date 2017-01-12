@@ -126,7 +126,12 @@ cstraint
 .Pq set-based .
 .Pp
 Attributes are boolean flags.  Attributes are only displayed in queries
-when in their non-default setting.  The attributes are:
+when in their non-default setting.  Attribute names consider dash
+.Pq Dq -
+and underline
+.Pq Dq _
+to be equivalent.
+The attributes are:
 .Bl -column -offset indent ".Sy password_changing_serviceXXXXX" ".Sy default"
 .It Sy attribute Ta Sy default
 .It allow_postdated Ta true
@@ -142,6 +147,10 @@ when in their non-default setting.  The attributes are:
 .It allow_svr Ta true
 .It password_changing_service Ta false
 .It support_desmd5 Ta false
+.It new_princ Ta false
+.It ok_as_delegate Ta false
+.It trusted_for_delegation Ta false
+.It allow_digest Ta false
 .El
 .Pp
 Commands that operate on principals and appids:

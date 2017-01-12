@@ -45,25 +45,34 @@ use constant {
 	PWCHANGE_SERVICE	=> 0x00002000,
 	SUPPORT_DESMD5		=> 0x00004000,
 	NEW_PRINC		=> 0x00008000,
+	OK_AS_DELEGATE		=> 0x00010000,
+	TRUSTED_FOR_DELEGATION	=> 0x00020000,
+	ALLOW_KERBEROS4		=> 0x00040000,
+	ALLOW_DIGEST		=> 0x00080000,
 	SQL_DB_FILE		=> '/var/kerberos/krb5_admin.db',
 	GROUP_RECURSION		=> 16,
 	MAX_TIX_PER_HOST	=> 1024,
 };
 
 our %flag_map = (
-	allow_postdated			=>	[DISALLOW_POSTDATED,   1],
-	allow_forwardable		=>	[DISALLOW_FORWARDABLE, 1],
-	allow_tgs_req			=>	[DISALLOW_TGT_BASED,   1],
-	allow_renewable			=>	[DISALLOW_RENEWABLE,   1],
-	allow_proxiable			=>	[DISALLOW_PROXIABLE,   1],
-	allow_dup_skey			=>	[DISALLOW_DUP_SKEY,    1],
-	allow_tix			=>	[DISALLOW_ALL_TIX,     1],
-	requires_preauth		=>	[REQUIRES_PRE_AUTH,    0],
-	requires_hwauth			=>	[REQUIRES_HW_AUTH,     0],
-	needchange			=>	[REQUIRES_PWCHANGE,    0],
-	allow_svr			=>	[DISALLOW_SVR,         1],
-	password_changing_service	=>	[PWCHANGE_SERVICE,     0],
-	support_desmd5			=>	[SUPPORT_DESMD5,       0],
+	allow_postdated			=> [DISALLOW_POSTDATED,		1],
+	allow_forwardable		=> [DISALLOW_FORWARDABLE,	1],
+	allow_tgs_req			=> [DISALLOW_TGT_BASED,		1],
+	allow_renewable			=> [DISALLOW_RENEWABLE,		1],
+	allow_proxiable			=> [DISALLOW_PROXIABLE,		1],
+	allow_dup_skey			=> [DISALLOW_DUP_SKEY,		1],
+	allow_tix			=> [DISALLOW_ALL_TIX,		1],
+	requires_preauth		=> [REQUIRES_PRE_AUTH,		0],
+	requires_hwauth			=> [REQUIRES_HW_AUTH,		0],
+	needchange			=> [REQUIRES_PWCHANGE,		0],
+	allow_svr			=> [DISALLOW_SVR,		1],
+	password_changing_service	=> [PWCHANGE_SERVICE,		0],
+	support_desmd5			=> [SUPPORT_DESMD5,		0],
+	new_princ			=> [NEW_PRINC,			0],
+        ok_as_delegate			=> [OK_AS_DELEGATE,		0],
+	trusted_for_delegation		=> [TRUSTED_FOR_DELEGATION,	0],
+	allow_kerberos4			=> [ALLOW_KERBEROS4,		0],
+	allow_digest			=> [ALLOW_DIGEST,		0],
 );
 
 sub require_scalar {
@@ -1829,6 +1838,8 @@ sub internal_modify {
 	for my $i (keys %attrs) {
 		$i =~ s/^(.)//;
 		my $sign = $1;
+
+		$i =~ s/-/_/g;
 
 		if (($sign ne '+' && $sign ne '-') || !defined($flag_map{$i})) {
 			die [504, "Invalid attribute $sign$i"];
