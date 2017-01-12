@@ -1386,7 +1386,7 @@ sub write_keys_kt {
 	eval { @ktkeys = @{Krb5Admin::C::read_kt($ctx, $kt)}; };
 
 	if (defined($self->{ext_sync_func})) {
-		$self->{ext_sync_func}->($ctx, $kt, $princ, $kvno);
+		$self->{ext_sync_func}->($ctx, $kt, @keys);
 	}
 
 	return if $self->{force} < 2 && !$self->is_quirky($lib, @ktkeys);
