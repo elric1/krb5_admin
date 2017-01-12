@@ -1543,8 +1543,8 @@ sub get_hostbased_kmdb {
 		return $self->{hostbased_kmdb};
 	}
 
-	$realm = $xrealm if defined($xrealm);
-	$client = unparse_princ([$realm, "host", $inst]);
+	$xrealm //= $realm;
+	$client = unparse_princ([$xrealm, "host", $inst]);
 
 	# XXXrcd: put a message into get_kmdb()...
 	$self->vprint("connecting to ${realm}'s KDCs using $client creds.\n");
@@ -1934,10 +1934,12 @@ sub install_key_fetch {
 }
 
 sub bootsort {
-	my ($ctx, $a, $b) = @_;
+	my ($ctx, $realm, $a, $b) = @_;
 	my ($ra, $na) = parse_princ($ctx, $a->{"princ"});
 	my ($rb, $nb) = parse_princ($ctx, $b->{"princ"});
 
+	return -1	if $na eq $realm      && $nb ne $realm;
+	return  1	if $na ne $realm      && $nb eq $realm;
 	return -1	if $na eq 'bootstrap' && $nb ne 'bootstrap';
 	return  1	if $na ne 'bootstrap' && $nb eq 'bootstrap';
 	return $a cmp $b;
@@ -1966,12 +1968,12 @@ sub bootstrap_host_key {
 	# to see if there was another reason...
 
 	my $bootprinc;
-	foreach my $ktent (sort { bootsort($ctx, $a, $b) } $self->get_keys()) {
+	my @ktents = sort { bootsort($ctx, $realm, $a, $b) } $self->get_keys();
+	foreach my $ktent (@ktents) {
 		# Ignore bootstrap keys with an unexpected enctype.
 		next if (!defined($ktent->{"enctype"}) ||
 		    $ktent->{"enctype"} ne $bootetype_name);
 		my ($r, $n) = parse_princ($ctx, $bootprinc = $ktent->{"princ"});
-		next if $r ne $realm;
 
 		$self->vprint("Trying to connect with $bootprinc creds.\n");
 		if (!defined($kmdb)) {
