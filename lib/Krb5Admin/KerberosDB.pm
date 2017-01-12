@@ -1120,8 +1120,8 @@ sub curve25519_final {
 
 	my @pprinc = Krb5Admin::C::krb5_parse_name($ctx, $name);
 	if (@pprinc == 3 && $pprinc[1] eq "host") {
-		$self->internal_modify($name,
-		    { attributes => ['-allow_forwardable'] });
+		$self->internal_modify($name, { attributes =>
+		    ['-allow_forwardable', '+ok_as_delegate'] });
 	}
 
 	if ($op eq 'bootstrap_host_key') {
@@ -1246,7 +1246,8 @@ sub internal_create {
 			Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
 				   principal => $name,
 				   policy=>'default',
-				   attributes=>DISALLOW_FORWARDABLE,
+				   attributes=>DISALLOW_FORWARDABLE |
+					OK_AS_DELEGATE,
 				   }, $args{enctypes}, $passwd);
 		} else {
 			Krb5Admin::C::krb5_createprinc($ctx, $hndl, {
