@@ -1,3 +1,11 @@
+libkrb5admin-perl (0.3.9) unstable; urgency=low
+
+  * krb5_keytab: allow bootstrapping from other realms.
+  * krb5_keytab: update args for $ext_sync_func
+  * krb5_admin{,d}: create host princs w/ +ok_as_delegate
+
+ -- Roland C. Dowdeswell <roland.dowdeswell@twosigma.com>  Tue, 17 Jan 2017 19:43:16 +0000
+
 libkrb5admin-perl (0.3.8) unstable; urgency=low
 
   * Krb5Admin::KerberosDB: re-open sqlite DBs on slaves for each connexion.
