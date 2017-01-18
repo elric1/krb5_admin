@@ -1938,8 +1938,8 @@ sub bootsort {
 	my ($ra, $na) = parse_princ($ctx, $a->{"princ"});
 	my ($rb, $nb) = parse_princ($ctx, $b->{"princ"});
 
-	return -1	if $na eq $realm      && $nb ne $realm;
-	return  1	if $na ne $realm      && $nb eq $realm;
+	return -1	if $ra eq $realm      && $rb ne $realm;
+	return  1	if $ra ne $realm      && $rb eq $realm;
 	return -1	if $na eq 'bootstrap' && $nb ne 'bootstrap';
 	return  1	if $na ne 'bootstrap' && $nb eq 'bootstrap';
 	return $a cmp $b;
