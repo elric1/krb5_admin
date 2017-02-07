@@ -2980,15 +2980,7 @@ sub create_subject {
 
 sub KHARON_IV_list_subject	{ return; }
 sub KHARON_ACL_list_subject	{ return 1; }
-
-sub list_subject {
-	my ($self, %query) = @_;
-	my $dbh = $self->{dbh};
-
-	my $res = generic_query($dbh, \%field_desc, 'acls', [keys %query],
-	    %query);
-	return keys %$res;
-}
+sub list_subject		{ search_subject(@_); }
 
 sub KHARON_IV_modify_subject {
 	my ($self, $cmd, $subj, %args) = @_;
@@ -3045,6 +3037,18 @@ sub remove_subject {
 	return;
 }
 
+sub KHARON_IV_search_subject	{ return; }
+sub KHARON_ACL_search_subject	{ return 1; }
+
+sub search_subject {
+	my ($self, %query) = @_;
+	my $dbh = $self->{dbh};
+
+	my $res = generic_query($dbh, \%field_desc, 'acls', [keys %query],
+	    %query);
+	return keys %$res;
+}
+
 #
 # The group interfaces are largely just mapped directly into the subject
 # interfaces and are only provided because we feel that users will understand
@@ -3070,6 +3074,10 @@ sub query_group			{ query_subject(@_); }
 sub KHARON_IV_remove_group	{ KHARON_IV_remove_subject(@_); }
 sub KHARON_ACL_remove_group	{ KHARON_ACL_remove_subject(@_); }
 sub remove_group		{ remove_subject(@_); }
+
+sub KHARON_IV_search_group	{ KHARON_IV_search_subject(@_, %gtype); }
+sub KHARON_ACL_search_group	{ KHARON_ACL_search_subject(@_, %gtype); }
+sub search_group		{ search_subject(@_, %gtype); }
 
 #
 # XXXrcd: the {add,del,query}_acl framework will be deprecated at some

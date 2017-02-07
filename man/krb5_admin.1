@@ -250,6 +250,8 @@ of type
 .Ar type .
 .It list_subject Op No key= Ns Ar val No ...
 will list all of the subjects which satisfy the conditions specified.
+THIS INTERFACE IS UNSTABLE AND WILL BE CHANGING: use
+.Ar search_subject .
 .It modify_subject Ar subj Op No key= Ns Ar val No ...
 will modify the attributes of a subject.
 .It query_subject Ar subj Op field ...
@@ -262,6 +264,8 @@ be a newline separated list of values.
 .It remove_subject Ar subj
 will remove
 .Ar subj .
+.It search_subject Op No key= Ns Ar val No ...
+will list all of the subjects which satisfy the conditions specified.
 .El
 .Pp
 Commands that operate on groups:
@@ -273,6 +277,8 @@ of type
 .Ar type .
 .It list_group Op No key= Ns Ar val No ...
 will list all of the groups which satisfy the conditions specified.
+THIS INTERFACE IS UNSTABLE AND WILL BE CHANGING: use
+.Ar search_group .
 .It modify_group Ar group Op No key= Ns Ar val No ...
 will modify the attributes of a group.
 .It query_group Ar group Op field ...
@@ -283,6 +289,8 @@ specified will be displayed.
 .It remove_group Ar group
 will remove
 .Ar group .
+.It search_group Op No key= Ns Ar val No ...
+will list all of the groups which satisfy the conditions specified.
 .El
 .Ss Hosts
 .Nm

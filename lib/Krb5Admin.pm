@@ -89,7 +89,9 @@ our @KHARON_RO_AC_EXPORT = qw/	fetch
 				mquery
 				list_commands
 				list_table
+				search_group
 				search_host
+				search_subject
 			     /;
 
 sub KHARON_MASTER {
