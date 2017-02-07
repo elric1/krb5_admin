@@ -2113,6 +2113,8 @@ sub install_bootstrap_key {
 	my $ctx = $self->{ctx};
 	my $realm = $princ->[0];
 
+	die "Must be root to request bootstrap key.\n" if $user ne 'root';
+
 	$self->vprint("installing a bootstrap key.\n");
 
 	my $kmdb = $self->get_kmdb(realm => $realm);
