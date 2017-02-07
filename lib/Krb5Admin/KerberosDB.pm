@@ -2343,6 +2343,18 @@ sub modify_host {
 	return undef;
 }
 
+sub KHARON_IV_search_host	{ return; }
+sub KHARON_ACL_search_host	{ return 1; }
+
+sub search_host {
+	my ($self, %query) = @_;
+	my $dbh = $self->{dbh};
+
+	my $res = generic_query($dbh, \%field_desc, 'hosts', [keys %query],
+	    %query);
+	return keys %$res;
+}
+
 sub KHARON_IV_query_host  { KHARON_IV_ONE_SCALAR(@_); }
 sub KHARON_ACL_query_host { return 1; }
 

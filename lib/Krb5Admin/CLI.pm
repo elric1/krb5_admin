@@ -21,6 +21,7 @@ our %enctypes = (
 our %host_hmap = (
 	realm		=> undef,
 	ip_addr		=> undef,
+	is_logical	=> undef,
 	bootbinding	=> undef,
 	label		=> [],
 	owner		=> [],
@@ -79,6 +80,7 @@ sub KHARON_HASHIFY_COMMANDS {
 		list_group		=> [0, \%subject_hmap],
 		add_acl			=> [2, \%acl_hmap],
 		sacls_query		=> [0, \%sacls_query_hmap],
+		search_host		=> [0, \%host_hmap],
 	};
 }
 
