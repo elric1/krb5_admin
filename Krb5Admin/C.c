@@ -76,6 +76,9 @@ krb5_query_princ(krb5_context ctx, kadm5_handle hndl, char *in)
 	kadm5_ret_t		 ret;
 	char			 croakstr[2048] = "";
 
+	if (!in)
+		croak("query: missing argument\n");
+
 	memset(&dprinc, 0, sizeof(dprinc));
 
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
@@ -232,6 +235,9 @@ krb5_deleteprinc(krb5_context ctx, kadm5_handle hndl, char *in)
 	kadm5_ret_t	ret;
 	char		croakstr[2048] = "";
 
+	if (!in)
+		croak("query: missing argument\n");
+
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
 	K5BAIL(kadm5_delete_principal(hndl, princ));
 
@@ -383,6 +389,9 @@ krb5_getkey(krb5_context ctx, kadm5_handle hndl, char *in)
 	key			 ok = NULL;
 	key			 first = NULL;
 
+	if (!in)
+		croak("krb5_getkey: missing argument");
+
 	memset(&dprinc, 0, sizeof(dprinc));
 
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
@@ -474,6 +483,9 @@ krb5_createkey(krb5_context ctx, kadm5_handle hndl, char *in,
 	size_t			 i;
 	char			 croakstr[2048] = "";
 	char			 dummybuf[256];
+
+	if (!in)
+		croak("krb5_createkey: missing argument\n");
 
 	memset((char *) &params, 0, sizeof(params));
 	memset(dummybuf, 0x0, sizeof(dummybuf));
@@ -618,6 +630,9 @@ krb5_setkey(krb5_context ctx, kadm5_handle hndl, char *in, int kvno,
 	int			 locked = 0;
 	char			 croakstr[2048] = "";
 
+	if (!in)
+		croak("krb5_setkey: missing argument");
+
 	memset((char *) &params, 0, sizeof(params));
 
 	/*
@@ -665,6 +680,9 @@ krb5_randpass(krb5_context ctx, kadm5_handle hndl, char *in, int n_ks_tuple,
 	char			 croakstr[2048] = "";
 	char			*passwd = NULL;
 
+	if (!in)
+		croak("krb5_randpass: missing argument");
+
 	passwd = random_passwd(ctx, PROID_PASSWD_SIZE);
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
 	K5BAIL(kadm5_chpass_principal_3(hndl, princ, FALSE, n_ks_tuple,
@@ -689,6 +707,9 @@ krb5_setpass(krb5_context ctx, kadm5_handle hndl, char *in, int kvno,
 	kadm5_ret_t		ret;
 	int			locked = 0;
 	char			croakstr[2048] = "";
+
+	if (!in)
+		croak("krb5_setpass: missing argument");
 
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
 	K5BAIL(kadm5_lock(hndl));
@@ -729,6 +750,9 @@ krb5_randkey(krb5_context ctx, kadm5_handle hndl, char *in)
 	kadm5_ret_t		ret;
 	char			croakstr[2048] = "";
 
+	if (!in)
+		croak("krb5_randkey: missing argument");
+
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
 
 	/*
@@ -763,6 +787,9 @@ get_kte(krb5_context ctx, char *kt, char *in)
 	krb5_keytab_entry	e;
 	krb5_error_code		ret;
 	char			croakstr[2048] = "";
+
+	if (!in)
+		croak("get_kte: missing argument");
 
 	K5BAIL(krb5_parse_name(ctx, in, &princ));
 	if (kt)
@@ -1057,6 +1084,9 @@ kinit_kt(krb5_context ctx, char *princstr, char *ktname, char *ccname)
 	char			 croakstr[2048] = "";
 	char			*rndktpart = NULL;
 	char			 tmp[256];
+
+	if (!princstr)
+		croak("kinit_kt: missing argument");
 
 	/*
 	 * rndktpart isn't a passwd but rather a random string we use in
@@ -1409,6 +1439,9 @@ mint_ticket(krb5_context ctx, kadm5_handle hndl, char *princ, int lifetime,
 	int			 i;
 	krb5_const_realm	 client_realm;
 	char			 croakstr[2048] = "";
+
+	if (!princ)
+		croak("mint_ticket: missing argument");
 
 	K5BAIL(krb5_parse_name(ctx, princ, &client));
 
