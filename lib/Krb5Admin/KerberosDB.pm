@@ -51,7 +51,7 @@ use constant {
 	ALLOW_DIGEST		=> 0x00080000,
 	SQL_DB_FILE		=> '/var/kerberos/krb5_admin.db',
 	GROUP_RECURSION		=> 16,
-	MAX_TIX_PER_HOST	=> 1024,
+	MAX_TIX_PER_HOST	=> 4096,
 };
 
 our %flag_map = (
