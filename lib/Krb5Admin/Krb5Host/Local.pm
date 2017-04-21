@@ -202,9 +202,6 @@ sub list_keytab {
 	my ($self, $user) = @_;
 	my $ret;
 
-	$self->user_acled($user);
-	syslog('info', "%s listed %s's keytab", $self->{invoking_user}, $user);
-
 	$ret->{ktname} = $self->get_kt($user);
 	$ret->{ktname} =~ s/^WR//o;
 
@@ -228,8 +225,6 @@ sub KHARON_ACL_query_keytab { return 1; }
 sub query_keytab {
 	my ($self, $user) = @_;
 	my $ret;
-
-	$self->user_acled($user);
 
 	my @keys = $self->get_keys($self->get_kt($user));
 	my @princs = get_princs(@keys);
