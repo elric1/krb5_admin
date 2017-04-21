@@ -1,0 +1,74 @@
+#!/usr/pkg/bin/perl
+
+use Getopt::Std;
+use Sys::Hostname;
+
+use Krb5Admin::Krb5Host::Local;
+use Krb5Admin::Krb5Host::Client;
+use Krb5Admin::Krb5Host::CLI;
+
+use strict;
+use warnings;
+
+#
+# Global variables:
+
+my $debug = 0;
+my $verbose = 0;
+my $terse = 0;
+
+sub HELP_MESSAGE {
+	exec("man krb5_host");
+	exit(1);
+}
+
+sub usage {
+	print STDERR <<EOM;
+usage: krb5_host [-Jv] [-h host | -l] cmd [args ...]
+EOM
+	exit(1);
+}
+
+my %opts;
+my $host = hostname();
+my $json = 0;
+
+getopts('Jh:lv?', \%opts) or usage();
+
+usage()			if exists($opts{'?'});
+$json = 1		if exists($opts{'J'});
+$host = $opts{'h'}	if exists($opts{'h'});
+$verbose = 1		if exists($opts{'v'});
+
+if (($opts{'h'}?1:0) + ($opts{'l'}?1:0) > 1) {
+	print STDERR "-h and -l are mutually exclusive.\n";
+	usage();
+}
+
+if ($#ARGV < 0) {
+	printf STDERR "command is required.\n";
+	usage();
+}
+
+my $cli = Krb5Admin::Krb5Host::CLI->new(appname => 'krb5_host', json => $json);
+
+my $khost;
+eval {
+	if (exists($opts{'l'})) {
+		# XXXrcd: this is a bit broken...
+		$khost = Krb5Admin::Krb5Host::Local->new(
+		    invoking_user => 'elric',
+		);
+	} else {
+		$khost = Krb5Admin::Krb5Host::Client->new($host);
+	}
+};
+if (my $err = $@) {
+	$cli->printerr($err);
+	exit(1);
+}
+
+$cli->set_obj($khost);
+
+exit($cli->run_cmd(@ARGV))	if $#ARGV >= 0;
+exit($cli->run_cmdline());

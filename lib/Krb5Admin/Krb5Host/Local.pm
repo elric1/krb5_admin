@@ -7,6 +7,8 @@ use base qw/Krb5Admin::Krb5Host CURVE25519_NWAY::Kerberos/;
 
 use Cwd;
 use IO::File;
+use File::Basename;
+use File::Find;
 use File::Path;
 use File::Temp qw/ :mktemp /;
 use Fcntl ':flock';
@@ -180,29 +182,71 @@ sub KHARON_SET_CREDS {
 	$self->{client} = $creds[0];
 }
 
+sub my_stat {
+	my ($fn) = @_;
+
+	my %cc;
+	my @s = stat($fn) or return;
+
+	$cc{mode}	= $s[2];
+	$cc{nlink}	= $s[3];
+	$cc{uid}	= $s[4];
+	$cc{username}	= getpwuid($cc{uid});
+	$cc{gid}	= $s[5];
+	$cc{group}	= getgrgid($cc{gid});
+	$cc{size}	= $s[7];
+	$cc{atime}	= $s[8];
+	$cc{mtime}	= $s[9];
+	$cc{ctime}	= $s[10];
+
+	return \%cc;
+}
+
+sub full_file_info {
+	my ($fn) = @_;
+	my %ret;
+
+	$ret{path} = readlink($fn);
+	$ret{stat} = my_stat($fn);
+
+	my $fh = IO::File->new($fn, 'r');
+	if (!defined($fh)) {
+		$ret{error} = $!;
+		return \%ret;
+	}
+
+	local $/;
+	$ret{contents} = <$fh>;
+	return \%ret;
+}
 
 #
 # Basic remote admin:
 
+sub KHARON_ACL_show_krb5_conf { return 1; }
+
 sub show_krb5_conf {
 	my ($self) = @_;
-	my @ret;
 
-	my $fh = IO::File->new('/etc/krb5.conf', 'r');
+	sub ffinfo { ($_[0] => full_file_info($_[0])) }
 
-	die "Can't open /etc/krb5.conf.  $!\n" if !defined($fh);
-
-	for my $line (<$fh>) {
-		chomp($line);
-		push(@ret, $line);
-	}
-
-	return \@ret;
+	return {
+		ffinfo('/etc/krb5.conf'),
+		ffinfo('/etc/krb5/krb5_admind.conf'),
+		ffinfo('/etc/krb5/krb5_hostd.conf'),
+		ffinfo('/etc/krb5/krb5_keytab.conf'),
+	};
 }
 
 #
 # Remote keytab management:
 
+sub KHARON_IV_list_keytab {
+	my ($self, $cmd, $user) = @_;
+	my $usage = "$cmd <user>";
+
+	require_username($usage, 1, $user);
+}
 sub KHARON_ACL_list_keytab { return 1; }
 
 sub list_keytab {
@@ -223,11 +267,8 @@ sub list_keytab {
 	return $ret;
 }
 
-#
-# XXXrcd: just for testing...  maybe okay, though, it's not like
-#         you can't just get this information from KDC, anyway.
-
-sub KHARON_ACL_query_keytab { return 1; }
+sub KHARON_IV_query_keytab  { KHARON_IV_list_keytab(@_) }
+sub KHARON_ACL_query_keytab { KHARON_ACL_list_keytab(@_) }
 
 sub query_keytab {
 	my ($self, $user) = @_;
@@ -347,6 +388,42 @@ sub install_keytab {
 	my ($self, $user, $lib, @inprincs) = @_;
 
 	$self->install_all_keys($user, 'default', $lib, @inprincs);
+}
+
+sub KHARON_IV_query_ticket {
+	my ($self, $cmd, @users) = @_;
+	my $usage = "$cmd [<user> ...]";
+
+	require_usernames($usage, 1, @users);
+}
+sub KHARON_ACL_query_ticket { return 1; }
+
+sub query_ticket {
+	my ($self, @users) = @_;
+
+	my $tixdir = $self->{tixdir};
+	   $tixdir = '/var/spool/tickets'	if !defined($tixdir);
+
+	chdir($tixdir) or die;
+
+	my %ret;
+	find(sub {
+		my $user = $_;
+		my $realm = $File::Find::dir;
+
+		$realm =~ s/^..(:@)?//;
+
+		return if @users > 0 &&
+			  (grep { $user eq $_ } @users) == 0;
+
+		return if !-f $user;
+
+		$ret{$user}->{$realm} = my_stat($user);
+	}, '.');
+
+	chdir('/');	# XXXrcd: back to the origin?
+
+	return \%ret;
 }
 
 sub install_ticket {

@@ -1,0 +1,68 @@
+.\"
+.\"
+.\" Blame: Roland Dowdeswell <roland.dowdeswell@twosigma.com>
+.Dd Aug 14, 2017
+.Os
+.Dt KRB5_HOST 1
+.Sh NAME
+.Nm krb5_host
+.Nd kerberos host administration tool
+.Sh SYNOPSIS
+.Nm
+.Op Fl Jlv
+.Op Fl h Ar host
+.Ar command Oo Ar arg ... Oc
+.Sh DESCRIPTION
+.Nm
+is used to query hosts about their Kerberos configuration remotely
+via the
+.Xr krb5_hostd 8
+daemon, or locally (with the
+.Fl l
+flag.)
+.Pp
+The options are as follows:
+.Bl -tag -width indentxxxxxx
+.It Fl J
+output is JSON formatted rather than human readable.
+.It Fl h Ar hostspec
+connect to
+.Ar hostspec .
+A
+.Ar hostspec
+has a format of
+.Oo Ar service@ Oc Ns Ar hostname Ns Oo : Ns Ar port Oc .
+.It Fl l
+operate on the local host.
+.It Fl v
+make the output a bit more verbose.
+.El
+.Pp
+The remaining arguments to
+.Nm
+are accepted from the shell and no further quoting is performed.
+The first argument is considered to be the command and the remaining
+arguments are passed to the command.
+.Pp
+The following commands are implemented:
+.Bl -tag
+.It list_keytab
+displays the contents of a
+.Ar user 's
+keytab in the same format as
+.Dq krb5_keytab Fl l .
+.It query_ticket
+shows all of the prestashed tickets that are on the host.
+.It show_krb5_conf
+returns information about the Kerberos configuration of the host.
+.El
+.Sh EXIT STATUS
+The
+.Nm
+utility normally exits 0 on success, and exits 1 on failure.
+.Sh SEE ALSO
+.Xr knc 1 ,
+.Xr krb5_admind 8 ,
+.Xr krb5_hostd 8 ,
+.Xr krb5_keytab 8 ,
+.Xr krb5_prestash 1 .
