@@ -196,6 +196,8 @@ sub show_krb5_conf {
 #
 # Remote keytab management:
 
+sub KHARON_ACL_list_keytab { return 1; }
+
 sub list_keytab {
 	my ($self, $user) = @_;
 	my $ret;
