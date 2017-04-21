@@ -20,7 +20,6 @@ sub new {
 	my $class = ref($proto) || $proto;
 
 	my $self;
-	my $ctx  = $self->{ctx};
 
 	my $port;
 	$port = $opts{port} if exists($opts{port});
