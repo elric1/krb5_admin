@@ -1,3 +1,16 @@
+libkrb5admin-perl (0.3.10) unstable; urgency=low
+
+  * Krb5Admin::Krb5Host::Local: permit local listing of other's keytabs.
+  * Krb5Admin::Krb5Host::Client: eliminate dead code.
+  * Krb5Admin::Krb5Host::Local: permit remote listing of keytabs.
+  * Krb5Admin::KerberosDB: increase MAX_TIX_PER_HOST to 4K.
+  * Krb5Admin::C: test for NULL before calling krb5_parse_name().
+  * Krb5Admin::Krb5Host::Local: must be root to request bootstrap.
+  * Implement search_{group,subject} to ``replace'' list_*.
+  * Implement ``search_host''.
+
+ -- Roland C. Dowdeswell <roland.dowdeswell@twosigma.com>  Mon, 24 Apr 2017 21:13:00 +0000
+
 libkrb5admin-perl (0.3.9) unstable; urgency=low
 
   * krb5_keytab: allow bootstrapping from other realms.
