@@ -1103,6 +1103,39 @@ sub mk_kt_dir {
 	force_symlink($target, "$ktdir/root");
 }
 
+sub inner_obtain_lock {
+	my ($lockfile, $timeout) = @_;
+
+	my $lock_fh = new IO::File($lockfile, O_CREAT|O_WRONLY)
+	    or die "Could not open lockfile $lockfile: $!";
+
+	#
+	# We attempt to flock() the file and use an alarm timer to
+	# bail if it takes too long (to prevent deadlocks.)
+
+	local $SIG{ALRM} = sub { };
+
+	my $fail;
+	alarm($timeout);
+	flock($lock_fh, LOCK_EX) or $fail = "Could not obtain lock: $!\n";
+	alarm(0);
+
+	die $fail if defined($fail);
+
+	#
+	# Because we actually unlink(2) this file when we are finished,
+	# we must check to see if we've got the file that we intended.
+
+	my @fdstat = stat($lock_fh);
+	my @fnstat = stat($lockfile);
+
+	if ($fdstat[0] != $fnstat[0] || $fdstat[1] != $fnstat[1]) {
+		return;
+	}
+
+	return $lock_fh;
+}
+
 sub obtain_lock {
 	my ($self, $user) = @_;
 
@@ -1134,21 +1167,13 @@ sub obtain_lock {
 
 	$self->vprint("obtaining lock: $lockfile\n");
 
-	my $lock_fh = new IO::File($lockfile, O_CREAT|O_WRONLY)
-	    or die "Could not open lockfile $lockfile: $!";
+	my $lock_fh;
+	my $end = time() + 10;
+	while (time() < $end && !defined($lock_fh)) {
+		$lock_fh = inner_obtain_lock($lockfile, $end - time());
+	}
 
-	#
-	# We attempt to flock() the file and use an alarm timer to
-	# bail if it takes too long (to prevent deadlocks.)
-
-	local $SIG{ALRM} = sub { die "Attempt to lock timed out.\n"; };
-
-	my $fail;
-	alarm(5);
-	flock($lock_fh, LOCK_EX) or $fail = "Could not obtain lock: $!\n";
-	alarm(0);
-
-	die $fail if defined($fail);
+	die "Failed to obtain lock.\n"	if !defined($lock_fh);
 
 	$self->vprint("lock obtained\n");
 
@@ -1169,8 +1194,8 @@ sub release_lock {
 
 	return if --$self->{"lock.user.$user.count"};
 
-	delete $self->{"lock.user.$user.fh"};
 	unlink("/var/run/krb5_keytab/lock.user.$user");
+	delete $self->{"lock.user.$user.fh"};
 }
 
 #
