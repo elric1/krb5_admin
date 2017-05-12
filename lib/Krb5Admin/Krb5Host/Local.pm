@@ -1230,11 +1230,11 @@ sub ktuniq {
 	@ret;
 }
 
-sub write_keys_internal {
+sub write_keys_with_quirks {
 	my ($self, $lib, $kt, @keys) = @_;
 	my $ctx = $self->{ctx};
 
-	$self->vprint("Starting to write keys in write_keys_internal...\n");
+	$self->vprint("Starting to write keys in write_keys_with_quirks...\n");
 	for my $i ($self->fix_quirks($lib, @keys)) {
 		next if $i->{enctype} == 0;
 
@@ -1243,23 +1243,23 @@ sub write_keys_internal {
 
 		Krb5Admin::C::write_kt($ctx, $kt, $i);
 	}
-	$self->vprint("Finished writing keys in write_keys_internal...\n");
+	$self->vprint("Finished writing keys in write_keys_with_quirks...\n");
 }
 
-sub write_keys_kt {
+sub write_keys_internal {
 	my ($self, $user, $lib, $princ, $kvno, @keys) = @_;
 	my $ctx = $self->{ctx};
 	my $oldkt;
 	my $kt = $self->get_kt($user);
 
-	die "Empty key list write_keys_kt\n" if @keys == 0;
+	die "Empty key list write_keys_internal\n" if @keys == 0;
 
 	for my $i (@keys) {
 		$i->{princ} = $princ	if defined($princ);
 		$i->{kvno}  = $kvno	if defined($kvno);
 	}
 
-	$self->write_keys_internal($lib, $kt, @keys);
+	$self->write_keys_with_quirks($lib, $kt, @keys);
 
 	if (!$self->{testing}) {
 		my ($uid, $gid) = get_ugid($user);
@@ -1333,7 +1333,7 @@ sub write_keys_kt {
 	$kt = "WRFILE:$oldkt.tmp";
 	@keys = ktuniq(@ktkeys, @keys);
 
-	$self->write_keys_internal($lib, $kt, @keys);
+	$self->write_keys_with_quirks($lib, $kt, @keys);
 
 	$kt =~ s/^WRFILE://;
 	if (!$self->{testing}) {
@@ -1344,6 +1344,13 @@ sub write_keys_kt {
 	rename($kt, $oldkt)		    or die "rename: $!\n";
 
 	$self->vprint("New keytab file renamed into position, quirk-free\n");
+}
+
+sub write_keys_kt {
+	my ($self, @args) = @_;
+	my $u = $args[0];
+
+	$self->{locks}->run_with_lock($u, \&write_keys_internal, @_);
 }
 
 # XXXrcd: hmmm, we're saving kmdb in our hash.  Should we undef it if
@@ -1801,7 +1808,7 @@ sub install_key {
 	return;
 }
 
-sub install_key_fetch {
+sub install_key_fetch_locked {
 	my ($self, $action, $lib, $user, $princ) = @_;
 	my $krb5_libs = $self->{krb5_libs};
 	my $strprinc = unparse_princ($princ);
@@ -1867,6 +1874,13 @@ sub install_key_fetch {
 	return;
 }
 
+sub install_key_fetch {
+	my ($self, @args) = @_;
+	my $u = $args[2];
+
+	$self->{locks}->run_with_lock($u, \&install_key_fetch_locked, @_);
+}
+
 sub bootsort {
 	my ($ctx, $realm, $a, $b) = @_;
 	my ($ra, $na) = parse_princ($ctx, $a->{"princ"});
@@ -1879,7 +1893,7 @@ sub bootsort {
 	return $a cmp $b;
 }
 
-sub bootstrap_host_key {
+sub bootstrap_host_key_locked {
 	my ($self, $action, $lib, $user, $princ) = @_;
 	my $default_krb5_lib = $self->{default_krb5_lib};
 	my $krb5_libs = $self->{krb5_libs};
@@ -2017,6 +2031,13 @@ sub bootstrap_host_key {
 	return;
 }
 
+sub bootstrap_host_key {
+	my ($self, @args) = @_;
+	my $u = $args[2];
+
+	$self->{locks}->run_with_lock($u, \&bootstrap_host_key_locked, @_);
+}
+
 sub install_host_key {
 	my ($self, $action, $lib, $user, $princ) = @_;
 	my $use_fetch = $self->{use_fetch};
@@ -2042,7 +2063,7 @@ sub install_host_key {
 	return bootstrap_host_key(@_);
 }
 
-sub install_bootstrap_key {
+sub install_bootstrap_key_locked {
 	my ($self, $action, $lib, $user, $princ) = @_;
 	my $ctx = $self->{ctx};
 	my $realm = $princ->[0];
@@ -2072,6 +2093,13 @@ sub install_bootstrap_key {
 	$self->write_keys_kt($user, undef, undef, undef, @{$gend->{keys}});
 
 	return $binding;
+}
+
+sub install_bootstrap_key {
+	my ($self, @args) = @_;
+	my $u = $args[2];
+
+	$self->{locks}->run_with_lock($u, \&install_bootstrap_key_locked, @_);
 }
 
 # Use host/<primary_hostname> unless the instance requested exactly matches
@@ -2214,7 +2242,6 @@ sub install_all_keys {
 
 	$self->use_private_krb5ccname();
 	$self->mk_kt_dir();
-	$self->{locks}->obtain_lock($user);
 
 	for my $i (@connexions) {
 		$self->vprint("installing keys for connexion $i->[0], " .
@@ -2241,7 +2268,6 @@ sub install_all_keys {
 	}
 
 	$self->reset_hostbased_kmdb();
-	$self->{locks}->release_lock($user);
 	$self->reset_krb5ccname();
 
 	$self->vprint("Successfully updated keytab file\n") if @$errs == 0;
