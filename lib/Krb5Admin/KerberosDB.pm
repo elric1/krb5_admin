@@ -389,6 +389,11 @@ sub connect_sqlite {
 	$self->{dbh} = $dbh;
 }
 
+#
+# On the slaves, we reconnect on each new connexion because we are
+# replacing the sqlite DB using rsync and this makes it necessary to
+# re-open the files.
+
 sub reconnect_sqlite {
 	my ($self) = @_;
 
