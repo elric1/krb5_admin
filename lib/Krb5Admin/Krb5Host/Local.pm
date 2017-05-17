@@ -16,6 +16,7 @@ use Sys::Syslog;
 use Time::HiRes qw(gettimeofday);
 
 use Krb5Admin::Client;
+use Krb5Admin::FileLocks;
 use Krb5Admin::KerberosDB;
 use Krb5Admin::Krb5Host::Client;
 use Krb5Admin::Utils qw/host_list force_symlink/;
@@ -71,7 +72,6 @@ our %kt_opts = (
 	ktdir			=> undef,
 	ktroot			=> undef,
 	local			=> 0,
-	lockdir			=> undef,
 	subdomain_prefix	=> '',
 	testing			=> 0,
 	tixdir			=> undef,
@@ -91,6 +91,7 @@ sub new {
 
 	$self->{ctx}		= Krb5Admin::C::krb5_init_context();
 	$self->{defrealm}	= Krb5Admin::C::krb5_get_realm($self->{ctx});
+	$self->{locks}		= Krb5Admin::FileLocks->new();
 
 	bless($self, $class);
 
@@ -107,12 +108,6 @@ sub DESTROY {
 	my ($self) = @_;
 
 	local($?);
-	for my $lock (keys %$self) {
-		next if $lock !~ /^lock\.user\.([^.]+)\.count$/;
-		next if $self->{"lock.user.$1.count"} < 1;
-
-		unlink("/var/run/krb5_keytab/lock.user.$1");
-	}
 	unlink($self->{ccfile}) if exists($self->{ccfile});
 }
 
@@ -133,6 +128,18 @@ sub internal_set_opt {
 		@l = @{$val};
 		$self->{admin_users} = { map { $_ => 1 } @l };
 		return;
+	}
+
+	#
+	# Percolate lockdir and testing to Krb5Admin::FileLocks:
+
+	if ($opt eq 'lockdir') {
+		$self->{locks}->set_opt($opt, $val);
+		return;
+	}
+
+	if ($opt eq 'testing') {
+		$self->{locks}->set_opt($opt, $val);
 	}
 
 	die "Unrecognised option: $opt.\n" if !exists($kt_opts{$opt});
@@ -1103,101 +1110,6 @@ sub mk_kt_dir {
 	force_symlink($target, "$ktdir/root");
 }
 
-sub inner_obtain_lock {
-	my ($lockfile, $timeout) = @_;
-
-	my $lock_fh = new IO::File($lockfile, O_CREAT|O_WRONLY)
-	    or die "Could not open lockfile $lockfile: $!";
-
-	#
-	# We attempt to flock() the file and use an alarm timer to
-	# bail if it takes too long (to prevent deadlocks.)
-
-	local $SIG{ALRM} = sub { };
-
-	my $fail;
-	alarm($timeout);
-	flock($lock_fh, LOCK_EX) or $fail = "Could not obtain lock: $!\n";
-	alarm(0);
-
-	die $fail if defined($fail);
-
-	#
-	# Because we actually unlink(2) this file when we are finished,
-	# we must check to see if we've got the file that we intended.
-
-	my @fdstat = stat($lock_fh);
-	my @fnstat = stat($lockfile);
-
-	if ($fdstat[0] != $fnstat[0] || $fdstat[1] != $fnstat[1]) {
-		return;
-	}
-
-	return $lock_fh;
-}
-
-sub obtain_lock {
-	my ($self, $user) = @_;
-
-	$self->{"lock.user.$user.count"} //= 0;
-	return if $self->{"lock.user.$user.count"}++ > 0;
-
-	my $lockdir  = "/var/run/krb5_keytab";
-
-	$lockdir = $self->{lockdir} if defined($self->{lockdir});
-
-	my $lockfile = "$lockdir/lock.user.$user";
-
-	#
-	# Here we pessimistically create the lock directory.  Because this is
-	# in /var/run, we assume that only root can create it---but just to be
-	# sure we hammer the perms and ownership in the right way.  We use
-	# mkpath to ensure that we create /var/run on SunOS 5.7 which
-	# surprisingly doesn't come with it...
-
-	mkpath($lockdir, 0, 0700);
-	chmod(0700, $lockdir);
-	chown(0, 0, $lockdir);
-
-	if (!$self->{testing}) {
-		my @s = stat($lockdir);
-		die("lock directory invalid")
-		    if (!@s || $s[2] != 040700 || $s[4] || $s[5]);
-	}
-
-	$self->vprint("obtaining lock: $lockfile\n");
-
-	my $lock_fh;
-	my $end = time() + 10;
-	while (time() < $end && !defined($lock_fh)) {
-		$lock_fh = inner_obtain_lock($lockfile, $end - time());
-	}
-
-	die "Failed to obtain lock.\n"	if !defined($lock_fh);
-
-	$self->vprint("lock obtained\n");
-
-	#
-	# And we save the lock in $self so that we can keep the lock
-	# open and later unlock.
-
-	$self->{"lock.user.$user.fh"} = $lock_fh;
-}
-
-sub release_lock {
-	my ($self, $user) = @_;
-
-	$self->{"lock.user.$user.count"} //= 0;
-	if ($self->{"lock.user.$user.count"} < 1) {
-		die "release_lock called for $user where no lock is held.";
-	}
-
-	return if --$self->{"lock.user.$user.count"};
-
-	unlink("/var/run/krb5_keytab/lock.user.$user");
-	delete $self->{"lock.user.$user.fh"};
-}
-
 #
 # get_kt() determines the location of the keytab based on the user on
 # which we are operating.
@@ -1685,7 +1597,7 @@ sub curve25519_start {
 	# XXXrcd: validate args.
 	my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
 
-	$self->obtain_lock($user);
+	$self->{locks}->obtain_lock($user);
 
 	return $self->SUPER::curve25519_start($priv, $hnum, $pub);
 }
@@ -1698,7 +1610,7 @@ sub curve25519_final {
 
 	$self->write_keys_kt($user, $lib, undef, undef, @$keys);
 
-	$self->release_lock($user);
+	$self->{locks}->release_lock($user);
 
 	return;
 }
@@ -1756,9 +1668,9 @@ sub KHARON_ACL_write_old {
 
 sub write_old {
 	my ($self, $user, $strprinc, $lib, @keys) = @_;
-	$self->obtain_lock($user);
+	$self->{locks}->obtain_lock($user);
 	$self->write_keys_kt($user, $lib, $strprinc, undef, @keys);
-	$self->release_lock($user);
+	$self->{locks}->release_lock($user);
 }
 
 sub recover_old_keys {
@@ -2302,7 +2214,7 @@ sub install_all_keys {
 
 	$self->use_private_krb5ccname();
 	$self->mk_kt_dir();
-	$self->obtain_lock($user);
+	$self->{locks}->obtain_lock($user);
 
 	for my $i (@connexions) {
 		$self->vprint("installing keys for connexion $i->[0], " .
@@ -2329,7 +2241,7 @@ sub install_all_keys {
 	}
 
 	$self->reset_hostbased_kmdb();
-	$self->release_lock($user);
+	$self->{locks}->release_lock($user);
 	$self->reset_krb5ccname();
 
 	$self->vprint("Successfully updated keytab file\n") if @$errs == 0;
