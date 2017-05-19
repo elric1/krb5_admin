@@ -153,6 +153,30 @@ sub require_fqprinc {
 	}
 }
 
+sub require_hostname {
+	my ($usage, $argnum, $host) = @_;
+
+	require_scalar(@_);
+	if ($host !~
+	    qr{^([a-z\d]((-?[a-z\d]+)*)\.)+([a-z\d]((-?[a-z\d]+)*))$}oi) {
+		die [503, "Syntax error: arg $argnum (\"$host\") must be a " .
+		    "valid hostname\nusage: $usage"];
+	}
+
+	return;
+}
+
+sub require_hostnames {
+	my ($usage, $argnum, @args) = @_;
+
+	my $i = $argnum;
+	for my $arg (@args) {
+		require_hostname($usage, $i++, $arg);
+	}
+
+	return;
+}
+
 sub require_hashref {
 	my ($usage, $argnum, $arg) = @_;
 
@@ -2144,7 +2168,7 @@ sub list_table {
 sub KHARON_IV_create_host {
 	my ($self, $verb, $host, %args) = @_;
 
-	require_scalar("create_host <host> [key=val ...]", 1, $host);
+	require_hostname("$verb <host> [key=val ...]", 1, $host);
 
 	return undef;
 }
@@ -2321,12 +2345,7 @@ sub new_host_secret {
 	$dbh->commit();
 }
 
-sub KHARON_IV_modify_host {
-	my ($self, $cmd, $host, %mods) = @_;
-
-	require_scalar("modify_host <host> [key=val ...]", 1, $host);
-	return;
-}
+sub KHARON_IV_modify_host { KHARON_IV_create_host(@_) }
 
 sub KHARON_ACL_modify_host {
 	my ($self, $cmd, $logical, %mods) = @_;
@@ -2371,7 +2390,13 @@ sub search_host {
 	return keys %$res;
 }
 
-sub KHARON_IV_query_host  { KHARON_IV_ONE_SCALAR(@_); }
+sub KHARON_IV_query_host {
+	my ($self, $verb, $host, %args) = @_;
+
+	require_hostname("$verb <host>", 1, $host);
+
+	return undef;
+}
 sub KHARON_ACL_query_host { return 1; }
 
 sub query_host {
@@ -2391,8 +2416,8 @@ sub KHARON_IV_bind_host {
 	my ($self, $cmd, $host, $binding) = @_;
 	my $ctx = $self->{ctx};
 
-	require_scalar("bind_host <host> <binding>", 1, $host);
-	require_fqprinc($ctx, "bind_host <host> <binding>", 2, $binding)
+	require_hostname("$cmd <host> <binding>", 1, $host);
+	require_fqprinc($ctx, "$cmd <host> <binding>", 2, $binding)
 	    if defined($binding);
 
 	return undef;
@@ -2416,9 +2441,10 @@ sub bind_host {
 
 sub KHARON_IV_remove_host {
 	my ($self, $cmd, $host, @hosts) = @_;
+	my $usage = "$cmd <host> [<host> ...]";
 
-	require_scalar("remove_host <host> [<host> ...]",  1, $host);
-	require_scalars("remove_host <host> [<host> ...]", 2, @hosts);
+	require_hostname( $usage, 1, $host);
+	require_hostnames($usage, 2, @hosts);
 
 	return undef;
 }
@@ -2454,8 +2480,8 @@ sub KHARON_IV_insert_hostmap {
 	my ($self, $cmd, @hosts) = @_;
 	my $usage = "$cmd <logical> <physical>";
 
-	require_scalar($cmd, 1, $hosts[0]);
-	require_scalar($cmd, 2, $hosts[1]);
+	require_hostname($usage, 1, $hosts[0]);
+	require_hostname($usage, 2, $hosts[1]);
 	return undef;
 }
 
@@ -2584,8 +2610,8 @@ sub KHARON_IV_insert_ticket {
 	my $usage = "$verb <princ> <host> [<host> ...]";
 
 	require_fqprinc($ctx, $usage, 1, $princ);
-	require_scalar($ctx, $usage, 2, $host);
-	require_scalars($usage, 3, @hosts);
+	require_hostname( $usage, 2, $host);
+	require_hostnames($usage, 3, @hosts);
 
 	return undef;
 }
@@ -2698,7 +2724,7 @@ sub KHARON_IV_refresh_ticket {
 	my $usage = "refresh_ticket <princ> <host> [<host> ...]";
 
 	require_fqprinc($ctx, $usage, 1, $princ);
-	require_scalars($ctx, $usage, 2, @hosts);
+	require_hostnames($usage, 2, @hosts);
 
 	return undef;
 }
@@ -2921,8 +2947,8 @@ sub KHARON_IV_remove_ticket {
 	my $ctx = $self->{ctx};
 
 	require_fqprinc($ctx, $usage, 1, $princ);
-	require_scalar($usage, 2, $host);
-	require_scalars($usage, 3, @hosts);
+	require_hostname( $usage, 2, $host);
+	require_hostnames($usage, 3, @hosts);
 
 	return undef;
 }

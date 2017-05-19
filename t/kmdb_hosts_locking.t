@@ -47,7 +47,7 @@ $ENV{KRB5_CONFIG} = './t/krb5.conf';
 my %kids;
 
 for my $i (1..$nprocs) {
-	my $kid = start_kid(\&kid_logic, "concurrency.$i", $nprincs);
+	my $kid = start_kid(\&kid_logic, "b-$i.test.realm", $nprincs);
 
 	$kids{$kid} = 1;
 }
