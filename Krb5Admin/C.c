@@ -1592,20 +1592,21 @@ init_kdb(krb5_context ctx, kadm5_handle hndl)
 int
 kt_kvno(krb5_context ctx, char *ktname, char *princ)
 {
-	krb5_get_creds_opt	 opt = NULL;
-	krb5_const_realm	 realm;
-	krb5_ccache		 cache = NULL;
-	krb5_ccache		 memcache = NULL;
-	krb5_keytab		 kt = NULL;
-	krb5_creds		 cfg_creds, tgt;
-	krb5_creds		*out = NULL;
-	krb5_principal		 server = NULL;
-	krb5_error_code		 ret = 0;
-	Ticket			 ticket;
-	size_t			 len;
-	char			 croakstr[2048] = "";
-	int			 kvno;
-	int			 free_tgt = 0;
+	krb5_verify_init_creds_opt	 vopt;
+	krb5_get_creds_opt		 opt = NULL;
+	krb5_const_realm		 realm;
+	krb5_ccache			 cache = NULL;
+	krb5_ccache			 memcache = NULL;
+	krb5_keytab			 kt = NULL;
+	krb5_creds			 cfg_creds, tgt;
+	krb5_creds			*out = NULL;
+	krb5_principal			 server = NULL;
+	krb5_error_code			 ret = 0;
+	Ticket				 ticket;
+	size_t				 len;
+	char				 croakstr[2048] = "";
+	int				 kvno;
+	int				 free_tgt = 0;
 
 	memset(&cfg_creds, 0x0, sizeof(cfg_creds));
 
@@ -1646,7 +1647,9 @@ kt_kvno(krb5_context ctx, char *ktname, char *princ)
 	K5BAIL(krb5_get_creds_opt_alloc(ctx, &opt));
 	K5BAIL(krb5_parse_name(ctx, princ, &server));
 	K5BAIL(krb5_get_creds(ctx, opt, memcache, server, &out));
-	K5BAIL(krb5_verify_init_creds(ctx, out, server, kt, NULL, NULL));
+	krb5_verify_init_creds_opt_init(&vopt);
+	krb5_verify_init_creds_opt_set_ap_req_nofail(&vopt, 1);
+	K5BAIL(krb5_verify_init_creds(ctx, out, server, kt, NULL, &vopt));
 
 	/*
 	 * XXXrcd: this next section is Heimdal specific.  We'll have
