@@ -1,3 +1,9 @@
+libkrb5admin-perl (0.3.11) unstable; urgency=low
+
+  * Fix krb5_keytab's determination that it needs new keys.
+
+ -- Roland C. Dowdeswell <roland.dowdeswell@twosigma.com>  Fri, 23 Jun 2017 21:13:00 +0000
+
 libkrb5admin-perl (0.3.10) unstable; urgency=low
 
   * Krb5Admin::Krb5Host::Local: permit local listing of other's keytabs.
