@@ -78,7 +78,12 @@ use warnings;
 my $kdc_pid = fork();
 exit(1) if !defined($kdc_pid);
 if ($kdc_pid == 0) {
-	exec { "$KRB5DIR/libexec/kdc" } qw/kdc/;
+	my $kdc;
+
+	$kdc = "$KRB5DIR/libexec/kdc";
+	$kdc = "$KRB5DIR/sbin/kdc"	if ! -x $kdc;
+
+	exec { $kdc } qw/kdc/;
 	exit(1);
 }
 ok(1);
