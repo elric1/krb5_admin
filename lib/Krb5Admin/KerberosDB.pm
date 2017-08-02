@@ -494,6 +494,9 @@ sub new {
 
 	$self->{sacls}->set_verbs(@rocmds, @rwcmds);
 
+	$self->{rocmds} = \@rocmds;
+	$self->{rwcmds} = \@rwcmds;
+
 	if (!defined($self->{allow_fetch})) {
 		$self->{allow_fetch} = 0;
 		$self->{allow_fetch} = 1	if $self->{local};
@@ -529,8 +532,14 @@ sub set_creds {
 # We use KHARON_{PRE,POST}COMMAND to deal with our database transactions.
 
 sub KHARON_PRECOMMAND {
-	my ($self) = @_;
+	my ($self, $cmd, @args) = @_;
 	my $dbh = $self->{dbh};
+
+	if ((grep { $_ eq $cmd } @{$self->{rwcmds}}) > 0) {
+		$dbh->{sqlite_use_immediate_transaction} = 1;
+	} else {
+		$dbh->{sqlite_use_immediate_transaction} = 0;
+	}
 
 	$dbh->begin_work();
 }
@@ -538,6 +547,8 @@ sub KHARON_PRECOMMAND {
 sub KHARON_POSTCOMMAND {
 	my ($self, $cmd, $code) = @_;
 	my $dbh = $self->{dbh};
+
+	$dbh->{sqlite_use_immediate_transaction} = 0;
 
 	return			if $dbh->{AutoCommit};
 	return $dbh->rollback()	if $code >= 500;
