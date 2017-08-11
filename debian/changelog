@@ -1,3 +1,11 @@
+libkrb5admin-perl (0.3.12) unstable; urgency=low
+
+  * Fix cluster keytab negotiation locking.
+  * Fix use of immediate locking in sqlite3.
+  * Teach search_{group,subject} about hashified args.
+
+ -- Roland C. Dowdeswell <roland.dowdeswell@twosigma.com>  Mon, 14 Aug 2017 21:13:00 +0000
+
 libkrb5admin-perl (0.3.11) unstable; urgency=low
 
   * Fix krb5_keytab's determination that it needs new keys.
