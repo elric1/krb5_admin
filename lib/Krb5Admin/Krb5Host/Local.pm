@@ -1350,7 +1350,7 @@ sub write_keys_kt {
 	my ($self, @args) = @_;
 	my $u = $args[0];
 
-	$self->{locks}->run_with_lock($u, \&write_keys_internal, @_);
+	$self->{locks}->run_with_exlock($u, \&write_keys_internal, @_);
 }
 
 # XXXrcd: hmmm, we're saving kmdb in our hash.  Should we undef it if
@@ -1692,8 +1692,8 @@ sub recover_old_keys {
 	}
 }
 
-sub install_key {
-	my ($self, $action, $lib, $user, $princ, $local_authz) = @_;
+sub install_key_locked {
+	my ($kmdb, $self, $action, $lib, $user, $princ, $local_authz) = @_;
 	my $ctx = $self->{ctx};
 	my $default_krb5_lib = $self->{default_krb5_lib};
 	my $krb5_libs = $self->{krb5_libs};
@@ -1702,28 +1702,14 @@ sub install_key {
 	my $ret;
 	my $etypes;
 
-	if ($action ne 'change' && $self->{force} < 1) {
-		return if !$self->need_new_key($kt, $strprinc);
-	}
-
-	my $kmdb = $self->get_hostbased_kmdb($princ->[0], $princ->[2]);
-	die "Cannot connect to KDC.\n"	if !$kmdb;
-
 	$etypes = $krb5_libs->{$lib} if defined($lib);
 
-	$kmdb->master();
-
-	$self->vprint("installing: $strprinc\n");
-
-	my $func = $kmdb->can('change');
 	eval { $ret = $kmdb->query($strprinc) };
 	my $err = $@;
 	if ($err) {
 		die $err if $action ne 'default';
 		$self->vprint("query error: " . format_err($err) . "\n");
 		$self->vprint("creating: $strprinc\n");
-
-		$func = $kmdb->can('create');
 	}
 
 	#
@@ -1808,6 +1794,35 @@ sub install_key {
 	return;
 }
 
+sub install_key {
+	my ($self, $action, $lib, $user, $princ, $local_authz) = @_;
+	my $strprinc = unparse_princ($princ);
+	my $kt = $self->get_kt($user);
+
+	if ($action ne 'change' && $self->{force} < 1) {
+		return if !$self->need_new_key($kt, $strprinc);
+	}
+
+	$self->vprint("installing: $strprinc\n");
+
+	my $kmdb = $self->get_hostbased_kmdb($princ->[0], $princ->[2]);
+	die "Cannot connect to KDC.\n"	if !$kmdb;
+
+	#
+	# XXXrcd: for now we "eval" the KDC side locking as it may not
+	#         be implemented.
+
+	eval { $kmdb->lock_hostprinc($strprinc); };
+	$kmdb->master() if $@;
+	eval {
+		install_key_locked($kmdb, @_);
+	};
+	my $err = $@;
+	eval { $kmdb->unlock_hostprinc($strprinc); };
+	die $err if $err;
+	return;
+}
+
 sub install_key_fetch_locked {
 	my ($self, $action, $lib, $user, $princ) = @_;
 	my $krb5_libs = $self->{krb5_libs};
@@ -1878,7 +1893,7 @@ sub install_key_fetch {
 	my ($self, @args) = @_;
 	my $u = $args[2];
 
-	$self->{locks}->run_with_lock($u, \&install_key_fetch_locked, @_);
+	$self->{locks}->run_with_exlock($u, \&install_key_fetch_locked, @_);
 }
 
 sub bootsort {
@@ -2035,7 +2050,7 @@ sub bootstrap_host_key {
 	my ($self, @args) = @_;
 	my $u = $args[2];
 
-	$self->{locks}->run_with_lock($u, \&bootstrap_host_key_locked, @_);
+	$self->{locks}->run_with_exlock($u, \&bootstrap_host_key_locked, @_);
 }
 
 sub install_host_key {
@@ -2099,7 +2114,7 @@ sub install_bootstrap_key {
 	my ($self, @args) = @_;
 	my $u = $args[2];
 
-	$self->{locks}->run_with_lock($u, \&install_bootstrap_key_locked, @_);
+	$self->{locks}->run_with_exlock($u, \&install_bootstrap_key_locked, @_);
 }
 
 # Use host/<primary_hostname> unless the instance requested exactly matches

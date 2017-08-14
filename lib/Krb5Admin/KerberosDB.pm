@@ -8,10 +8,12 @@ use Digest::SHA qw(hmac_sha256_base64);
 use MIME::Base64;
 
 use DBI;
+use Fcntl ':flock';
 use Sys::Hostname;
 use Sys::Syslog;
 use Data::Dumper;
 
+use Krb5Admin::FileLocks;
 use Krb5Admin::Utils qw/reverse_the host_list/;
 use Krb5Admin::NotifyClient;
 use Krb5Admin::C;
@@ -498,6 +500,14 @@ sub new {
 		    $dbname, $self->{client});
 	}
 
+	$self->{locks} = Krb5Admin::FileLocks->new();
+	if (defined($args{testing})) {
+		$self->{locks}->set_opt('testing', $args{testing});
+	}
+	if (defined($args{lockdir})) {
+		$self->{locks}->set_opt('lockdir', $args{lockdir});
+	}
+
 	#
 	# If we are not provided with sacls, then we make them in the
 	# default way...
@@ -577,6 +587,20 @@ sub KHARON_POSTCOMMAND {
 	return			if $dbh->{AutoCommit};
 	return $dbh->rollback()	if $code >= 500;
 	return $dbh->commit();
+}
+
+#
+# We KHARON_DISCONNECT to remove file locks and close the Kerberos DB:
+
+sub KHARON_DISCONNECT {
+	my ($self) = @_;
+
+	$self->{locks}->drop_all();
+
+	if (defined($self->{hndl})) {
+		Krb5Admin::C::kadm5_destroy($self->{hndl});
+	}
+	undef($self->{hndl});
 }
 
 sub DESTROY {
@@ -1127,6 +1151,8 @@ sub curve25519_start {
 
 	my $rets = $self->SUPER::curve25519_start($priv, $hnum, $pub);
 
+	$self->lock_hostprinc($name);
+
 	my $kdcret;
 	if (!defined($kvno)) {
 		my $ret;
@@ -1163,6 +1189,8 @@ sub curve25519_final {
 		$self->internal_modify($name, { attributes =>
 		    ['-allow_forwardable', '+ok_as_delegate'] });
 	}
+
+	$self->unlock_hostprinc($name);
 
 	if ($op eq 'bootstrap_host_key') {
 		$self->remove_bootbinding($name);
@@ -2345,6 +2373,42 @@ sub new_host_secret {
 	$dbh->commit();
 }
 
+#
+# lock_hostprinc, unlock_hostprinc will lock an entire hostbased principal.
+# We obtain a shared lock on the host to prevent the cluster
+# membership changing during the operation.  We also obtain an
+# exclusive lock on the actual principal on which we are operating
+# to prevent two krb5_keytab operations from interfering with each
+# other.
+
+sub KHARON_ACL_lock_hostprinc {
+	my ($self, $cmd, $name) = @_;
+
+	return $self->{acl}->check('create', $name);
+}
+
+sub lock_hostprinc {
+	my ($self, $name) = @_;
+	my $ctx = $self->{ctx};
+	my @pprinc = Krb5Admin::C::krb5_parse_name($ctx, $name);
+
+	$self->{locks}->obtain_lock($pprinc[2], LOCK_SH);
+	$self->{locks}->obtain_lock($name, LOCK_EX);
+	return;
+}
+
+sub KHARON_ACL_unlock_hostprinc { KHARON_ACL_lock_hostprinc(@_) }
+
+sub unlock_hostprinc {
+	my ($self, $name) = @_;
+	my $ctx = $self->{ctx};
+        my @pprinc = Krb5Admin::C::krb5_parse_name($ctx, $name);
+
+	$self->{locks}->release_lock($name);
+	$self->{locks}->release_lock($pprinc[2]);
+	return;
+}
+
 sub KHARON_IV_modify_host { KHARON_IV_create_host(@_) }
 
 sub KHARON_ACL_modify_host {
@@ -2369,11 +2433,27 @@ sub KHARON_ACL_modify_host {
 sub modify_host {
 	my ($self, $host, %args) = @_;
 	my $dbh = $self->{dbh};
+	my $do_locking = 0;
 
-	generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
+	#
+	# Get an exclusive lock on the host iff we are updating the
+	# cluster membership as this may confuse the cluster key
+	# agreement code.
 
-	$self->can_user_act("Can't create logical hosts you don't own",
-	    $self->{client}, "modify_host", $host);
+	if (grep {/^(add_|del_|)member/} (keys %args)) {
+		$do_locking = 1;
+	}
+
+	$self->{locks}->obtain_lock($host, LOCK_EX)	if $do_locking;
+	eval {
+		generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
+
+		$self->can_user_act("Can't create logical hosts you don't own",
+		    $self->{client}, "modify_host", $host);
+	};
+	my $err = $@;
+	$self->{locks}->release_lock($host)		if $do_locking;
+	die $err if $err;
 
 	return undef;
 }

@@ -35,6 +35,7 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				insert_aclgroup
 				insert_hostmap
 				insert_ticket
+				lock_hostprinc
 				master
 				modify
 				modify_group
@@ -52,6 +53,7 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				reset_passwd
 				sacls_add
 				sacls_del
+				unlock_hostprinc
 				add_host_owner
 				remove_host_owner
 				add_acl_owner

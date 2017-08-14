@@ -54,6 +54,8 @@ sub mk_kmdb_with_config {
 		client			=> $args->{CREDS},
 		addr			=> $args->{REMOTE_IP},
 		local			=> $args->{local},
+		lockdir			=> $config->{lockdir},
+		testing			=> $config->{testing},
 		allow_fetch		=> $config->{allow_fetch},
 		allow_fetch_old		=> $config->{allow_fetch_old},
 		enable_host_subdomain	=> $config->{enable_host_subdomain},
