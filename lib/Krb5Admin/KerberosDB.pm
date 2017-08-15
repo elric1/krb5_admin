@@ -14,7 +14,8 @@ use Sys::Syslog;
 use Data::Dumper;
 
 use Krb5Admin::FileLocks;
-use Krb5Admin::Utils qw/reverse_the host_list/;
+use Krb5Admin::IVFuncs;
+use Krb5Admin::Utils qw/reverse_the host_list unparse_princ/;
 use Krb5Admin::NotifyClient;
 use Krb5Admin::C;
 use Kharon::Entitlement::ACLFile;
@@ -76,125 +77,6 @@ our %flag_map = (
 	allow_kerberos4			=> [ALLOW_KERBEROS4,		0],
 	allow_digest			=> [ALLOW_DIGEST,		0],
 );
-
-sub require_scalar {
-	my ($usage, $argnum, $arg) = @_;
-
-	die [503, "Syntax error: arg $argnum undefined\nusage: $usage"]
-	    if !defined($arg);
-	die [503, "Syntax error: arg $argnum not a scalar\nusage: $usage"]
-	    if ref($arg) ne '';
-	return;
-}
-
-sub require_scalars {
-	my ($usage, $argnum, @args) = @_;
-
-	my $i = $argnum;
-	for my $arg (@args) {
-		require_scalar($usage, $i++, $arg);
-	}
-
-	return undef;
-}
-
-sub require_localrealm {
-	my ($ctx, $hndl, $realm) = @_;
-
-	eval {
-		Krb5Admin::C::krb5_query_princ($ctx, $hndl,
-		    unparse_princ([$realm, "krbtgt", $realm]));
-	};
-
-	if ($@) {
-		die [502, "KDC does not support realm $realm"];
-	}
-}
-
-sub require_princ {
-	my ($ctx, $usage, $argnum, $princ) = @_;
-
-	eval {
-		Krb5Admin::C::krb5_parse_name($ctx, $princ);
-	};
-
-	if ($@) {
-		die [503, "Syntax error: arg $argnum must be a principal: " .
-		    "$@\nusage: $usage"];
-	}
-}
-
-sub canonicalise_fqprinc {
-	my ($ctx, $usage, $argnum, $princ) = @_;
-	my @p;
-	my $ret;
-
-	require_scalar($usage, $argnum, $princ);
-
-	eval {
-		@p = Krb5Admin::C::krb5_parse_name($ctx, $princ);
-		$ret = unparse_princ(\@p);
-	};
-
-	if ($@) {
-		die [503, "Syntax error: arg $argnum must be a fully " .
-		    "qualified principal: $@\nusage: $usage"];
-	}
-
-	return $ret;
-}
-
-sub require_fqprinc {
-	my ($ctx, $usage, $argnum, $princ) = @_;
-
-	my $tmp = canonicalise_fqprinc(@_);
-
-	if ($tmp ne $princ) {
-		die [503, "Syntax error: arg $argnum must be a fully " .
-		    "qualified principal: $tmp ne $princ\nusage: $usage"];
-	}
-}
-
-sub require_hostname {
-	my ($usage, $argnum, $host) = @_;
-
-	require_scalar(@_);
-	if ($host !~
-	    qr{^([a-z\d]((-?[a-z\d]+)*)\.)+([a-z\d]((-?[a-z\d]+)*))$}oi) {
-		die [503, "Syntax error: arg $argnum (\"$host\") must be a " .
-		    "valid hostname\nusage: $usage"];
-	}
-
-	return;
-}
-
-sub require_hostnames {
-	my ($usage, $argnum, @args) = @_;
-
-	my $i = $argnum;
-	for my $arg (@args) {
-		require_hostname($usage, $i++, $arg);
-	}
-
-	return;
-}
-
-sub require_hashref {
-	my ($usage, $argnum, $arg) = @_;
-
-	die [503, "Syntax error: arg $argnum undefined\nusage: $usage"]
-	    if !defined($arg);
-	die [503, "Syntax error: arg $argnum not a hashref\nusage: $usage"]
-	    if ref($arg) ne 'HASH';
-}
-
-# XXXrcd: maybe we should perform a little validation later.
-# XXXrcd: also lame because it is code duplication.
-sub unparse_princ {
-	my ($realm, @comps) = @{$_[0]};
-
-	return join('/', @comps) . '@' . $realm;
-}
 
 sub KHARON_SET_CREDS {
 	my ($self, @creds) = @_;

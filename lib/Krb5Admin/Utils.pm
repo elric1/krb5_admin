@@ -7,7 +7,8 @@ package Krb5Admin::Utils;
 use Exporter;
 @ISA = qw(Exporter);
 @EXPORT_OK = qw/reverse_the host_list force_symlink
-		load_config mk_kmdb_with_config/;
+		load_config mk_kmdb_with_config
+		unparse_princ/;
 
 BEGIN {
 	eval { require Krb5Admin::SiteKerberosDB; };
@@ -110,6 +111,14 @@ sub load_config {
 	$config->{timeout}		//= $timeout;
 
 	return $config;
+}
+
+# XXXrcd: maybe we should perform a little validation later.
+# XXXrcd: also lame because it is code duplication.
+sub unparse_princ {
+	my ($realm, @comps) = @{$_[0]};
+
+	return join('/', @comps) . '@' . $realm;
 }
 
 1;
