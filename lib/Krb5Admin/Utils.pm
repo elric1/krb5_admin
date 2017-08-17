@@ -91,19 +91,20 @@ sub load_config {
 	die "Couldn't parse $file: $@\n"	if $@;
 	die "Couldn't open $file: $!\n"		if !defined($ret);
 
-	$config->{acl_file}		= $acl_file;
-	$config->{dbname}		= $dbname;
-	$config->{sqlite}		= $sqlite;
-	$config->{allow_fetch}		= $allow_fetch;
-	$config->{allow_fetch_old}	= $allow_fetch_old;
-	$config->{subdomain_prefix}	= $subdomain_prefix;
-	$config->{master}		= $master;
-	$config->{maxconns}		= $maxconns;
-	$config->{kmdb_class}		= $kmdb_class;
-	$config->{xrealm_bootstrap}	= \%xrealm_bootstrap;
-	$config->{win_xrealm_bootstrap}	= \%win_xrealm_bootstrap;
-	$config->{prestash_xrealm}	= \%prestash_xrealm;
-	$config->{timeout}		= $timeout;
+	$config->{acl_file}		  = $acl_file;
+	$config->{dbname}		//= $dbname;
+	$config->{testing}		  = $testing;
+	$config->{sqlite}		//= $sqlite;
+	$config->{lockdir}		  = $lockdir;
+	$config->{allow_fetch}		  = $allow_fetch;
+	$config->{allow_fetch_old}	  = $allow_fetch_old;
+	$config->{subdomain_prefix}	  = $subdomain_prefix;
+	$config->{maxconns}		  = $maxconns;
+	$config->{kmdb_class}		  = $kmdb_class;
+	$config->{xrealm_bootstrap}	  = \%xrealm_bootstrap;
+	$config->{win_xrealm_bootstrap}	  = \%win_xrealm_bootstrap;
+	$config->{prestash_xrealm}	  = \%prestash_xrealm;
+	$config->{timeout}		//= $timeout;
 
 	return $config;
 }
