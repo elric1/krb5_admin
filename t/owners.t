@@ -64,14 +64,14 @@ sub testMustDie {
 
 }
 
+sub mk_kmdb {
+	Krb5Admin::ForkClient->new({config => './t/krb5_admind.conf'}, @_);
+}
+
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
 sub admin_user_connect {
-	my $kmdb = Krb5Admin::ForkClient->new({
-	    dbname	=> 'db:t/test-hdb',
-	    sqlite	=> 't/sqlite.db',
-	}, CREDS => 'admin_user@TEST.REALM');
-	return $kmdb;
+	mk_kmdb(CREDS => 'admin_user@TEST.REALM');
 }
 my $kmdb = admin_user_connect();
 
@@ -112,14 +112,6 @@ testObjC("Create logical host map", $kmdb, [undef], 'insert_hostmap',
 testObjC("Create logical host map", $kmdb, [undef], 'insert_hostmap',
     qw/cname.test.realm b.test.realm/);
 
-sub create_normal_user_connect {
-	my $kmdb_user = Krb5Admin::ForkClient->new({
-			dbname	=> 'db:t/test-hdb',
-			sqlite	=> 't/sqlite.db',
-			}, CREDS => 'normal_user@TEST.REALM');
-	return $kmdb_user;
-}
-
 my @x = [
 	   [
 #	      {
@@ -141,7 +133,7 @@ my @x = [
 testMustDie("Add user to non existant hostmap", $kmdb, "add_host_owner",
     qw/a1111.test.realm normal_user@TEST.REALM/);
 
-my $kmdb_user = create_normal_user_connect();
+my $kmdb_user = mk_kmdb(CREDS => 'normal_user@TEST.REALM');
 testMustDie("Normal User Attempts to add", $kmdb_user, "insert_hostmap",
     qw/cname.test.realm c.test.realm/);
 undef $kmdb_user;
@@ -153,7 +145,7 @@ testObjC("Query host owner must show correct", $kmdb, @x,"query_host_owner",
     qw/cname.test.realm/);
 undef $kmdb;
 
-$kmdb_user = create_normal_user_connect();
+$kmdb_user = mk_kmdb(CREDS => 'normal_user@TEST.REALM');
 testMustNotDie("normal_user should be able to add hostmap now", $kmdb_user,
     "insert_hostmap", qw/cname.test.realm c.test.realm/);
 
@@ -174,7 +166,7 @@ testObjC("create logical for someone else", $kmdb,
     [[{owner=>'normal_user@TEST.REALM', name=>'test_group4'}]],
     "query_acl_owner", qw/test_group4/);
 
-$kmdb_user = create_normal_user_connect();
+$kmdb_user = mk_kmdb(CREDS => 'normal_user@TEST.REALM');
 
 testMustDie("Can't create a logical for someone else", $kmdb_user,
     "create_logical_host", "cname10.test.realm",
@@ -191,7 +183,7 @@ $kmdb = admin_user_connect();
 # testMustNotDie("add a group", $kmdb, "add_acl",
 #     qw/normal_user@TEST.REALM krb5/);
 
-$kmdb_user = create_normal_user_connect();
+$kmdb_user = mk_kmdb(CREDS => 'normal_user@TEST.REALM');
 
 testMustDie("normal user should not modify aclgroup",
 	$kmdb_user, "insert_aclgroup",
@@ -201,7 +193,7 @@ undef $kmdb_user;
 testMustNotDie("add owner of test_group1", $kmdb, "add_acl_owner",
 	qw/test_group3 normal_user@TEST.REALM/);
 
-$kmdb_user = create_normal_user_connect();
+$kmdb_user = mk_kmdb(CREDS => 'normal_user@TEST.REALM');
 testMustNotDie("add a group", $kmdb_user, "insert_aclgroup",
     qw/test_group3 normal_user@TEST.REALM/);
 testMustDie("delete self owner", $kmdb_user, "remove_acl_owner",
@@ -220,7 +212,7 @@ testMustDie("add a host", $kmdb, "create_host", "a.testfqdn.com",
 testMustNotDie("add a host", $kmdb, "create_host", "b.testfqdn.com",
     realm => 'TEST.REALM');
 
-$kmdb_user = create_normal_user_connect();
+$kmdb_user = mk_kmdb(CREDS => 'normal_user@TEST.REALM');
 testMustNotDie("remove hostmap", $kmdb_user, "remove_hostmap",
     qw/cname.test.realm c.test.realm/);
 
@@ -284,14 +276,6 @@ testObjC("Create logical host map", $kmdb, [undef], 'insert_hostmap',
 testObjC("Create logical host map", $kmdb, [undef], 'insert_hostmap',
     qw/cname.test.realm b.test.realm/);
 
-sub create_normal_user_connect {
-	my $kmdb_user = Krb5Admin::ForkClient->new({
-			dbname	=> 'db:t/test-hdb',
-			sqlite	=> 't/sqlite.db',
-			}, CREDS => 'normal_user@TEST.REALM');
-	return $kmdb_user;
-}
-
 my @x = [
 	   [
 	     {
@@ -311,7 +295,7 @@ my @x = [
 
 testMustDie("Add user to non existant hostmap", $kmdb, "add_hostmap_owner",
 		qw/a.test.realm normal_user@TEST.REALM/);
-my $kmdb_user = create_normal_user_connect();
+my $kmdb_user = mk_kmdb(CREDS => 'normal_user@TEST.REALM');
 testMustDie("Normal User Attempts to add", $kmdb_user, "insert_hostmap",
 		qw/cname.test.realm c.test.realm/);
 testObjC("Add normal_user to hostmap owners", $kmdb, [1],"add_hostmap_owner",
@@ -320,7 +304,7 @@ testObjC("Add normal_user to hostmap owners", $kmdb, [1],"add_hostmap_owner",
 testObjC("Query hostmap must show correct", $kmdb, @x,"query_hostmap_owner",
 	qw/cname.test.realm normal_user@TEST.REALM/);
 
-$kmdb_user = create_normal_user_connect();
+$kmdb_user = mk_kmdb(CREDS => 'normal_user@TEST.REALM');
 testMustNotDie("normal_user should be able to add hostmap now", $kmdb_user,
     "insert_hostmap", qw/cname.test.realm c.test.realm/);
 

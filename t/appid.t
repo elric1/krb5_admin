@@ -43,12 +43,13 @@ sub testMustDie {
 	}
 }
 
+sub mk_kmdb {
+	Krb5Admin::ForkClient->new({config => './t/krb5_admind.conf'}, @_);
+}
+
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
-my $kmdb = Krb5Admin::ForkClient->new({
-    dbname	=> 'db:t/test-hdb',
-    sqlite	=> 't/sqlite.db',
-}, CREDS => 'admin_user@TEST.REALM');
+my $kmdb = mk_kmdb(CREDS => 'admin_user@TEST.REALM');
 
 #
 # First, we create a few ACLs.  They must be created before the appids
@@ -167,20 +168,14 @@ testObjC("Is owner #6?", $kmdb, [1], 'is_appid_owner', 'elric@IMRRYR.ORG',
 testObjC("Is owner #7?", $kmdb, [1], 'is_appid_owner', 'sadric@IMRRYR.ORG',
     'appid3');
 
-$kmdb = Krb5Admin::ForkClient->new({
-	dbname	=> 'db:t/test-hdb',
-	sqlite	=> 't/sqlite.db',
-}, CREDS => 'yyrkoon@IMRRYR.ORG');
+$kmdb = mk_kmdb(CREDS => 'yyrkoon@IMRRYR.ORG');
 
 testMustDie("Assign ACL: assign owner", $kmdb, 'modify',
     'appid0', owner => ['admin_user@TEST.REALM']);
 
 undef $kmdb;
 
-$kmdb = Krb5Admin::ForkClient->new({
-	dbname	=> 'db:t/test-hdb',
-	sqlite	=> 't/sqlite.db',
-}, CREDS => 'admin_user@TEST.REALM');
+$kmdb = mk_kmdb(CREDS => 'admin_user@TEST.REALM');
 
 for $i (0..3) {
 	$kmdb->remove("appid$i");

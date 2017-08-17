@@ -93,7 +93,7 @@ exit(1) if !defined($krb5_admind_pid);
 if ($krb5_admind_pid == 0) {
 	exec {'knc'} (qw{knc -l -- krb5_admin}, $^X,
 		      qw{-Iblib/lib -Iblib/arch ./scripts/krb5_admind -M
-			-S t/sqlite.db
+			-c t/krb5_admind.conf
 		});
 	exit(1);
 }
@@ -151,8 +151,7 @@ my $ctx = Krb5Admin::C::krb5_init_context();
 
 my $kmdb = Krb5Admin::Local->new({
     client	=> 'root@TEST.REALM',
-    dbname	=> 'db:t/test-hdb',
-    sqlite	=> 't/sqlite.db',
+    config	=> './t/krb5_admind.conf',
 });
 
 do $KRB5_KEYTAB_CONFIG if -f $KRB5_KEYTAB_CONFIG;

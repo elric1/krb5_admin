@@ -47,16 +47,15 @@ sub testMustDie {
 
 }
 
-
+sub mk_kmdb {
+	Krb5Admin::ForkClient->new({config => './t/krb5_admind.conf'}, @_);
+}
 
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
 my $kmdb;
 
-$kmdb = Krb5Admin::ForkClient->new({
-    dbname	=> 'db:t/test-hdb',
-    sqlite	=> 't/sqlite.db',
-}, CREDS => 'admin_user@TEST.REALM');
+$kmdb = mk_kmdb(CREDS => 'admin_user@TEST.REALM');
 
 my $proid1 = 'proid1@TEST.REALM';
 my $proid2 = 'proid2@TEST.REALM';

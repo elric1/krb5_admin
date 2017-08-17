@@ -64,24 +64,13 @@ sub testMustDie {
 
 }
 
+sub mk_kmdb {
+	Krb5Admin::ForkClient->new({config => './t/krb5_admind.conf'}, @_);
+}
+
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
-sub admin_user_connect {
-	my $kmdb = Krb5Admin::ForkClient->new({
-	    dbname	=> 'db:t/test-hdb',
-	    sqlite	=> 't/sqlite.db',
-	}, CREDS => 'admin_user@TEST.REALM');
-	return $kmdb;
-}
-my $kmdb = admin_user_connect();
-
-sub create_normal_user_connect {
-	my $kmdb_user = Krb5Admin::ForkClient->new({
-			dbname	=> 'db:t/test-hdb',
-			sqlite	=> 't/sqlite.db',
-			}, CREDS => 'normal_user@TEST.REALM');
-	return $kmdb_user;
-}
+my $kmdb = mk_kmdb(CREDS => 'admin_user@TEST.REALM');
 
 testMustNotDie("create_subject", $kmdb, "create_subject", 'subject_test1',
     type=>'group');

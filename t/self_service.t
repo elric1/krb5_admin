@@ -56,44 +56,14 @@ my $tgt    = 'krbtgt/TEST.REALM@TEST.REALM';
 my $myhost = 'krb5_admin/' . hostname() . '@TEST.REALM';
 my $def    = 'default@TEST.REALM';
 
-sub host_kmdb {
-	my $kmdb = Krb5Admin::ForkClient->new({
-	    dbname	=> 'db:t/test-hdb',
-	    sqlite	=> 't/sqlite.db',
-	    allow_fetch => 1,
-	}, CREDS => 'host/host1.test.realm@TEST.REALM');
-	return $kmdb;
+sub mk_kmdb {
+        Krb5Admin::ForkClient->new({config => './t/krb5_admind.conf'}, @_);
 }
 
-sub host2_kmdb {
-	my $kmdb = Krb5Admin::ForkClient->new({
-	    dbname	=> 'db:t/test-hdb',
-	    sqlite	=> 't/sqlite.db',
-	    allow_fetch => 1,
-	}, CREDS => 'host/host2.test.realm@TEST.REALM');
-	return $kmdb;
-}
-
-sub admin_kmdb {
-	Krb5Admin::ForkClient->new({
-	    dbname	=> 'db:t/test-hdb',
-	    sqlite	=> 't/sqlite.db',
-	    allow_fetch => 1,
-	}, CREDS => $creds);
-}
-
-sub nonadmin_kmdb {
-	Krb5Admin::ForkClient->new({
-	    dbname	=> 'db:t/test-hdb',
-	    sqlite	=> 't/sqlite.db',
-	    allow_fetch => 1,
-	}, CREDS => 'normal_user@TEST.REALM');
-}
-
-my $kmdb = admin_kmdb();
+my $kmdb = mk_kmdb(CREDS => $creds);
 testObjC("Create Host", $kmdb, [undef], 'create_host', $sprinc_host ,
     realm=>"TEST.REALM");
-$kmdb = host_kmdb();
+$kmdb = mk_kmdb(CREDS => 'host/host1.test.realm@TEST.REALM');
 testMustDie("Create: Not Allowed for non subdomain", $kmdb, 'create',
     $sprinc3, local_authz=>0);
 #testObjC("Create: Allowed for username subdomain", $kmdb, [undef],
@@ -102,7 +72,7 @@ testMustDie("Create: Not Allowed for non subdomain", $kmdb, 'create',
 testMustDie("Principal->Account Map: Create map to non-existant princ ",
     $kmdb, 'principal_map_add', 'root', $sprinc3);
 
-$kmdb = admin_kmdb();
+$kmdb = mk_kmdb(CREDS => $creds);
 testObjC("Create a principal->account mapping", $kmdb, [1],
     'principal_map_add', 'testaccount' , "woodyard", $sprinc_host);
 testObjC("Create a principal->account mapping", $kmdb, [1],
@@ -135,7 +105,7 @@ testMustDie("Create a principal->account mapping (bogus)", $kmdb,
 #testMustDie("Create Keys - Must Fail(b)", $kmdb, 'create', $sprinc3,
 #    local_authz=>0 );
 #$kmdb = undef;
-#$kmdb = host2_kmdb();
+#$kmdb = mk_kmdb(CREDS => 'host/host2.test.realm@TEST.REALM');
 # testMustDie("Create Keys - Must Fail", $kmdb, 'create', $sprinc3);
 #testMustDie("Create Keys - Must Fail(c)", $kmdb, 'create', $sprinc3,
 #    local_authz=>0, invoking_user=>"notallowed");
@@ -156,7 +126,7 @@ testMustDie("Create a principal->account mapping (bogus)", $kmdb,
 #    qw/f.test.realm normal_user@TEST.REALM/);
 
 
-#$kmdb = nonadmin_kmdb();
+#$kmdb = mk_kmdb(CREDS => 'normal_user@TEST.REALM');
 #testMustDie("Create a principal->account mapping", $kmdb,
 #    'principal_map_add', 'testaccount' , "HTTP","f.test.realm");
 #testMustDie("Create a principal->account mapping", $kmdb,

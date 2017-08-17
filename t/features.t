@@ -11,8 +11,7 @@ $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
 my $kmdb = Krb5Admin::Local->new({
     client	=> 'root@TEST.REALM',
-    dbname	=> 'db:t/test-hdb',
-    sqlite	=> 't/sqlite.db',
+    config	=> './t/krb5_admind.conf',
 });
 
 $kmdb->add_feature('BAR-Feature');

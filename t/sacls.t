@@ -9,13 +9,14 @@ use Krb5Admin::ForkClient;
 use strict;
 use warnings;
 
+sub mk_kmdb {
+	Krb5Admin::ForkClient->new({config => './t/krb5_admind.conf'}, @_);
+}
+
 my $kmdb;
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
-$kmdb = Krb5Admin::ForkClient->new({
-    dbname	=> 'db:t/test-hdb',
-    sqlite	=> 't/sqlite.db',
-}, CREDS => 'admin_user@TEST.REALM');
+$kmdb = mk_kmdb(CREDS => 'admin_user@TEST.REALM');
 
 eval {
 	$kmdb->add_acl('foo@TEST.REALM', 'krb5');
@@ -32,28 +33,19 @@ eval {
 
 ok(!$@, "Add initial sacls");
 
-$kmdb = Krb5Admin::ForkClient->new({
-    dbname	=> 'db:t/test-hdb',
-    sqlite	=> 't/sqlite.db',
-}, CREDS => 'foo@TEST.REALM');
+$kmdb = mk_kmdb(CREDS => 'foo@TEST.REALM');
 
 eval { $kmdb->sacls_del('create', 'foo@TEST.REALM'); };
 ok(!$@, 'foo@TEST.REALM deleting its own create privs.');
 diag(Dumper($@)) if $@;
 
-$kmdb = Krb5Admin::ForkClient->new({
-    dbname	=> 'db:t/test-hdb',
-    sqlite	=> 't/sqlite.db',
-}, CREDS => 'bar@TEST.REALM');
+$kmdb = mk_kmdb(CREDS => 'bar@TEST.REALM');
 
 eval { $kmdb->sacls_del('create', 'bar@TEST.REALM'); };
 ok(!$@, 'bar@TEST.REALM deleting its own create privs.');
 diag(Dumper($@)) if $@;
 
-$kmdb = Krb5Admin::ForkClient->new({
-    dbname	=> 'db:t/test-hdb',
-    sqlite	=> 't/sqlite.db',
-}, CREDS => 'baz@TEST.REALM');
+$kmdb = mk_kmdb(CREDS => 'baz@TEST.REALM');
 
 eval { $kmdb->sacls_del('create', 'baz@TEST.REALM'); };
 ok($@, 'baz@TEST.REALM should not be able to relinquish privs...');

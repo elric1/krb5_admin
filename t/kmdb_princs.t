@@ -62,6 +62,13 @@ sub testObjC {
 	}
 }
 
+sub mk_kmdb {
+	Krb5Admin::ForkClient->new({
+	    allow_fetch	=> 1,
+	    config	=> './t/krb5_admind.conf'
+	}, @_);
+}
+
 $ENV{'KRB5_CONFIG'} = './t/krb5.conf';
 
 my $creds  = 'admin_user@TEST.REALM';
@@ -82,11 +89,7 @@ my $p = "Aa1thisisapasswd!!!!";
 # anyway.  We create a new Krb5Admin::ForkClient because we want to test
 # the ACLs and the protocol.
 
-my $kmdb = Krb5Admin::ForkClient->new({
-    dbname	=> 'db:t/test-hdb',
-    sqlite	=> 't/sqlite.db',
-    allow_fetch => 1,
-}, CREDS => $creds);
+my $kmdb = mk_kmdb(CREDS => $creds);
 
 testObjC("create", $kmdb, [undef], 'create', $sprinc);
 testObjC("create_user", $kmdb, [$p], 'create_user', $uprinc, $p);
@@ -328,11 +331,7 @@ compare_keys($result, $gend->{keys}, "ecdh after change keys are the same");
 $kmdb->sacls_add('bind_host', $creds);
 my $binding;
 eval {
-	$kmdb = Krb5Admin::ForkClient->new({
-	    dbname	=> 'db:t/test-hdb',
-	    sqlite	=> 't/sqlite.db',
-	    allow_fetch	=> 1,
-	}, CREDS => $anon);
+	$kmdb = mk_kmdb(CREDS => $anon);
 
 	$gend = $kmdb->genkeys('create_bootstrap_id', 'bootstrap', 1, 18);
 	$binding = $kmdb->create_bootstrap_id(public => $gend->{public},
@@ -342,11 +341,7 @@ eval {
 ok(!$@, "genkeys/create_bootstrap_id did not toss an exception")
     or diag(Dumper($@));
 
-$kmdb = Krb5Admin::ForkClient->new({
-    dbname	=> 'db:t/test-hdb',
-    sqlite	=> 't/sqlite.db',
-    allow_fetch => 1,
-}, CREDS => $creds);
+$kmdb = mk_kmdb(CREDS => $creds);
 
 $result = {};
 eval {
@@ -365,11 +360,7 @@ ok(!$@, "bind_host did not toss an exception") or diag(Dumper($@));
 
 my $hostprinc = "host/$host\@TEST.REALM";
 eval {
-	$kmdb = Krb5Admin::ForkClient->new({
-	    dbname	=> 'db:t/test-hdb',
-	    sqlite	=> 't/sqlite.db',
-	    allow_fetch	=> 1,
-	}, CREDS => $binding);
+	$kmdb = mk_kmdb(CREDS => $binding);
 
 	$gend = $kmdb->genkeys('bootstrap_host_key', $hostprinc,
 	    1, 17, 18);
@@ -379,11 +370,7 @@ eval {
 ok(!$@, "genkeys/bootstrap_host_key did not toss an exception")
     or diag(Dumper($@));
 
-$kmdb = Krb5Admin::ForkClient->new({
-    dbname	=> 'db:t/test-hdb',
-    sqlite	=> 't/sqlite.db',
-    allow_fetch => 1,
-}, CREDS => $creds);
+$kmdb = mk_kmdb(CREDS => $creds);
 
 $result = {};
 eval {
