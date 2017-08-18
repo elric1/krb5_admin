@@ -7,7 +7,10 @@ ${PERLLIB}/Krb5Admin/Utils.pm
 ${PERLLIB}/Krb5Admin/Daemon.pm
 ${PERLLIB}/Krb5Admin/Client.pm
 ${PERLLIB}/Krb5Admin/Local.pm
+${PERLLIB}/Krb5Admin/FileLocks.pm
 ${PERLLIB}/Krb5Admin/ForkClient.pm
+${PERLLIB}/Krb5Admin/IVFuncs.pm
+${PERLLIB}/Krb5Admin/Krb5Host/CLI.pm
 ${PERLLIB}/Krb5Admin/Krb5Host/Daemon.pm
 ${PERLLIB}/Krb5Admin/Krb5Host/Local.pm
 ${PERLLIB}/Krb5Admin/Krb5Host/Client.pm
@@ -21,9 +24,11 @@ ${PERLLIB}/Krb5Admin/Log.pm
 usr/man/man5/krb5_admind.conf.5
 usr/man/man8/krb5_admind.8
 usr/man/man1/krb5_admin.1
+usr/man/man1/krb5_host.1
 usr/man/man1/krb5_prestash.1
 usr/bin/krb5_prestash
 usr/bin/krb5_admin
+usr/bin/krb5_host
 usr/sbin/krb5_hostd
 usr/sbin/krb5_admind
 usr/bin/prestash-notify

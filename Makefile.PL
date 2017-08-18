@@ -68,6 +68,7 @@ my %args = (
     EXE_FILES=> [qw(
 		    scripts/krb5_admind
 		    scripts/krb5_admin
+		    scripts/krb5_host
 		    scripts/krb5_hostd
 		    scripts/krb5_prestash
 		    scripts/prestash-notify
@@ -95,6 +96,7 @@ my @manpages = qw{
 		man/krb5_admin.1
 		man/krb5_admind.8
 		man/krb5_admind.conf.5
+		man/krb5_host.1
 		man/krb5_prestash.1
 	};
 
