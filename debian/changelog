@@ -1,3 +1,9 @@
+libkrb5admin-perl (0.3.13) unstable; urgency=low
+
+  * install krb5_host
+
+ -- Roland C. Dowdeswell <roland.dowdeswell@twosigma.com>  Fri, 18 Aug 2017 21:13:00 +0000
+
 libkrb5admin-perl (0.3.12) unstable; urgency=low
 
   * Fix cluster keytab negotiation locking.
