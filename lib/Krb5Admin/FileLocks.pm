@@ -132,9 +132,9 @@ sub timed_flock {
 	my @fdstat = stat($lock_fh);
 	my @fnstat = stat($lockfile);
 
-	if ($fdstat[0] != $fnstat[0] || $fdstat[1] != $fnstat[1]) {
-		return;
-	}
+	return	if @fnstat == 0;
+	return	if $fdstat[0] != $fnstat[0];
+	return	if $fdstat[1] != $fnstat[1];
 
 	return $lock_fh;
 }
