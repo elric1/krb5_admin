@@ -114,13 +114,13 @@ sub timed_flock {
 	$timeout //= 10;
 
 	my $lockfile = $self->lock_name($name);
-	my $lock_fh  = $self->{"lock.$name.fh"};
+	my $lock_fh  = delete $self->{"lock.$name.fh"};
 
 	local $SIG{ALRM} = sub { };
 
 	my $fail;
 	alarm($timeout);
-	flock($lock_fh, LOCK_EX) or $fail = "Could not obtain lock: $!\n";
+	flock($lock_fh, $type) or $fail = "Could not obtain lock: $!\n";
 	alarm(0);
 
 	die $fail if defined($fail);
@@ -136,6 +136,7 @@ sub timed_flock {
 	return	if $fdstat[0] != $fnstat[0];
 	return	if $fdstat[1] != $fnstat[1];
 
+	$self->{"lock.$name.fh"} = $lock_fh;
 	return $lock_fh;
 }
 
