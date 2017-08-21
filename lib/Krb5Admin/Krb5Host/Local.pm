@@ -1887,15 +1887,32 @@ sub install_key {
 
 	#
 	# XXXrcd: for now we "eval" the KDC side locking as it may not
-	#         be implemented.
+	#         be implemented.  If the function is not implemented,
+	#         then we use old-style locks which although imperfect
+	#         are likely better than nothing...
 
-	eval { $kmdb->lock_hostprinc($strprinc); };
-	$kmdb->master() if $@;
+	my $can_lock_hostprinc = 1;
+	eval {
+		$kmdb->lock_hostprinc($strprinc);
+	};
+	if ($@) {
+		if (ref($@) eq 'HASH' && $@->{errstr} =~ /^No handler def/) {
+			$can_lock_hostprinc = 0;
+			$kmdb->master();
+			$self->{locks}->obtain_lock($user);
+		} else {
+			die $@;
+		}
+	}
 	eval {
 		install_key_locked($kmdb, @_);
 	};
 	my $err = $@;
-	eval { $kmdb->unlock_hostprinc($strprinc); };
+	if ($can_lock_hostprinc) {
+		$kmdb->unlock_hostprinc($strprinc);
+	} else {
+		$self->{locks}->release_lock($user);
+	}
 	die $err if $err;
 	return;
 }
