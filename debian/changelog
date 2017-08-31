@@ -1,3 +1,9 @@
+libkrb5admin-perl (0.3.15) unstable; urgency=low
+
+  * Roll back stricter hostname validation
+
+ -- Roland C. Dowdeswell <roland.dowdeswell@twosigma.com>  Thu, 31 Aug 2017 21:13:00 +0000
+
 libkrb5admin-perl (0.3.14) unstable; urgency=low
 
   * Fix a few locking issues
