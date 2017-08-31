@@ -2078,9 +2078,8 @@ sub list_table {
 sub KHARON_IV_create_host {
 	my ($self, $verb, $host, %args) = @_;
 
-	require_hostname("$verb <host> [key=val ...]", 1, $host);
-
-	return undef;
+	require_scalar("$verb <host> [key=val ...]", 1, $host);
+	return;
 }
 
 sub create_host {
@@ -2355,7 +2354,7 @@ sub search_host {
 sub KHARON_IV_query_host {
 	my ($self, $verb, $host, %args) = @_;
 
-	require_hostname("$verb <host>", 1, $host);
+	require_scalar("$verb <host>", 1, $host);
 
 	return undef;
 }
@@ -2381,8 +2380,7 @@ sub KHARON_IV_bind_host {
 	require_hostname("$cmd <host> <binding>", 1, $host);
 	require_fqprinc($ctx, "$cmd <host> <binding>", 2, $binding)
 	    if defined($binding);
-
-	return undef;
+	return;
 }
 
 sub bind_host {
@@ -2405,10 +2403,9 @@ sub KHARON_IV_remove_host {
 	my ($self, $cmd, $host, @hosts) = @_;
 	my $usage = "$cmd <host> [<host> ...]";
 
-	require_hostname( $usage, 1, $host);
-	require_hostnames($usage, 2, @hosts);
-
-	return undef;
+	require_scalar( $usage, 1, $host);
+	require_scalars($usage, 2, @hosts);
+	return;
 }
 
 sub KHARON_ACL_remove_host {
@@ -2442,8 +2439,8 @@ sub KHARON_IV_insert_hostmap {
 	my ($self, $cmd, @hosts) = @_;
 	my $usage = "$cmd <logical> <physical>";
 
-	require_hostname($usage, 1, $hosts[0]);
-	require_hostname($usage, 2, $hosts[1]);
+	require_scalar($usage, 1, $hosts[0]);
+	require_scalar($usage, 2, $hosts[1]);
 	return undef;
 }
 
@@ -2572,8 +2569,8 @@ sub KHARON_IV_insert_ticket {
 	my $usage = "$verb <princ> <host> [<host> ...]";
 
 	require_fqprinc($ctx, $usage, 1, $princ);
-	require_hostname( $usage, 2, $host);
-	require_hostnames($usage, 3, @hosts);
+	require_scalar( $usage, 2, $host);
+	require_scalars($usage, 3, @hosts);
 
 	return undef;
 }
@@ -2686,7 +2683,7 @@ sub KHARON_IV_refresh_ticket {
 	my $usage = "refresh_ticket <princ> <host> [<host> ...]";
 
 	require_fqprinc($ctx, $usage, 1, $princ);
-	require_hostnames($usage, 2, @hosts);
+	require_scalars($usage, 2, @hosts);
 
 	return undef;
 }
@@ -2909,8 +2906,8 @@ sub KHARON_IV_remove_ticket {
 	my $ctx = $self->{ctx};
 
 	require_fqprinc($ctx, $usage, 1, $princ);
-	require_hostname( $usage, 2, $host);
-	require_hostnames($usage, 3, @hosts);
+	require_scalar( $usage, 2, $host);
+	require_scalars($usage, 3, @hosts);
 
 	return undef;
 }
