@@ -1,3 +1,9 @@
+libkrb5admin-perl (0.3.16) unstable; urgency=low
+
+  * Stop using constants in "do" because it fails on old Perl.
+
+ -- Roland C. Dowdeswell <roland.dowdeswell@twosigma.com>  Thu, 10 Oct 2017 21:13:00 +0000
+
 libkrb5admin-perl (0.3.15) unstable; urgency=low
 
   * Roll back stricter hostname validation
