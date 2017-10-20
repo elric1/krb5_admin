@@ -1,3 +1,9 @@
+libkrb5admin-perl (0.3.17) unstable; urgency=low
+
+  * krb5_hostd: pass $ext_sync_func all the way through.
+
+ -- Roland C. Dowdeswell <roland.dowdeswell@twosigma.com>  Fri, 20 Oct 2017 21:13:00 +0000
+
 libkrb5admin-perl (0.3.16) unstable; urgency=low
 
   * Stop using constants in "do" because it fails on old Perl.
