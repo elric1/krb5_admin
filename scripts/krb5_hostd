@@ -26,6 +26,7 @@ our %user_libs = ();
 our $use_fetch = 0;
 our $ktdir;
 our $lockdir;
+our $ext_sync_func;
 
 sub HELP_MESSAGE {
 	exec("man krb5_hostd");
@@ -55,6 +56,7 @@ $config{user_libs}		= \%user_libs;
 $config{use_fetch}		=  $use_fetch;
 $config{ktdir}			=  $ktdir;
 $config{lockdir}		=  $lockdir;
+$config{ext_sync_func}		=  $ext_sync_func;
 
 my %opts;
 getopts('', \%opts) or usage();

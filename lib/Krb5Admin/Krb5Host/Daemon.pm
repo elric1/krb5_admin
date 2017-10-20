@@ -42,6 +42,7 @@ sub mk_krb5host {
 		default_krb5_lib => $config->{default_krb5_lib},
 		user_libs	 => $config->{user_libs},
 		use_fetch	 => $config->{use_fetch},
+		ext_sync_func	 => $config->{ext_sync_func},
 
 		ktdir		 => $config->{ktdir},
 		lockdir		 => $config->{lockdir},
