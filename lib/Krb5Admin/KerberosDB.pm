@@ -2577,6 +2577,7 @@ sub KHARON_IV_insert_ticket {
 
 sub KHARON_ACL_insert_ticket {
 	my ($self, $verb, $princ, @hosts) = @_;
+	my $dbh = $self->{dbh};
 
 	my $is_owner;
 	eval {
@@ -2590,11 +2591,19 @@ sub KHARON_ACL_insert_ticket {
 		$appid = $self->query($princ)	if @hosts > 0;
 		@hosts = ()			if !defined($appid->{cstraint});
 
+		my $owns_hosts = $verb eq 'remove_ticket';
 		for my $host (@hosts) {
 			my $h = $self->query_host($host);
 			if (!defined($h)) {
 				die "Host $host does not exist.\n";
 			}
+
+			if ($owns_hosts) {
+				$owns_hosts = is_owner($dbh, 'hosts',
+				    $self->{client}, $host);
+			}
+
+			next if $verb eq 'remove_ticket';
 
 			for my $c (@{$appid->{cstraint}}) {
 				if (!grep {$c eq $_} @{$h->{label}}) {
@@ -2603,7 +2612,8 @@ sub KHARON_ACL_insert_ticket {
 				}
 			}
 		}
-		$is_owner = $self->is_appid_owner($self->{client}, $princ);
+		$is_owner = $owns_hosts;
+		$is_owner ||= $self->is_appid_owner($self->{client}, $princ);
 	};
 	return "Permission denied: $@" if $@;
 
