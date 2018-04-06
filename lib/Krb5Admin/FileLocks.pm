@@ -111,7 +111,7 @@ sub inner_obtain_lock {
 
 sub timed_flock {
 	my ($self, $name, $type, $timeout) = @_;
-	$timeout //= 10;
+	$timeout //= 60;
 
 	my $lockfile = $self->lock_name($name);
 	my $lock_fh  = delete $self->{"lock.$name.fh"};
