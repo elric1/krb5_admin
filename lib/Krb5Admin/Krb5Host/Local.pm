@@ -1681,8 +1681,6 @@ sub curve25519_start {
 	# XXXrcd: validate args.
 	my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
 
-	$self->{locks}->obtain_lock($user);
-
 	return $self->SUPER::curve25519_start($priv, $hnum, $pub);
 }
 
@@ -1693,8 +1691,6 @@ sub curve25519_final {
 	my $keys = $self->SUPER::curve25519_final($priv, $hnum, $nonces, $pub);
 
 	$self->write_keys_kt($user, $lib, undef, undef, @$keys);
-
-	$self->{locks}->release_lock($user);
 
 	return;
 }
@@ -1752,9 +1748,7 @@ sub KHARON_ACL_write_old {
 
 sub write_old {
 	my ($self, $user, $strprinc, $lib, @keys) = @_;
-	$self->{locks}->obtain_lock($user);
 	$self->write_keys_kt($user, $lib, $strprinc, undef, @keys);
-	$self->{locks}->release_lock($user);
 }
 
 sub recover_old_keys {
