@@ -2444,7 +2444,12 @@ sub KHARON_IV_insert_hostmap {
 	return undef;
 }
 
-sub KHARON_ACL_insert_hostmap { return hostmap_acl(@_); }
+sub KHARON_ACL_insert_hostmap {
+	my ($self, $cmd, $logical, $physical) = @_;
+
+	return $self->KHARON_ACL_modify_host($cmd, $logical,
+	    add_member => $physical);
+}
 
 sub insert_hostmap {
 	my ($self, @hosts) = @_;
@@ -2518,7 +2523,13 @@ sub is_cluster_member {
 }
 
 sub KHARON_IV_remove_hostmap  { KHARON_IV_insert_hostmap(@_); }
-sub KHARON_ACL_remove_hostmap { return hostmap_acl(@_); }
+
+sub KHARON_ACL_remove_hostmap {
+	my ($self, $cmd, $logical, $physical) = @_;
+
+	return $self->KHARON_ACL_modify_host($cmd, $logical,
+	    del_member => $physical);
+}
 
 sub remove_hostmap {
 	my ($self, @hosts) = @_;
