@@ -2453,6 +2453,21 @@ sub KHARON_ACL_insert_hostmap {
 
 sub insert_hostmap {
 	my ($self, @hosts) = @_;
+	my $ret;
+
+	$self->{locks}->obtain_lock($hosts[0], LOCK_EX);
+	eval {
+		$ret = $self->insert_hostmap_locked(@hosts);
+	};
+	my $err = $@;
+	$self->{locks}->release_lock($hosts[0]);
+	die $err if $err;
+
+	return $ret;
+}
+
+sub insert_hostmap_locked {
+	my ($self, @hosts) = @_;
 	my $dbh = $self->{dbh};
 
 	@hosts = map { lc($_) } @hosts;
