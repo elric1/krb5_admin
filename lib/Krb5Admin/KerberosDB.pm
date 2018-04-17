@@ -2280,7 +2280,7 @@ sub lock_hostprinc {
 	return;
 }
 
-sub KHARON_ACL_unlock_hostprinc { KHARON_ACL_lock_hostprinc(@_) }
+sub KHARON_ACL_unlock_hostprinc { return 1; }
 
 sub unlock_hostprinc {
 	my ($self, $name) = @_;
