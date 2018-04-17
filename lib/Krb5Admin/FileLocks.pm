@@ -155,7 +155,9 @@ sub kill_lock {
 	my $type = $self->{"lock.$name.type"};
 
 	if ($type == LOCK_SH) {
-		my $fh = $self->timed_flock($name, LOCK_EX, 2);
+		my $fh;
+
+		eval { $fh = $self->timed_flock($name, LOCK_EX, 2); };
 
 		if (defined($fh)) {
 			$type = LOCK_EX;
