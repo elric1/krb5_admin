@@ -354,6 +354,8 @@ sub new {
 		$dbh = $self->{dbh};
 	}
 
+	$dbh->sqlite_busy_timeout(60 * 1000);
+
 	my $ctx = $self->{ctx};
 
 	$self->{debug}	  = $args{debug};
