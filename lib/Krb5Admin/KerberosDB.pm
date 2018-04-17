@@ -452,11 +452,18 @@ sub set_creds {
 sub KHARON_PRECOMMAND {
 	my ($self, $cmd, @args) = @_;
 	my $dbh = $self->{dbh};
+	my %rwcmds = map { $_ => 1 } @{$self->{rwcmds}};
 
-	if ((grep { $_ eq $cmd } @{$self->{rwcmds}}) > 0) {
+	delete $rwcmds{curve25519_start};
+	delete $rwcmds{curve25519_step};
+	delete $rwcmds{curve25519_final};
+	delete $rwcmds{master};
+	delete $rwcmds{lock_hostprinc};
+	delete $rwcmds{unlock_hostprinc};
+
+	$dbh->{sqlite_use_immediate_transaction} = 0;
+	if (defined($rwcmds{$cmd})) {
 		$dbh->{sqlite_use_immediate_transaction} = 1;
-	} else {
-		$dbh->{sqlite_use_immediate_transaction} = 0;
 	}
 
 	$dbh->begin_work();
