@@ -2996,7 +2996,13 @@ sub KHARON_IV_create_subject {
 	return [$subj, %args];
 }
 
-sub KHARON_ACL_create_subject	{ return; }
+sub KHARON_ACL_create_subject	{
+	my ($self, $cmd, $subj, %args) = @_;
+
+	return		if !defined($args{type});
+	return 1	if $args{type} eq 'group';
+	return;
+}
 
 #
 # XXXrcd: TODO: we must prevent adding members to type != group
@@ -3037,7 +3043,25 @@ sub KHARON_IV_modify_subject {
 	return;
 }
 
-sub KHARON_ACL_modify_subject	{ return; }
+sub KHARON_ACL_modify_subject	{
+	my ($self, $cmd, $subj, %mods) = @_;
+	my @actions = qw{owner add_owner del_owner
+			 member add_member del_member};
+
+	#
+	# Note that we are not permitting all types of changes, yet.
+
+	for my $mod (keys %mods) {
+		return if !grep {$_ eq $mod} @actions;
+	}
+
+	my $s = $self->query_subject($subj);
+
+	return	if $s->{type} ne 'group';
+	return	if !is_owner($self->{dbh}, 'acls', $self->{client}, $subj);
+
+	return 1;
+}
 
 sub modify_subject {
 	my ($self, $subj, %args) = @_;
@@ -3072,7 +3096,7 @@ sub query_subject {
 }
 
 sub KHARON_IV_remove_subject	{ KHARON_IV_ONE_SCALAR(@_); }
-sub KHARON_ACL_remove_subject	{ return; }
+sub KHARON_ACL_remove_subject	{ KHARON_ACL_del_acl(@_); }
 
 sub remove_subject {
 	my ($self, $subj) = @_;
