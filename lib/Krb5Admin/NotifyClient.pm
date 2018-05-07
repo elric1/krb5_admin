@@ -3,6 +3,10 @@
 
 package Krb5Admin::NotifyClient;
 
+use Exporter;   
+@ISA = qw(Exporter);
+@EXPORT_OK = qw{ notify_update_required };
+
 use DBI;
 use Sys::Hostname;
 use Sys::Syslog;

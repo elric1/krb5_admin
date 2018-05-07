@@ -16,7 +16,7 @@ use Data::Dumper;
 use Krb5Admin::FileLocks;
 use Krb5Admin::IVFuncs;
 use Krb5Admin::Utils qw/reverse_the host_list unparse_princ/;
-use Krb5Admin::NotifyClient;
+use Krb5Admin::NotifyClient qw/notify_update_required/;
 use Krb5Admin::C;
 use Kharon::Entitlement::ACLFile;
 use Kharon::Entitlement::Equals;
@@ -2514,9 +2514,7 @@ sub insert_hostmap_locked {
 
 	# A cluster member has been added, its important for the new member
 	# to fetch its tickets now
-	eval {
-	    Krb5Admin::NotifyClient::notify_update_required($self, $hosts[1]);
-	};
+	eval { notify_update_required($self, $hosts[1]); };
 	if ($@) {
 	    print STDERR "$@";
 	}
@@ -2709,11 +2707,8 @@ sub insert_ticket {
 	# Always commit before notify_update_required.
 	$dbh->commit();
 
-	for my $host (@notify_hosts) {
-		eval {
-			Krb5Admin::NotifyClient::notify_update_required($self,
-			    $host);
-		};
+	for my $h (@notify_hosts) {
+		eval { notify_update_required($self, $h); };
 		if ($@) {
 			print STDERR "$@";
 		}
@@ -2763,11 +2758,8 @@ sub refresh_ticket {
 		die [500, 'Principal not configured on all hosts provided'];
 	}
 
-	for my $host (@hosts) {
-		eval {
-			Krb5Admin::NotifyClient::notify_update_required($self,
-			    $host);
-		};
+	for my $h (@hosts) {
+		eval { notify_update_required($self, $h); };
 	}
 	return undef;
 }
