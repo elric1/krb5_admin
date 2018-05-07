@@ -2345,6 +2345,27 @@ sub modify_host {
 	$self->{locks}->release_lock($host)		if $do_locking;
 	die $err if $err;
 
+	# Always commit before notify_update_required.
+	$dbh->commit();
+
+	#
+	# Cluster members have been added, its important for the
+	# new members to fetch their tickets now.  We are a little
+	# greedy about the updates that we request, because our
+	# information is imperfect by this stage.  This is a perfect
+	# use case for DB triggers.
+
+	my @notify_hosts;
+	push(@notify_hosts, $args{add_member})	if defined($args{add_member});
+	push(@notify_hosts, $args{member})	if defined($args{member});
+
+	for my $h (@notify_hosts) {
+		eval { notify_update_required($self, $h); };
+		if ($@) {
+		    print STDERR "$@";
+		}
+	}
+
 	return undef;
 }
 
