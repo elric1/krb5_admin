@@ -191,10 +191,11 @@ sub usage {
 	print STDERR "    where <command> is:\n\n";
 
 	print STDERR "\tinsert <principal> <host>[ <host>]*\n";
+	print STDERR "\trefresh <principal> <host>[ <host>]*\n";
 	print STDERR "\tremove <principal> <host>[ <host>]*\n";
 	print STDERR "\tquery [\"principal\"|\"host\"] " .
 	    "[<principal>|<host>]\n";
-	print STDERR "\tfetch\n";
+	print STDERR "\tfetch <realm>[ <realm>]*\n";
 
 	print STDERR "\n    Synonyms: add = insert, delete = remove\n";
 	exit(1);
