@@ -2487,65 +2487,9 @@ sub KHARON_ACL_insert_hostmap {
 }
 
 sub insert_hostmap {
-	my ($self, @hosts) = @_;
-	my $ret;
+	my ($self, $logical, $physical) = @_;
 
-	$self->{locks}->obtain_lock($hosts[0], LOCK_EX);
-	eval {
-		$ret = $self->insert_hostmap_locked(@hosts);
-	};
-	my $err = $@;
-	$self->{locks}->release_lock($hosts[0]);
-	die $err if $err;
-
-	return $ret;
-}
-
-sub insert_hostmap_locked {
-	my ($self, @hosts) = @_;
-	my $dbh = $self->{dbh};
-
-	@hosts = map { lc($_) } @hosts;
-
-	my $phost = $self->query_host($hosts[1]);
-	if (!defined $phost) {
-		die [500, "Physical host doesn't exist\n"];
-	}
-
-	my $lhost = $self->query_host($hosts[0]);
-	if (!defined $lhost) {
-		die [404, "Logical host ". $hosts[0] ." doesn't exist"];
-	}
-
-	if (!$lhost->{is_logical}) {
-		die [504, "There was a problem creating the logical name " .
-		    "(likely a physical host named the same)."];
-	}
-
-	my $stmt = "INSERT INTO hostmap (logical, physical) VALUES (?, ?)";
-	eval {
-		sql_exec($dbh, $stmt, @hosts);
-	};
-
-	if ($@) {
-		if ($@ =~ /unique/i) {
-			die [500, $hosts[1] . ' is already in cluster ' .
-			    $hosts[0]];
-		}
-		die $@;
-	}
-
-	# Always commit before notify_update_required.
-	$dbh->commit();
-
-	# A cluster member has been added, its important for the new member
-	# to fetch its tickets now
-	eval { notify_update_required($self, $hosts[1]); };
-	if ($@) {
-	    print STDERR "$@";
-	}
-
-	return undef;
+	return $self->modify_host($logical, add_member => [$physical]);
 }
 
 sub KHARON_ACL_query_hostmap { return 1; }
@@ -2580,16 +2524,9 @@ sub KHARON_ACL_remove_hostmap {
 }
 
 sub remove_hostmap {
-	my ($self, @hosts) = @_;
-	my $dbh = $self->{dbh};
+	my ($self, $logical, $physical) = @_;
 
-	@hosts = map { lc($_) } @hosts;
-
-	my $stmt = "DELETE FROM hostmap WHERE logical = ? AND physical = ?";
-
-	sql_exec($dbh, $stmt, @hosts);
-
-	return;
+	return $self->modify_host($logical, del_member => [$physical]);
 }
 
 #
