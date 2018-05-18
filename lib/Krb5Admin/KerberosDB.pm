@@ -2326,12 +2326,17 @@ sub modify_host {
 	my $do_locking = 0;
 
 	#
+	# lc() all the hostnames.  While we are here, might as well
 	# Get an exclusive lock on the host iff we are updating the
 	# cluster membership as this may confuse the cluster key
 	# agreement code.
 
-	if (grep {/^(add_|del_|)member/} (keys %args)) {
-		$do_locking = 1;
+	$host = lc($host);
+	for my $i (qw/add_member del_member member/) {
+		next if !exists($args{$i});
+
+		$args{$i} = [ map { lc($_) } @{$args{$i}} ];
+		$do_locking=1;
 	}
 
 	$self->{locks}->obtain_lock($host, LOCK_EX)	if $do_locking;
