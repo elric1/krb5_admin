@@ -576,8 +576,11 @@ sub fetch_tickets {
 	@realms = ($self->get_defrealm())	if @realms == 0;
 
 	for my $realm (@realms) {
-	    eval { $self->fetch_tickets_realm($clnt, $realm); };
-	    push(@errs, $@) if $@;
+		eval {
+			$self->{locks}->run_with_exlock(":::PRESTASH:::",
+			    \&fetch_tickets_realm, $self, $clnt, $realm);
+		};
+		push(@errs, $@) if $@;
 	}
 
 	$self->reset_krb5ccname();
