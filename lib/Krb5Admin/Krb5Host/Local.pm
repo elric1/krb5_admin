@@ -1664,6 +1664,7 @@ sub KHARON_ACL_curve25519_final {
 	}
 
 	my $kmdb = $self->get_hostbased_kmdb($realm, $self->{myname});
+	$kmdb->master();
 	my $cluster = $kmdb->query_hostmap($logical);
 
 	if (!grep { $_ eq $self->{myname} } @$cluster) {
@@ -1734,6 +1735,7 @@ sub KHARON_ACL_write_old {
 	}
 
 	my $kmdb = $self->get_hostbased_kmdb($realm, $self->{myname});
+	$kmdb->master();
 	my $cluster = $kmdb->query_hostmap($logical);
 
 	if (!grep { $_ eq $self->{myname} } @$cluster) {
