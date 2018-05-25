@@ -97,6 +97,7 @@ my @manpages = qw{
 		man/krb5_admind.8
 		man/krb5_admind.conf.5
 		man/krb5_host.1
+		man/krb5_hostd.8
 		man/krb5_hostd.conf.5
 		man/krb5_prestash.1
 	};

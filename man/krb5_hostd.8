@@ -1,0 +1,24 @@
+.\"
+.\"
+.\" Blame: Roland Dowdeswell <elric@imrryr.org>
+.Dd May 28, 2009
+.Os
+.Dt KRB5_HOSTD 8
+.Sh NAME
+.Nm krb5_hostd
+.Nd kerberos administration daemon
+.Sh SYNOPSIS
+.Nm
+.Sh DESCRIPTION
+.Nm
+is the a daemon that runs on each host that provides the facility
+for remote state queries, clustered keytab negotiation, and
+instantaneous prestashed ticket delivery.
+.Pp
+It expects to be spawned as an inetd-style service via
+.Xr knc 1 .
+.Pp
+There are no options.
+.Sh SEE ALSO
+.Xr knc 1 ,
+.Xr krb5_hostd.conf 5 .

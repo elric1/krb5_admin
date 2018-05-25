@@ -24,6 +24,7 @@ ${PERLLIB}/Krb5Admin/Log.pm
 usr/man/man5/krb5_admind.conf.5
 usr/man/man5/krb5_hostd.conf.5
 usr/man/man8/krb5_admind.8
+usr/man/man8/krb5_hostd.8
 usr/man/man1/krb5_admin.1
 usr/man/man1/krb5_host.1
 usr/man/man1/krb5_prestash.1
