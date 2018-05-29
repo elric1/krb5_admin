@@ -65,6 +65,23 @@ sub new {
 	bless($self, $class);
 }
 
+sub KHARON_ENCAPSULATE_ERROR {
+	my ($self, $err) = @_;
+
+	$self->KHARON_DEFAULT_ENCAPSULATE_ERROR($err);
+}
+
+sub KHARON_PEER {
+	my ($self) = @_;
+	my $id = $self->SUPER::KHARON_PEER();
+
+	if (defined($id)) {
+		return "KDC (" . $self->SUPER::KHARON_PEER() . ")";
+	} else {
+		return "KDC";
+	}
+}
+
 1;
 
 __END__

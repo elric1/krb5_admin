@@ -37,6 +37,12 @@ sub new {
 	bless($self, $class);
 }
 
+sub KHARON_ENCAPSULATE_ERROR {
+	my ($self, $err) = @_;
+
+	$self->KHARON_DEFAULT_ENCAPSULATE_ERROR($err);
+}
+
 1;
 
 __END__
