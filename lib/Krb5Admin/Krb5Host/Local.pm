@@ -2237,62 +2237,67 @@ sub owner_inst {
 # and instance.  It will either toss an exception if something goes
 # horribly wrong or return an integral number of errors that were
 # encountered.
+#
+# The innards of install_keys have been refactored into install_single_key.
 
-sub install_keys {
-	my ($self, $user, $action, $lib, @princs) = @_;
+sub install_single_key {
+	my ($self, $user, $action, $lib, $princ) = @_;
 	my $use_fetch = $self->{use_fetch};
-	my $realm = $princs[0]->[0];
-	my $inst  = $princs[0]->[2];
-	my $xrealm = $self->{xrealm};
-	my $errs = [];
-	my @ret;
-	my %args = ();
 	my $local_authz = 1;
-
-	# print @princs ."\n";
-	my $uacl = $self->user_acled($user);
 
 	eval {
 		$self->vprint("checking acls...\n");
-		$self->check_acls($user, @princs);	# this will throw.
+		$self->check_acls($user, $princ);
 	};
 	$local_authz = 0 if $@;
 
-#	if (!defined $uacl || $uacl != 1 || $ == 1) {
-		$args{invoking_user} = $user;
-#	}
+	my $strprinc = unparse_princ($princ);
 
+	$self->vprint("Focussing on $strprinc.\n");
+
+	my $f = \&install_key;
+
+	$f = \&install_key_fetch	if $use_fetch || $self->{local};
+	$f = \&install_host_key		if $princ->[1] eq 'host' &&
+					   $user eq 'root';
+
+	if ($princ->[1] eq 'bootstrap' && $princ->[2] eq 'RANDOM') {
+		$f = \&install_bootstrap_key;
+	}
+
+	my @res;
+	eval {
+		@res = &$f($self, $action, $lib, $user, $princ,
+		    $local_authz, {invoking_user => $user});
+	};
+
+	if (my $err = $@) {
+		my $errstr = sprintf("Failed to install (%s) " .
+		    "keys for %s instance %s, %s", $action, $user,
+		    $strprinc, format_err($err));
+		syslog('err', "%s", $errstr);
+		die $errstr;
+	}
+
+	syslog('info', "Installed (%s) keys for %s " .
+	    "instance %s", $action, $user, $strprinc);
+
+	return @res;
+}
+
+sub install_keys {
+	my ($self, $user, $action, $lib, @princs) = @_;
+	my $errs = [];
+	my @ret;
+
+	my @args = ($self, $user, $action, $lib);
 	for my $princ (@princs) {
-		my $strprinc = unparse_princ($princ);
-
-		$self->vprint("Focussing on $strprinc.\n");
-
-		my $f = \&install_key;
-
-		$f = \&install_key_fetch	if $use_fetch || $self->{local};
-		$f = \&install_host_key		if $princ->[1] eq 'host' &&
-						   $user eq 'root';
-
-		if ($princ->[1] eq 'bootstrap' && $princ->[2] eq 'RANDOM') {
-			$f = \&install_bootstrap_key;
-		}
-
 		my @res;
 		eval {
-			@res = &$f($self, $action, $lib, $user, $princ,
-			    $local_authz, \%args);
+			@res = install_single_key(@args, $princ);
 		};
-		if (my $err = $@) {
-			my $errstr = sprintf("Failed to install (%s) " .
-			    "keys for %s instance %s, %s", $action, $user,
-			    $strprinc, format_err($err));
-			syslog('err', "%s", $errstr);
-			push(@$errs, $errstr);
-		} else {
-			syslog('info', "Installed (%s) keys for %s " .
-			    "instance %s", $action, $user, $strprinc);
-		}
 
+		push(@$errs, $@)	if $@;
 		push(@ret, @res);
 	}
 
