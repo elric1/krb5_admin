@@ -2574,32 +2574,23 @@ sub KHARON_IV_insert_ticket {
 sub KHARON_ACL_insert_ticket {
 	my ($self, $verb, $princ, @hosts) = @_;
 	my $dbh = $self->{dbh};
+	my $client = $self->{client};
 
-	my $is_owner;
+	my $is_owner = 0;
 	eval {
-		my $appid;
-
 		#
 		# don't check host labels if the appid doesn't have
-		# cstraints or on ticket removal...
+		# cstraints
 
-		@hosts = ()			if $verb eq 'remove_ticket';
+		my $appid;
 		$appid = $self->query($princ)	if @hosts > 0;
 		@hosts = ()			if !defined($appid->{cstraint});
 
-		my $owns_hosts = $verb eq 'remove_ticket';
 		for my $host (@hosts) {
 			my $h = $self->query_host($host);
 			if (!defined($h)) {
 				die "Host $host does not exist.\n";
 			}
-
-			if ($owns_hosts) {
-				$owns_hosts = is_owner($dbh, 'hosts',
-				    $self->{client}, $host);
-			}
-
-			next if $verb eq 'remove_ticket';
 
 			for my $c (@{$appid->{cstraint}}) {
 				if (!grep {$c eq $_} @{$h->{label}}) {
@@ -2608,12 +2599,11 @@ sub KHARON_ACL_insert_ticket {
 				}
 			}
 		}
-		$is_owner = $owns_hosts;
-		$is_owner ||= $self->is_appid_owner($self->{client}, $princ);
+		$is_owner = $self->is_appid_owner($client, $princ);
 	};
 	return "Permission denied: $@" if $@;
 
-	return 1 if $is_owner eq '1';
+	return 1 if $is_owner == 1;
 	return undef;
 }
 
@@ -2912,7 +2902,30 @@ sub KHARON_IV_remove_ticket {
 	return undef;
 }
 
-sub KHARON_ACL_remove_ticket { KHARON_ACL_insert_ticket(@_) }
+sub KHARON_ACL_remove_ticket {
+	my ($self, $verb, $princ, @hosts) = @_;
+	my $dbh = $self->{dbh};
+	my $client = $self->{client};
+
+	my $is_owner = 1;
+	eval {
+		# Silently skip non-existent hosts, they have nothing to remove
+		for my $host (@hosts) {
+			my $h = $self->query_host($host);
+			next unless defined($h);
+			$is_owner = is_owner($dbh, 'hosts', $client, $host);
+			last unless $is_owner;
+		}
+		# Caller must own $princ if not owner of all the hosts
+		if (! $is_owner) {
+			$is_owner = $self->is_appid_owner($client, $princ);
+		}
+	};
+	return "Permission denied: $@" if $@;
+
+	return 1 if $is_owner;
+	return undef;
+}
 
 sub remove_ticket {
 	my ($self, $princ, @hosts) = @_;
