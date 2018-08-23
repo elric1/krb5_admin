@@ -44,6 +44,11 @@ openlog('krb5_hostd', 'pid', 'auth');
 do $KRB5_KEYTAB_CONFIG if -f $KRB5_KEYTAB_CONFIG;
 # XXXrcd: fail if we can't read the configuration, I think.
 
+my %opts;
+getopts('v', \%opts) or usage();
+
+$verbose = 1            if exists($opts{'v'});
+
 my %config;
 $config{verbose}		=  $verbose;
 $config{user2service}		= \%user2service;
@@ -57,8 +62,5 @@ $config{use_fetch}		=  $use_fetch;
 $config{ktdir}			=  $ktdir;
 $config{lockdir}		=  $lockdir;
 $config{ext_sync_func}		=  $ext_sync_func;
-
-my %opts;
-getopts('', \%opts) or usage();
 
 Krb5Admin::Krb5Host::Daemon::run(\%config);
