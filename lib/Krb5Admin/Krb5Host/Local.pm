@@ -1571,14 +1571,7 @@ sub get_hostbased_kmdb {
 	# XXXrcd: put a message into get_kmdb()...
 	$self->vprint("connecting to ${realm}'s KDCs using $client creds.\n");
 
-	eval {
-		$kmdb = Krb5Admin::Client->new($client, { realm => $realm });
-	};
-
-	if (my $err = $@) {
-		$self->vprint("Cannot connect to KDC: " .
-		    format_err($err) . "\n");
-	}
+	$kmdb = Krb5Admin::Client->new($client, { realm => $realm });
 
 	if (defined($kmdb)) {
 		$self->{hostbased_kmdb}		= $kmdb;
@@ -2158,7 +2151,10 @@ sub install_host_key {
 	# be able to use them.  If not, we must be bootstrapping and
 	# we call bootstrap_host_key() which is a tad more complex.
 
-	my $kmdb = $self->get_hostbased_kmdb($princ->[0], $princ->[2]);
+	my $kmdb;
+	eval {
+		$kmdb = $self->get_hostbased_kmdb($princ->[0], $princ->[2]);
+	};
 
 	if ($kmdb) {
 		$f = \&install_key;
