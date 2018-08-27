@@ -76,6 +76,7 @@ sub FORMAT_query_ticket {
 	for my $u (sort (keys %{$ret})) {
 		my $user = $ret->{$u};
 		my $ustr = $u;
+		$u =~ s/^krb5cc_://;
 
 		for my $r (sort (keys %$user)) {
 			my $urealm = $user->{$r};
