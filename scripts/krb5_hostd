@@ -41,11 +41,15 @@ sub usage {
 
 openlog('krb5_hostd', 'pid', 'auth');
 
-do $KRB5_KEYTAB_CONFIG if -f $KRB5_KEYTAB_CONFIG;
-# XXXrcd: fail if we can't read the configuration, I think.
-
 my %opts;
-getopts('v', \%opts) or usage();
+getopts('c:v', \%opts) or usage();
+
+our $krb5_keytab_config;
+    $krb5_keytab_config	=   $opts{c};
+    $krb5_keytab_config	//= $KRB5_KEYTAB_CONFIG;
+
+do $krb5_keytab_config if -f $krb5_keytab_config;
+# XXXrcd: fail if we can't read the configuration, I think.
 
 $verbose = 1            if exists($opts{'v'});
 
