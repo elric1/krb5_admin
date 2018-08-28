@@ -15,7 +15,7 @@ use Fcntl ':flock';
 use POSIX qw(strftime);
 use Sys::Hostname;
 use Sys::Syslog;
-use Time::HiRes qw(gettimeofday);
+use Time::HiRes qw(gettimeofday sleep);
 
 use Krb5Admin::Client;
 use Krb5Admin::FileLocks;
@@ -67,6 +67,7 @@ our %kt_opts = (
 	interactive		=> 0,
 	invoking_user		=> undef,
 	kadmin			=> 0,
+	keytab_retries		=> 3,
 	kmdb			=> undef,	# XXXrcd: more logic
 	krb5_lib		=> '',
 	krb5_lib_quirks		=> {},
@@ -2285,6 +2286,30 @@ sub install_single_key {
 	return @res;
 }
 
+sub install_single_key_with_retry {
+	my ($self, $user, $action, $lib, $princ) = @_;
+	my $errs = [];
+
+	my $delay = 1;
+	my @args = ($self, $user, $action, $lib, $princ);
+	for (my $i=0; $i < $self->{keytab_retries}; $i++) {
+		my @res;
+		eval {
+			@res = install_single_key(@args);
+		};
+
+		return @res		if !$@;
+		push(@$errs, $@);
+
+		$self->vprint("ERR: " . format_err($@) . "\n");
+
+		sleep($delay + rand(1));
+		$delay *= 1.5;
+	}
+
+	die $errs;
+}
+
 sub install_keys {
 	my ($self, $user, $action, $lib, @princs) = @_;
 	my $errs = [];
@@ -2294,10 +2319,10 @@ sub install_keys {
 	for my $princ (@princs) {
 		my @res;
 		eval {
-			@res = install_single_key(@args, $princ);
+			@res = install_single_key_with_retry(@args, $princ);
 		};
 
-		push(@$errs, $@)	if $@;
+		push(@$errs, @{$@})	if $@;
 		push(@ret, @res);
 	}
 

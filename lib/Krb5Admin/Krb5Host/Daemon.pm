@@ -37,6 +37,7 @@ sub mk_krb5host {
 		user2service	 => $config->{user2service},
 		allowed_enctypes => $config->{allowed_enctypes},
 		admin_users	 => $config->{admin_users},
+		keytab_retries	 => $config->{keytab_retries},
 		krb5_libs	 => $config->{krb5_libs},
 		krb5_lib_quirks	 => $config->{krb5_lib_quirks},
 		default_krb5_lib => $config->{default_krb5_lib},
