@@ -501,7 +501,7 @@ sub install_ticket {
 	my $ccache_fn = "$tixdir/$user";
 	my $ccache_tmp = "$tixdir/.$user";
 	my $ccache = "FILE:$ccache_tmp";
-	Krb5Admin::C::init_store_creds($ctx, $ccache, $tix->{$princstr});
+	Krb5Admin::C::init_store_creds($ctx, $ccache, $tix);
 	chown($uid, 0, $ccache_tmp); # XXXrcd: chown() may fail in test mode.
 	rename($ccache_tmp, $ccache_fn) or
 		die "$0: rename($ccache_tmp, $ccache_fn): $!\n";
@@ -514,7 +514,7 @@ sub install_ticket {
 	my $alt_fn  = "$tixdir/krb5cc_:$user";
 	my $alt_tmp = "$tixdir/.krb5cc_:$user";
 	$ccache = "FILE:$alt_tmp";
-	Krb5Admin::C::init_store_creds($ctx, $ccache, $tix->{$princstr});
+	Krb5Admin::C::init_store_creds($ctx, $ccache, $tix);
 	chown($uid, 0, $alt_tmp); # XXXrcd: chown() may fail in test mode.
 	rename($alt_tmp, $alt_fn) or
 		die "$0: rename($alt_tmp, $alt_fn): $!\n";
@@ -545,7 +545,7 @@ sub fetch_tickets_realm {
 			syslog('err', "%s", $err);
 		}
 
-		eval { $self->install_ticket($princstr, $tix); };
+		eval { $self->install_ticket($princstr, $tix->{$princstr}); };
 
 		if ($@) {
 			push(@errs, $@);
