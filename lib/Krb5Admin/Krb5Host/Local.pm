@@ -77,7 +77,7 @@ our %kt_opts = (
 	local			=> 0,
 	subdomain_prefix	=> '',
 	testing			=> 0,
-	tixdir			=> undef,
+	tixdir			=> '/var/spool/tickets',
 	use_fetch		=> 0,
 	user2service		=> {},
 	user_libs		=> {},
@@ -403,7 +403,6 @@ sub query_ticket {
 	my ($self, @users) = @_;
 
 	my $tixdir = $self->{tixdir};
-	   $tixdir = '/var/spool/tickets'	if !defined($tixdir);
 
 	chdir($tixdir) or die;
 
@@ -432,7 +431,6 @@ sub install_ticket {
 	my $ctx = $self->{ctx};
 
 	my $tixdir = $self->{tixdir};
-	   $tixdir = '/var/spool/tickets'	if !defined($tixdir);
 
 	if (!defined($princstr)) {
 		die "install_tickets called on undefined value.\n"
