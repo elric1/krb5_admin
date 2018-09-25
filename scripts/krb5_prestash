@@ -9,11 +9,13 @@ use Krb5Admin::C;
 use Krb5Admin::Client;
 use Krb5Admin::Local;
 use Krb5Admin::Krb5Host::Local;
-use Krb5Admin::Utils qw/host_list/;
+use Krb5Admin::Utils qw/host_list load_krb5hostd_config/;
 use Sys::Hostname;
 
 use warnings;
 use strict;
+
+our $KRB5_KEYTAB_CONFIG	= '/etc/krb5/krb5_hostd.conf';
 
 my $verbose = 0;
 
@@ -58,8 +60,13 @@ sub fetch {
 		die "Only root can run fetch.\n";
 	}
 
+	my %config;
+	$config{config} = $KRB5_KEYTAB_CONFIG;
+
+	load_krb5hostd_config(\%config);
+
 	my $khost = Krb5Admin::Krb5Host::Local->new(kmdb => $kmdb,
-	    invoking_user => 'root');
+	    invoking_user => 'root', %config);
 
 	$khost->fetch_tickets(@realms);
 }
