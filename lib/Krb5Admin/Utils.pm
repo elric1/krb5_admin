@@ -138,6 +138,7 @@ sub load_krb5hostd_config {
 	$config->{ktdir}		  =  $ktdir;
 	$config->{lockdir}		  =  $lockdir;
 	$config->{ext_sync_func}	  =  $ext_sync_func;
+	$config->{tixdir}		  =  $tixdir;
 }
 
 # XXXrcd: maybe we should perform a little validation later.

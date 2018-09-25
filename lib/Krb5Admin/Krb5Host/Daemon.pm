@@ -48,6 +48,8 @@ sub mk_krb5host {
 		ktdir		 => $config->{ktdir},
 		lockdir		 => $config->{lockdir},
 
+		tixdir		 => $config->{tixdir},
+
 		#
 		# XXXrcd: these settings all need to be be diddled a
 		#         bit, some of them will require a small bit

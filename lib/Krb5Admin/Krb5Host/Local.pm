@@ -78,7 +78,7 @@ our %kt_opts = (
 	local			=> 0,
 	subdomain_prefix	=> '',
 	testing			=> 0,
-	tixdir			=> '/var/spool/tickets',
+	tixdir			=> ['/var/spool/tickets'],
 	use_fetch		=> 0,
 	user2service		=> {},
 	user_libs		=> {},
@@ -403,7 +403,12 @@ sub KHARON_ACL_query_ticket { return 1; }
 sub query_ticket {
 	my ($self, @users) = @_;
 
-	my $tixdir = $self->{tixdir};
+	#
+	# XXXrcd: for now, query_ticket only understands the primary
+	#         location---that being the first array element.
+
+	my $tixdir = $self->{tixdir}->[0];
+	   $tixdir = $tixdir->{path}		if ref($tixdir) eq 'HASH';
 
 	chdir($tixdir) or die;
 
@@ -462,6 +467,46 @@ sub install_ticket {
 	}
 
 	my ($realm, $user) = @princ;
+
+	my @errs;
+	for my $t (@$tixdir) {
+		if (ref($t) eq 'HASH') {
+			my ($name, $passwd, $uid);
+
+			if (defined($t->{username})) {
+				($name, $passwd, $uid) =
+				    getpwnam($t->{username});
+
+				push(@errs, "$t->{username} has no uid");
+				next;
+			}
+
+			# It's okay for username to be undef, but not path.
+			if (!defined($t->{path})) {
+				die "\$tixdir hashes must specify ``path''";
+			}
+
+			$self->install_ticket_in_dir($realm, $user, $uid, $tix,
+			    $t->{path});
+
+			next;
+		}
+
+		if (ref($t) eq '') {
+			$self->install_ticket_in_dir($realm, $user, undef, $tix, $t);
+			next;
+		}
+
+		die "install_ticket: Can't grok \$tixdir (from config)\n";
+	}
+
+	die join(', ', @errs) if @errs > 0;
+}
+
+sub install_ticket_in_dir {
+	my ($self, $realm, $user, $override_uid, $tix, $tixdir) = @_;
+	my $ctx = $self->{ctx};
+
 	my ($name, $passwd, $uid) = getpwnam($user);
 	my $warn;
 
@@ -474,6 +519,11 @@ sub install_ticket {
 
 	mkdir($tixdir, 0755);
 	chmod(0755, $tixdir);
+
+	my @st = stat($tixdir);
+	if ($st[4] ne '0') {
+		die "Will not prestash to non-root-owned directory!";
+	}
 
 	force_symlink(".", "$tixdir/\@$defrealm");
 
@@ -493,6 +543,8 @@ sub install_ticket {
 	} else {
 		unlink("$tixdir/$user:nopwent");
 	}
+
+	$uid = $override_uid	if defined($override_uid);
 
 	# Install new tickets atomically by writing to a temporary ccache,
 	# and moving it into place.

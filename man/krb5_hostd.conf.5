@@ -67,6 +67,22 @@ encryption types.
 is a hash mapping Kerberos library versions to an array ref of keytab
 management bugs (quirks) that must be considered when constructing or
 testing a keytab.
+.It $tixdir
+is an array reference containing a list of places to install prestashed
+tickets when they are fetched.
+Each element of the array can be either a scalar or a hash reference.
+A scalar is the path to the directory heirarchy into which to install
+the prestashed tickets.
+A hash reference contains two keys:
+.Bl -tag -width xxxxxxxx
+.It Ar path
+the path where the prestashed tickets are installed.
+.It Ar username
+if this is specified, then all of the prestashed tickets for
+.Ar path
+will have the UID of
+.Ar username .
+.El
 .It $use_fetch
 is a boolean value which tells
 .Xr krb5_hostd 8
