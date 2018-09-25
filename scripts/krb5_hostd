@@ -5,6 +5,7 @@ use Sys::Hostname;
 use Sys::Syslog;
 
 use Kharon::Engine::Server;
+use Krb5Admin::Utils qw/load_krb5hostd_config/;
 use Krb5Admin::Krb5Host::Daemon;
 
 use strict;
@@ -14,20 +15,6 @@ our $KRB5_KEYTAB_CONFIG	= '/etc/krb5/krb5_hostd.conf';
 
 #
 # These variables are expected to be set in the configuration file:
-
-our $verbose = 0;
-our %user2service = ();
-our @allowed_enctypes = ();
-our @admin_users = ();
-our $keytab_retries;
-our %krb5_libs = ();
-our %krb5_lib_quirks = ();
-our $default_krb5_lib = ();
-our %user_libs = ();
-our $use_fetch = 0;
-our $ktdir;
-our $lockdir;
-our $ext_sync_func;
 
 sub HELP_MESSAGE {
 	exec("man krb5_hostd");
@@ -45,28 +32,12 @@ openlog('krb5_hostd', 'pid', 'auth');
 my %opts;
 getopts('c:v', \%opts) or usage();
 
-our $krb5_keytab_config;
-    $krb5_keytab_config	=   $opts{c};
-    $krb5_keytab_config	//= $KRB5_KEYTAB_CONFIG;
-
-do $krb5_keytab_config if -f $krb5_keytab_config;
-# XXXrcd: fail if we can't read the configuration, I think.
-
-$verbose = 1            if exists($opts{'v'});
-
 my %config;
-$config{verbose}		=  $verbose;
-$config{user2service}		= \%user2service;
-$config{allowed_enctypes}	= \@allowed_enctypes;
-$config{admin_users}		= \@admin_users;
-$config{keytab_retries}		=  $keytab_retries;
-$config{krb5_libs}		= \%krb5_libs;
-$config{krb5_lib_quirks}	= \%krb5_lib_quirks;
-$config{default_krb5_lib}	=  $default_krb5_lib;
-$config{user_libs}		= \%user_libs;
-$config{use_fetch}		=  $use_fetch;
-$config{ktdir}			=  $ktdir;
-$config{lockdir}		=  $lockdir;
-$config{ext_sync_func}		=  $ext_sync_func;
+$config{config}			= $KRB5_KEYTAB_CONFIG;
+$config{config}			= $opts{c}		if  defined($opts{c});
+$config{config_provided}	= defined($opts{c});
+$config{verbose}		= 1			if exists($opts{'v'});
+
+load_krb5hostd_config(\%config);
 
 Krb5Admin::Krb5Host::Daemon::run(\%config);

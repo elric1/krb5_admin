@@ -7,6 +7,7 @@ package Krb5Admin::Utils;
 use Exporter;
 @ISA = qw(Exporter);
 @EXPORT_OK = qw/reverse_the host_list force_symlink
+		load_krb5hostd_config
 		load_config mk_kmdb_with_config
 		unparse_princ/;
 
@@ -82,7 +83,7 @@ sub mk_kmdb_with_config {
 	return $kmdb_class->new(%kmdb_args);
 }
 
-sub load_config {
+sub _load_config {
 	my ($config) = @_;
 	my $file = $config->{config};
 	my $provided = $config->{config_provided};
@@ -94,6 +95,12 @@ sub load_config {
 	my $ret = do $file;
 	die "Couldn't parse $file: $@\n"	if $@;
 	die "Couldn't open $file: $!\n"		if !defined($ret);
+}
+
+sub load_config {
+	my ($config) = @_;
+
+	_load_config($config);
 
 	$config->{acl_file}		  = $acl_file;
 	$config->{dbname}		//= $dbname;
@@ -111,6 +118,26 @@ sub load_config {
 	$config->{timeout}		//= $timeout;
 
 	return $config;
+}
+
+sub load_krb5hostd_config {
+	my ($config) = @_;
+
+	_load_config($config);
+
+	$config->{verbose}		//=  $verbose;
+	$config->{user2service}		  = \%user2service;
+	$config->{allowed_enctypes}	  = \@allowed_enctypes;
+	$config->{admin_users}		  = \@admin_users;
+	$config->{keytab_retries}	  =  $keytab_retries;
+	$config->{krb5_libs}		  = \%krb5_libs;
+	$config->{krb5_lib_quirks}	  = \%krb5_lib_quirks;
+	$config->{default_krb5_lib}	  =  $default_krb5_lib;
+	$config->{user_libs}		  = \%user_libs;
+	$config->{use_fetch}		  =  $use_fetch;
+	$config->{ktdir}		  =  $ktdir;
+	$config->{lockdir}		  =  $lockdir;
+	$config->{ext_sync_func}	  =  $ext_sync_func;
 }
 
 # XXXrcd: maybe we should perform a little validation later.

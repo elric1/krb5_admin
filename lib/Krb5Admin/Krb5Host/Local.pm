@@ -60,6 +60,7 @@ our $bootetype_code = $revenctypes{$bootetype_name};
 our %kt_opts = (
 	admin_users		=> {},
 	allowed_enctypes	=> [],
+	config			=> undef,
 	default_krb5_lib	=> 'mitkrb5/1.4',
 	disabled_user_defaults  => {},
 	ext_sync_func		=> sub {},
