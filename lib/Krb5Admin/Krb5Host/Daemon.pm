@@ -86,7 +86,8 @@ sub run {
 	$config->{logger} //= Krb5Admin::Krb5Host::Log->new();
 
 	my $ahr = Kharon::Protocol::ArrayHash->new(banner => {version=>'2.0'});
-	my $pes = Kharon::Engine::Server->new(protocols => [$ahr]);
+	my $pes = Kharon::Engine::Server->new(protocols => [$ahr],
+	    logger => $config->{logger});
 	$pes->Connect();
 
 	my %args;
