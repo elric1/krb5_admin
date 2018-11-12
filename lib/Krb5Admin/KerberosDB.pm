@@ -2451,6 +2451,8 @@ sub KHARON_ACL_remove_host {
 
 		return undef if !defined($perm) || $perm ne '1';
 	}
+
+	return 1;
 }
 
 sub remove_host {
