@@ -38,6 +38,20 @@ the highest key version number.  This makes it possible to recover
 keys for outstanding tickets after creating a new key.  Key recovery
 makes possible decryption of past traffic, and if possible should not
 be enabled.  This value defaults to false.
+.It Ar $deleg_to
+is a list ref containing the services, i.e. component 0 of the
+principal, to which delegation will be enabled by default.
+This is accomplished by setting the +ok_as_delegate flag on
+the principal as it is created.
+.Ar $deleg_to
+does not affect behaviour after the creation of the principal.
+The creation of these services will be explicitly disallowed for
+both logical clusters and username.hostname instances.
+If
+.Ar $deleg_to
+is not specified in the configuration file, then it shall default
+to
+.Bq Qq host .
 .It Ar $enable_host_subdomain
 is a boolean variable that if true allows hosts to manage keys for services
 whose instance is a direct subdomain of the host.  This supports multiple

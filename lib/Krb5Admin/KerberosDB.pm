@@ -207,7 +207,7 @@ sub acl_keytab {
 	if (@sprinc == 3 && $sprinc[0] eq $pprinc[0] && $sprinc[1] eq "host") {
 		$valid = 1	if $sprinc[2] eq $pprinc[2];
 
-		if (!$valid && $pprinc[1] ne "host") {
+		if (!$valid && !exists($self->{deleg_to}->{$pprinc[1]})) {
 			# OK if the subject is a cluster member of the logical
 			# host named by $pprinc[2].
 
@@ -374,10 +374,18 @@ sub new {
 
 	$self->{allow_fetch}		= $args{allow_fetch};
 	$self->{allow_fetch_old}	= $args{allow_fetch_old};
+	$self->{deleg_to}		= $args{deleg_to};
 	$self->{subdomain_prefix}	= $args{subdomain_prefix};
 	$self->{xrealm_bootstrap}	= $args{xrealm_bootstrap};
 	$self->{win_xrealm_bootstrap}	= $args{win_xrealm_bootstrap};
 	$self->{prestash_xrealm}	= $args{prestash_xrealm};
+
+	#
+	# We provide a default to deleg_to and then convert it into a hash
+	# for fast and succint lookups.
+
+	$self->{deleg_to}	//= ["host"];
+	$self->{deleg_to}	  = { map { $_ => 1 } (@{$self->{deleg_to}}) };
 
 	if (defined($self->{client})) {
 		$self->{hndl} = Krb5Admin::C::krb5_get_kadm5_hndl($ctx,
@@ -1076,7 +1084,7 @@ sub curve25519_final {
 	}
 
 	my @pprinc = Krb5Admin::C::krb5_parse_name($ctx, $name);
-	if (@pprinc == 3 && $pprinc[1] eq "host") {
+	if (@pprinc == 3 && exists($self->{deleg_to}->{$pprinc[1]})) {
 		$self->internal_modify($name, { attributes =>
 		    ['-allow_forwardable', '+ok_as_delegate'] });
 	}
