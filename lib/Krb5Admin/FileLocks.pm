@@ -13,6 +13,7 @@ use warnings;
 our %fl_opts = (
 	lockdir		=> '/var/run/krb5_keytab',
 	testing		=> 0,
+	locks		=> {},
 );
 
 sub new {
@@ -98,8 +99,10 @@ sub inner_obtain_lock {
 
 	my $lockfile = $self->lock_name($name);
 
-	$self->{"lock.$name.type"} = $type;
-	$self->{"lock.$name.fh"} = new IO::File($lockfile, O_CREAT|O_WRONLY)
+	my $lock = $self->{locks}->{$name};
+
+	$lock->{type} = $type;
+	$lock->{fh}   = new IO::File($lockfile, O_CREAT|O_WRONLY)
 	    or die "Could not open lockfile $lockfile: $!";
 
 	#
@@ -114,7 +117,7 @@ sub timed_flock {
 	$timeout //= 60;
 
 	my $lockfile = $self->lock_name($name);
-	my $lock_fh  = delete $self->{"lock.$name.fh"};
+	my $lock_fh  = delete $self->{locks}->{$name}->{fh};
 
 	local $SIG{ALRM} = sub { };
 
@@ -136,7 +139,7 @@ sub timed_flock {
 	return	if $fdstat[0] != $fnstat[0];
 	return	if $fdstat[1] != $fnstat[1];
 
-	$self->{"lock.$name.fh"} = $lock_fh;
+	$self->{locks}->{$name}->{fh} = $lock_fh;
 	return $lock_fh;
 }
 
@@ -152,7 +155,7 @@ sub lock_name {
 
 sub kill_lock {
 	my ($self, $name) = @_;
-	my $type = $self->{"lock.$name.type"};
+	my $type = $self->{locks}->{$name}->{type};
 
 	if ($type == LOCK_SH) {
 		my $fh;
@@ -167,9 +170,7 @@ sub kill_lock {
 	if ($type == LOCK_EX) {
 		unlink($self->lock_name($name));
 	}
-	delete $self->{"lock.$name.type"};
-	delete $self->{"lock.$name.fh"};
-	delete $self->{"lock.$name.count"};
+	delete $self->{locks}->{$name};
 }
 
 #
@@ -178,11 +179,8 @@ sub kill_lock {
 sub drop_all {
 	my ($self) = @_;
 
-	for my $lock (keys %$self) {
-		next if $lock !~ /^lock\.([^.]+)\.count$/;
-		next if $self->{"lock.$1.count"} < 1;
-
-		$self->kill_lock($1);
+	for my $name (keys %{$self->{locks}}) {
+		$self->kill_lock($name);
 	}
 }
 
@@ -193,15 +191,18 @@ sub obtain_lock {
 
 	$self->create_lock_dir();
 
-	$self->{"lock.$name.count"} //= 0;
-	return if $self->{"lock.$name.count"}++ > 0;
+	$self->{locks}->{$name} //= {};
+
+	my $lock = $self->{locks}->{$name};
+	$lock->{count} //= 0;
+	return if $lock->{count}++ > 0;
 
 	my $end = time() + 60;
-	while (time() < $end && !defined($self->{"lock.$name.fh"})) {
+	while (time() < $end && !defined($lock->{fh})) {
 		$self->inner_obtain_lock($name, $type, $end - time());
 	}
 
-	if (!defined($self->{"lock.$name.fh"})) {
+	if (!defined($lock->{fh})) {
 		die "Failed to obtain lock.\n";
 	}
 
@@ -211,12 +212,13 @@ sub obtain_lock {
 sub release_lock {
 	my ($self, $name) = @_;
 
-	$self->{"lock.$name.count"} //= 0;
-	if ($self->{"lock.$name.count"} < 1) {
+	my $lock = $self->{locks}->{$name};
+
+	if (!defined($lock) || $lock->{count} < 1) {
 		die "release_lock called for $name where no lock is held.";
 	}
 
-	return if --$self->{"lock.$name.count"};
+	return if --$lock->{count};
 
 	$self->kill_lock($name);
 	return;
