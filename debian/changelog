@@ -1,3 +1,33 @@
+libkrb5admin-perl (0.4) unstable; urgency=low
+
+  * Increase file lock default time to 120s
+  * Krb5Admin::FileLocks: fix locks with dots (``.'') in their names.
+  * Define $deleg_to in krb5_admind.conf.
+  * fix authz for username.hostname vis a vis host
+  * Make sure to use the designated logging callback
+  * Fix 06f5c58 Krb5Admin::KerberosDB: allow owners to remove logical hosts
+  * Add $tixdir to configure the locations of prestashed tickets.
+  * krb5_prestash: use /etc/krb5/krb5_hostd.conf when nec.
+  * krb5_host: don't warn on krb5cc_: tix
+  * Krb5Admin::Krb5Host::Local: allow get_hostbased_kmdb errors to percolate
+  * Implement krb5_keytab retry logic
+  * krb5_hostd: implement -c for config file
+  * krb5_hostd: provide -v option
+  * add krb5_hostd.8
+  * add krb5_hostd.conf.5
+  * Krb5Admin::Krb5Host::Local: use master for ACLs
+  * krb5_hostd needs to lock during krb5_prestash fetch
+  * finish modify_host to be compat with deprecated interfaces
+  * Krb5Admin::KerberosDB: provide authz for subjects
+  * Krb5Admin::KerberosDB: don't hold sqlite lock for non-sqlite methods
+  * Krb5Admin::KerberosDB: set sqlite_busy_timeout
+  * Krb5Admin::KerberosDB: put locking into insert_hostmap
+  * Increase file lock default time to 1 minute
+  * Krb5Admin::Krb5Host::Local: Remove unnec. locking
+  * Krb5Admin::KeberosDB: allow host owners to remove tix.
+
+ -- Roland C. Dowdeswell <roland.dowdeswell@twosigma.com>  Mon, 19 Nov 2018 11:48:00 +0000
+
 libkrb5admin-perl (0.3.17) unstable; urgency=low
 
   * krb5_hostd: pass $ext_sync_func all the way through.
