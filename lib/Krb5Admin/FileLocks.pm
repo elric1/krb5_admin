@@ -197,7 +197,7 @@ sub obtain_lock {
 	$lock->{count} //= 0;
 	return if $lock->{count}++ > 0;
 
-	my $end = time() + 60;
+	my $end = time() + 120;
 	while (time() < $end && !defined($lock->{fh})) {
 		$self->inner_obtain_lock($name, $type, $end - time());
 	}
