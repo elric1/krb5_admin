@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 34;
+use Test::More tests => 35;
 
 use Sys::Hostname;
 
@@ -273,6 +273,11 @@ ok(!$@, Dumper($@));
 
 eval { $kt->change_keytab($me, 'mitkrb5/1.3', $me); };
 ok(!$@, Dumper($@));
+
+#
+# This should fail:
+eval { $kt->install_keytab($me, 'mitkrb5/1.4', 'FAIL'); };
+ok($@, "This should have failed.");
 
 #
 # And, now, fetch some things and see if we get what we expect...
