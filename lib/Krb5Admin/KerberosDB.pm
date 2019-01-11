@@ -472,9 +472,8 @@ sub KHARON_PRECOMMAND {
 	$dbh->{sqlite_use_immediate_transaction} = 0;
 	if (defined($rwcmds{$cmd})) {
 		$dbh->{sqlite_use_immediate_transaction} = 1;
+		$dbh->begin_work();
 	}
-
-	$dbh->begin_work();
 }
 
 sub KHARON_POSTCOMMAND {
