@@ -469,6 +469,16 @@ sub KHARON_PRECOMMAND {
 	delete $rwcmds{lock_hostprinc};
 	delete $rwcmds{unlock_hostprinc};
 
+	#
+	# We are delaying the SQL transaction until after we obtain
+	# the POSIX lock for all variants of modify_host to avoid
+	# certain locking issues at the cost of evaluating the SQL
+	# authorisation code out of the transaction.
+
+	delete $rwcmds{modify_host};
+	delete $rwcmds{insert_hostmap};
+	delete $rwcmds{remove_hostmap};
+
 	$dbh->{sqlite_use_immediate_transaction} = 0;
 	if (defined($rwcmds{$cmd})) {
 		$dbh->{sqlite_use_immediate_transaction} = 1;
@@ -2347,6 +2357,14 @@ sub modify_host {
 	}
 
 	$self->{locks}->obtain_lock($host, LOCK_EX)	if $do_locking;
+
+	#
+	# Now that we have obtained the POSIX lock, we start the
+	# SQL transaction that we did defer in KHARON_PRECOMMAND().
+
+	$dbh->{sqlite_use_immediate_transaction} = 1;
+	$dbh->begin_work();
+
 	eval {
 		generic_modify($dbh, \%field_desc, 'hosts', $host, %args);
 
