@@ -195,7 +195,10 @@ sub obtain_lock {
 
 	my $lock = $self->{locks}->{$name};
 	$lock->{count} //= 0;
-	return if $lock->{count}++ > 0;
+	if ($lock->{count} > 0) {
+		$lock->{count}++;
+		return;
+	}
 
 	my $end = time() + 120;
 	while (time() < $end && !defined($lock->{fh})) {
@@ -205,6 +208,8 @@ sub obtain_lock {
 	if (!defined($lock->{fh})) {
 		die "Failed to obtain lock.\n";
 	}
+
+	$lock->{count}++;
 
 	return;
 }
