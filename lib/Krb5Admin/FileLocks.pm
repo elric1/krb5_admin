@@ -229,6 +229,18 @@ sub release_lock {
 	return;
 }
 
+sub has_lock {
+	my ($self, $name) = @_;
+
+	my $lock = $self->{locks}->{$name};
+
+	if (defined($lock) && $lock->{count} > 0) {
+		return $lock->{$name}->{type};
+	}
+
+	return undef;
+}
+
 sub run_with_exlock {
 	my ($self, $name, $cmd, @args) = @_;
 	my $ret;

@@ -2287,6 +2287,10 @@ sub new_host_secret {
 # exclusive lock on the actual principal on which we are operating
 # to prevent two krb5_keytab operations from interfering with each
 # other.
+#
+# NOTE: is_cluster_member() will later use the presence of the lock
+#       as evidence that the $self->{acl}->check() has already
+#	succeeded and the cluster hasn't changed because it is locked.
 
 sub KHARON_ACL_lock_hostprinc {
 	my ($self, $cmd, $name) = @_;
@@ -2535,7 +2539,27 @@ sub query_hostmap {
 
 sub is_cluster_member {
 	my ($self, $logical, $physical) = @_;
+	my $ctx = $self->{ctx};
 	my $dbh = $self->{dbh};
+
+	#
+	# As an optimisation, we note that we can only obtain a shared
+	# lock on a cluster if we are a member of said cluster---owners
+	# get exclusive locks in modify_host().  And so, our optimisation
+	# is that if we are asking if _we_, i.e. $self->{client}'s instance,
+	# are a member of cluster, then it is sufficient to check that we
+	# have a shared lock on the cluster because that means essentially
+	# that this code has run before and that the cluster membership has
+	# not changed.
+
+	my $subject = $self->{client};
+	my @sprinc = Krb5Admin::C::krb5_parse_name($ctx, $subject);
+	if (@sprinc == 3 && $sprinc[1] eq 'host' && $sprinc[2] eq $physical) {
+		my $hl = $self->{locks}->has_lock($logical);
+		if (defined($hl) && $hl == LOCK_SH) {
+			return 1;
+		}
+	}
 
 	my %w = ( "logical" => $logical, "physical" => $physical );
 	return generic_query($dbh, \%field_desc, 'hostmap', [keys %w], %w);
