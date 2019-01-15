@@ -2390,8 +2390,8 @@ sub modify_host {
 	# use case for DB triggers.
 
 	my @notify_hosts;
-	push(@notify_hosts, $args{add_member})	if defined($args{add_member});
-	push(@notify_hosts, $args{member})	if defined($args{member});
+	push(@notify_hosts, @{$args{add_member}}) if defined($args{add_member});
+	push(@notify_hosts, @{$args{member}})	  if defined($args{member});
 
 	for my $h (@notify_hosts) {
 		eval { notify_update_required($self, $h); };
