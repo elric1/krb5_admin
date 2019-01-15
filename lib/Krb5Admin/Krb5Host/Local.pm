@@ -1672,15 +1672,29 @@ my @curve25519_ops = qw(change create);
 # XXX - validate user is a user
 sub KHARON_ACL_curve25519_final {
 	my ($self, $cmd, $priv) = @_;
-	my $ctx   = $self->{ctx};
-	my $creds = $self->{client};
 
-	my ($op, $user, $name, $lib, $kvno, %args) = @$priv;
-	# XXXrcd: SANITY CHECK!
+	my ($op, $user, $name) = @$priv;
 
 	if ((grep { $op eq $_ } @curve25519_ops) < 1) {
 		return "arg1 must be one of: " . join(', ', @curve25519_ops);
 	}
+
+	return cluster_acl($self, $name);
+}
+
+sub cluster_acl {
+	my ($self, $name) = @_;
+	my $ctx   = $self->{ctx};
+	my $creds = $self->{client};
+
+	# Cache ACL results for a given cluster name and requesting client
+	# credentials.
+	#
+	if (exists $self->{"_acl"}->{$name}->{$creds}) {
+	    return $self->{"_acl"}->{$name}->{$creds};
+	}
+	# Instantiate initial undef value
+	my $r = \$self->{"_acl"}->{$name}->{$creds};
 
 	my $defrealm = Krb5Admin::C::krb5_get_realm($ctx);
 
@@ -1709,20 +1723,23 @@ sub KHARON_ACL_curve25519_final {
 	}
 
 	my $kmdb = $self->get_hostbased_kmdb($realm, $self->{myname});
-	$kmdb->master();
-	my $cluster = $kmdb->query_hostmap($logical);
+	my $master;
+	MASTER_FALLBACK: {
+		my $cluster = $kmdb->query_hostmap($logical);
+		my @hosts = ($self->{myname}, $chost);
+		for my $host (@hosts) {
+			next if grep { $_ eq $host } @$cluster;
 
-	if (!grep { $_ eq $self->{myname} } @$cluster) {
-		return sprintf("host %s is not a member of cluster %s.",
-			       $self->{myname}, $logical);
+			if (!defined($master)) {
+				$master = $kmdb->master();
+				redo MASTER_FALLBACK;
+			}
+			$$r = sprintf("host %s is not a member of cluster %s.",
+				      $host, $logical);
+		}
 	}
-
-	if (!grep { $_ eq $chost } @$cluster) {
-		return sprintf("host %s is not a member of cluster %s.",
-			       $chost, $logical);
-	}
-
-	return 1;
+	$self->reset_hostbased_kmdb();
+	return ($$r //= 1);
 }
 
 sub curve25519_start {
@@ -1746,54 +1763,7 @@ sub curve25519_final {
 
 sub KHARON_ACL_write_old {
 	my ($self, $cmd, $user, $princ) = @_;
-	my $ctx   = $self->{ctx};
-	my $creds = $self->{client};
-
-	my $defrealm = Krb5Admin::C::krb5_get_realm($ctx);
-
-	my ($crealm, $cservice, $chost) =
-	    Krb5Admin::C::krb5_parse_name($ctx, $creds);
-
-	my ($realm, $service, $logical) =
-	    Krb5Admin::C::krb5_parse_name($ctx, $princ);
-
-	#
-	# XXXrcd: should we enforce restrictions on realm in @pp?  Certainly,
-	#         we can't just as a random KDC whether we're in a cluster
-	#         with some hosts that it administers.  So, we'll enforce
-	#         this for now...
-
-	if ($crealm ne $defrealm) {
-		return "Client must come from default realm.";
-	}
-
-	if ($cservice ne 'host') {
-		return "Only host princs can synchronize old keys.";
-	}
-
-	if ($service eq 'host') {
-		return "The 'host' service must not be clustered.";
-	}
-
-	if ($realm ne $defrealm) {
-		return "Cluster logical names must be in the default realm.";
-	}
-
-	my $kmdb = $self->get_hostbased_kmdb($realm, $self->{myname});
-	$kmdb->master();
-	my $cluster = $kmdb->query_hostmap($logical);
-
-	if (!grep { $_ eq $self->{myname} } @$cluster) {
-		return sprintf("host %s is not a member of cluster %s.",
-			       $self->{myname}, $logical);
-	}
-
-	if (!grep { $_ eq $chost } @$cluster) {
-		return sprintf("host %s is not a member of cluster %s.",
-			       $chost, $logical);
-	}
-
-	return 1;
+	return cluster_acl($self, $princ);
 }
 
 sub write_old {
