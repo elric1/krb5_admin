@@ -1,3 +1,14 @@
+libkrb5admin-perl (0.4.1) unstable; urgency=low
+
+  * Krb5Admin::KerberosDB: fix prestash notify on cluster change
+  * Krb5Admin::KerberosDB: essentially memoise is_cluster_member()
+  * Krb5Admin::FileLocks: don't inc ref count until lock is obtained.
+  * Drop cluster ACL check KDC connections promptly
+  * Delay starting the SQL transaction in modify_host
+  * don't start a SQLite3 transaction for readonly ops
+
+ -- Roland C. Dowdeswell <roland.dowdeswell@twosigma.com>  Wed, 16 Jan 2018 11:48:00 +0000
+
 libkrb5admin-perl (0.4) unstable; urgency=low
 
   * Increase file lock default time to 120s
