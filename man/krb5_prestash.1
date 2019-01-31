@@ -61,7 +61,11 @@ The commands are:
 .Bl -ohang -offset ind
 .It fetch Ar REALM Oo Ar REALM ... Oc
 will fetch all of the configured prestashed tickets for the current
-host and install them in
+host
+.Po as defined by
+.Xr hostname 2
+.Pc
+and install them in
 .Pa /var/spool/tickets .
 This command must be run as root as it must change the ownership of
 the installed credentials caches to the appropriate users.
