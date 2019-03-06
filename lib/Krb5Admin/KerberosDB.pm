@@ -3152,9 +3152,9 @@ sub KHARON_IV_list_group	{ KHARON_IV_list_subject(@_, %gtype); }
 sub KHARON_ACL_list_group	{ KHARON_ACL_list_subject(@_, %gtype); }
 sub list_group			{ list_subject(@_, %gtype); }
 
-sub KHARON_IV_modify_group	{ KHARON_IV_modify_subject(@_, %gtype); }
-sub KHARON_ACL_modify_group	{ KHARON_ACL_modify_subject(@_, %gtype); }
-sub modify_group		{ modify_subject(@_, %gtype); }
+sub KHARON_IV_modify_group	{ KHARON_IV_modify_subject(@_); }
+sub KHARON_ACL_modify_group	{ KHARON_ACL_modify_subject(@_); }
+sub modify_group		{ modify_subject(@_); }
 
 sub KHARON_IV_query_group	{ KHARON_IV_query_subject(@_); }
 sub KHARON_ACL_query_group	{ KHARON_ACL_query_subject(@_); }
