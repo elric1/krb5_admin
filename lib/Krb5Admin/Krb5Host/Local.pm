@@ -470,34 +470,39 @@ sub install_ticket {
 
 	my @errs;
 	for my $t (@$tixdir) {
-		if (ref($t) eq 'HASH') {
-			my ($name, $passwd, $uid);
-
-			if (defined($t->{username})) {
-				($name, $passwd, $uid) =
-				    getpwnam($t->{username});
-
-				push(@errs, "$t->{username} has no uid");
-				next;
-			}
-
-			# It's okay for username to be undef, but not path.
-			if (!defined($t->{path})) {
-				die "\$tixdir hashes must specify ``path''";
-			}
-
-			$self->install_ticket_in_dir($realm, $user, $uid, $tix,
-			    $t->{path});
-
-			next;
-		}
-
 		if (ref($t) eq '') {
 			$self->install_ticket_in_dir($realm, $user, undef, $tix, $t);
 			next;
 		}
 
-		die "install_ticket: Can't grok \$tixdir (from config)\n";
+		if (ref($t) ne 'HASH') {
+			# This is a permanent error, no need to try
+			# any other tix---the config is broken.
+			die "install_ticket: Can't grok \$tixdir " .
+			    "(from config)\n";
+		}
+
+		#
+		# Now, ref($t) must equal HASH:
+
+		my ($name, $passwd, $uid);
+
+		if (defined($t->{username})) {
+			($name, $passwd, $uid) = getpwnam($t->{username});
+
+			if (!defined($uid)) {
+				die "$t->{username} has no uid " .
+				    "from \$tixdir\n";
+			}
+		}
+
+		# It's okay for username to be undef, but not path.
+		if (!defined($t->{path})) {
+			die "\$tixdir hashes must specify ``path''";
+		}
+
+		$self->install_ticket_in_dir($realm, $user, $uid, $tix,
+		    $t->{path});
 	}
 
 	die join(', ', @errs) if @errs > 0;
