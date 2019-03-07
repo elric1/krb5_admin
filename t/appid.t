@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 54;
+use Test::More tests => 84;
 
 use Krb5Admin::ForkClient;
 
@@ -67,20 +67,31 @@ our $acls = {
 	'sadric@IMRRYR.ORG'	=> { type => 'krb5', @owner_user, @members},
 	'group1'		=> { type => 'group', @owner_grp, @members},
 	'group2'		=> { type => 'group', @owner_grp, @members},
+	'group3'		=> { type => 'group', @owner_grp, @members},
+	'group4'		=> { type => 'group', @owner_grp, @members},
+	'group5'		=> { type => 'group', @owner_grp, @members},
+	'group6'		=> { type => 'group', @owner_grp, @members},
+	'group7'		=> { type => 'group', @owner_grp, @members},
+	'group8'		=> { type => 'group', @owner_grp, @members},
+	'group9'		=> { type => 'group', @owner_grp, @members},
+	'group10'		=> { type => 'group', @owner_grp, @members},
+	'group11'		=> { type => 'group', @owner_grp, @members},
+	'group12'		=> { type => 'group', @owner_grp, @members},
+	'group13'		=> { type => 'group', @owner_grp, @members},
+	'group14'		=> { type => 'group', @owner_grp, @members},
+	'group15'		=> { type => 'group', @owner_grp, @members},
+	'group16'		=> { type => 'group', @owner_grp, @members},
+	'group17'		=> { type => 'group', @owner_grp, @members},
 	'master_group'		=> { type => 'group', @owner_grp, @members},
     };
 
 my $i;
 for $i (keys %$acls) {
-	my $type = $acls->{$i}->{type};
-
 	next if $i eq 'admin_user@TEST.REALM';	# now create in 00prepare.t.
 	next if $i eq 'normal_user@TEST.REALM';	# now create in 00prepare.t.
 
-	my %args = %{$acls->{$i}};
-	delete $args{type};
-
-	testObjC("Create ACL: $i", $kmdb, [], 'add_acl', $i, $type, %args);
+	testObjC("Create ACL: $i", $kmdb, [], 'create_subject', $i,
+	    %{$acls->{$i}});
 }
 
 testObjC("Query ACLs", $kmdb, [$acls], 'query_acl');
@@ -109,13 +120,28 @@ for $i (0..3) {
 our $groups = {
 	'group1'	=> [ 'elric@IMRRYR.ORG', 'yyrkoon@IMRRYR.ORG' ],
 	'group2'	=> [ 'cymoril@IMRRYR.ORG', 'sadric@IMRRYR.ORG' ],
-	'master_group'	=> [ 'group1', 'group2' ],
+	'group3'	=> [ 'group1', 'group2' ],
+	'group4'	=> [ 'group3' ],
+	'group5'	=> [ 'group4' ],
+	'group6'	=> [ 'group5' ],
+	'group7'	=> [ 'group6' ],
+	'group8'	=> [ 'group7' ],
+	'group9'	=> [ 'group8' ],
+	'group10'	=> [ 'group9' ],
+	'group11'	=> [ 'group10' ],
+	'group12'	=> [ 'group11' ],
+	'group13'	=> [ 'group12' ],
+	'group14'	=> [ 'group13' ],
+	'group15'	=> [ 'group14' ],
+	'group16'	=> [ 'group15' ],
+	'group17'	=> [ 'group16' ],
+	'master_group'	=> [ 'group17' ],
     };
 
 for $i (keys %$groups) {
 	for my $j (@{$groups->{$i}}) {
-		testObjC("insert_aclgroup", $kmdb, [undef], 'insert_aclgroup',
-		    $i, $j);
+		testObjC("add members to a group", $kmdb, [], 'modify_group',
+		    $i, add_member => [$j]);
 	}
 }
 
