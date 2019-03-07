@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-use Test::More tests => 48;
+use Test::More tests => 51;
 
 use Sys::Hostname;
 
@@ -133,13 +133,19 @@ my @x = [
 testMustDie("Add user to non existant hostmap", $kmdb, "add_host_owner",
     qw/a1111.test.realm normal_user@TEST.REALM/);
 
+testMustDie("Add user to non existant hostmap", $kmdb, "modify_host",
+    'a1111.test.realm', add_owner => ['normal_user@TEST.REALM']);
+
 my $kmdb_user = mk_kmdb(CREDS => 'normal_user@TEST.REALM');
 testMustDie("Normal User Attempts to add", $kmdb_user, "insert_hostmap",
     qw/cname.test.realm c.test.realm/);
+
+testMustDie("Normal User Attempts to modify_host", $kmdb_user, "modify_host",
+    'cname.test.realm', add_member=>['c.test.realm']);
 undef $kmdb_user;
 
-testObjC("Add normal_user to hostmap owners", $kmdb, [1],"add_host_owner",
-    qw/cname.test.realm normal_user@TEST.REALM/);
+testObjC("Add normal_user to hostmap owners", $kmdb, [undef], "modify_host",
+    'cname.test.realm', add_owner => ['normal_user@TEST.REALM']);
 
 testObjC("Query host owner must show correct", $kmdb, @x,"query_host_owner",
     qw/cname.test.realm/);
@@ -147,20 +153,28 @@ undef $kmdb;
 
 $kmdb_user = mk_kmdb(CREDS => 'normal_user@TEST.REALM');
 testMustNotDie("normal_user should be able to add hostmap now", $kmdb_user,
-    "insert_hostmap", qw/cname.test.realm c.test.realm/);
+    'modify_host', 'cname.test.realm', add_member => ['c.test.realm']);
 
 undef $kmdb_user;
 
 $kmdb = admin_user_connect();
 
-testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group1 group/);
-testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group2 group/);
-testMustNotDie("add a group", $kmdb, "add_acl", qw/test_group3 group/);
-testMustNotDie("add a group with odd different", $kmdb, "add_acl",
-    qw/test_group4 group/, owner=>'normal_user@TEST.REALM');
+testMustNotDie("add a group", $kmdb, "create_group", 'test_group1');
+testMustNotDie("add a group", $kmdb, "create_group", 'test_group2');
+testMustNotDie("add a group", $kmdb, "create_group", 'test_group3');
+testMustNotDie("add a group with odd different", $kmdb, "create_group",
+    'test_group4', owner=>['normal_user@TEST.REALM']);
 
 testObjC("acl_owner", $kmdb, [[{owner=>'normal_user@TEST.REALM',
     name=>'test_group4'}]],"query_acl_owner", qw/test_group4/);
+
+testObjC("query_group", $kmdb, [ {
+             'member' => [],
+             'owner' => [
+                          'normal_user@TEST.REALM'
+                        ],
+             'type' => 'group'
+    } ], 'query_group', 'test_group4');
 
 testObjC("create logical for someone else", $kmdb,
     [[{owner=>'normal_user@TEST.REALM', name=>'test_group4'}]],
@@ -190,18 +204,18 @@ testMustDie("normal user should not modify aclgroup",
 	qw/test_group1 normal_user@TEST.REALM/);
 undef $kmdb_user;
 
-testMustNotDie("add owner of test_group1", $kmdb, "add_acl_owner",
-	qw/test_group3 normal_user@TEST.REALM/);
+testMustNotDie("add owner of test_group1", $kmdb, "modify_group",
+	'test_group3', add_owner => ['normal_user@TEST.REALM']);
 
 $kmdb_user = mk_kmdb(CREDS => 'normal_user@TEST.REALM');
-testMustNotDie("add a group", $kmdb_user, "insert_aclgroup",
-    qw/test_group3 normal_user@TEST.REALM/);
+testMustNotDie("add a group", $kmdb_user, "modify_group",
+    'test_group3', add_member => ['normal_user@TEST.REALM']);
 testMustDie("delete self owner", $kmdb_user, "remove_acl_owner",
     qw/test_group3 normal_user@TEST.REALM/);
 undef $kmdb_user;
 
-testMustNotDie("add a owner", $kmdb, "add_acl_owner",
-    qw/test_group3 normal_user@TEST.REALM/);
+testMustNotDie("add a owner", $kmdb, "modify_group",
+    'test_group3', add_owner => ['normal_user@TEST.REALM']);
 testMustNotDie("delete self owner", $kmdb, "remove_acl_owner",
     qw/test_group3 normal_user@TEST.REALM/);
 
