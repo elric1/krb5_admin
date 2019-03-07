@@ -2456,7 +2456,7 @@ sub bind_host {
 	my $sth  = sql_exec($dbh, $stmt, $binding, $host);
 
 	if ($sth->rows != 1) {
-		die [500, "Host $host does not exist."];
+		return $self->create_host($host, bootbinding=>$binding);
 	}
 
 	# XXXrcd: we must check if we successfully bound the host.
