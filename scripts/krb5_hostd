@@ -23,7 +23,7 @@ sub HELP_MESSAGE {
 
 sub usage {
 
-	print STDERR "Usage: krb5_hostd\n";
+	print STDERR "Usage: krb5_hostd [-c conf_file]\n";
 	exit(1);
 }
 

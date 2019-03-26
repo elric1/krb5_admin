@@ -18,7 +18,13 @@ instantaneous prestashed ticket delivery.
 It expects to be spawned as an inetd-style service via
 .Xr knc 1 .
 .Pp
-There are no options.
+The options are as follows:
+.Bl -tag -width indentxxxxxx
+.It Fl c Ar conf_file
+specifies the location of the configuration file.
+Defaults to
+.Pa /etc/krb5/krb5_hostd.conf .
+.El
 .Sh SEE ALSO
 .Xr knc 1 ,
 .Xr krb5_hostd.conf 5 .
