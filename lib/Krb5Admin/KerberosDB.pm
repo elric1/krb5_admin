@@ -283,6 +283,17 @@ sub connect_sqlite {
 	my $sqldbname = $self->{sqldbname};
 	my $dbh;
 
+	if (0) {
+		$dbh = DBI->connect("dbi:Pg:dbname=elric");
+		die "Could not open database " . DBI::errstr if !defined($dbh);
+		$dbh->{RaiseError} = 1;
+		$dbh->{PrintError} = 0;
+		$dbh->{AutoCommit} = 1;
+		$self->{my_dbh} = 1;
+		$self->{dbh} = $dbh;
+		return $dbh;
+	}
+
 	# initialize our database handle
 	$dbh = DBI->connect($sqldbname, "", "",
 	    {RaiseError => 1, PrintError => 0, AutoCommit => 1,
@@ -292,6 +303,7 @@ sub connect_sqlite {
 	$dbh->do("PRAGMA journal_mode = WAL");
 	$dbh->{PrintError} = 0;
 	$dbh->{RaiseError} = 1;
+	$dbh->sqlite_busy_timeout(60 * 1000);
 
 	$self->{my_dbh} = 1;
 	$self->{dbh} = $dbh;
@@ -353,8 +365,6 @@ sub new {
 		$self->connect_sqlite();
 		$dbh = $self->{dbh};
 	}
-
-	$dbh->sqlite_busy_timeout(60 * 1000);
 
 	my $ctx = $self->{ctx};
 
@@ -671,38 +681,14 @@ sub init_db {
 	$dbh->do(qq{
 		CREATE TABLE labels (
 			label		VARCHAR PRIMARY KEY,
-			desc		VARCHAR NOT NULL
+			"desc"		VARCHAR NOT NULL
 		)
 	});
 
 	$dbh->do(qq{
 		CREATE TABLE appids (
 			appid		VARCHAR PRIMARY KEY,
-			desc		VARCHAR
-		)
-	});
-
-	$dbh->do(qq{
-		CREATE TABLE appid_acls (
-			appid		VARCHAR NOT NULL,
-			acl		VARCHAR NOT NULL,
-
-			PRIMARY KEY (appid, acl)
-			FOREIGN KEY (appid) REFERENCES appids(appid)
-				ON DELETE CASCADE
-			FOREIGN KEY (acl)   REFERENCES acls(name)
-		)
-	});
-
-	$dbh->do(qq{
-		CREATE TABLE appid_cstraints (
-			appid		VARCHAR NOT NULL,
-			cstraint	VARCHAR NOT NULL,
-
-			PRIMARY KEY (appid, cstraint)
-			FOREIGN KEY (appid)	REFERENCES appids(appid)
-				ON DELETE CASCADE
-			FOREIGN KEY (cstraint)	REFERENCES labels(label)
+			"desc"		VARCHAR
 		)
 	});
 
@@ -719,10 +705,34 @@ sub init_db {
 		CREATE TABLE acls_owner (
 			name		VARCHAR,
 			owner		VARCHAR,
-			PRIMARY KEY (name, owner)
+			PRIMARY KEY (name, owner),
 			FOREIGN KEY (name) REFERENCES acls(name)
-				ON DELETE CASCADE
+				ON DELETE CASCADE,
 			FOREIGN KEY (owner) REFERENCES acls(name)
+		)
+	});
+
+	$dbh->do(qq{
+		CREATE TABLE appid_acls (
+			appid		VARCHAR NOT NULL,
+			acl		VARCHAR NOT NULL,
+
+			PRIMARY KEY (appid, acl),
+			FOREIGN KEY (appid) REFERENCES appids(appid)
+				ON DELETE CASCADE,
+			FOREIGN KEY (acl)   REFERENCES acls(name)
+		)
+	});
+
+	$dbh->do(qq{
+		CREATE TABLE appid_cstraints (
+			appid		VARCHAR NOT NULL,
+			cstraint	VARCHAR NOT NULL,
+
+			PRIMARY KEY (appid, cstraint),
+			FOREIGN KEY (appid)	REFERENCES appids(appid)
+				ON DELETE CASCADE,
+			FOREIGN KEY (cstraint)	REFERENCES labels(label)
 		)
 	});
 
@@ -731,9 +741,9 @@ sub init_db {
 			aclgroup	VARCHAR NOT NULL,
 			acl		VARCHAR NOT NULL,
 
-			PRIMARY KEY (aclgroup, acl)
+			PRIMARY KEY (aclgroup, acl),
 			FOREIGN KEY (aclgroup) REFERENCES acls(name)
-				ON DELETE CASCADE
+				ON DELETE CASCADE,
 			FOREIGN KEY (acl)      REFERENCES acls(name)
 				ON DELETE CASCADE
 		)
@@ -754,6 +764,13 @@ sub init_db {
 	});
 
 	$dbh->do(qq{
+		CREATE TABLE host_secret_ids (
+			id		INTEGER NOT NULL PRIMARY KEY,
+			secret		VARCHAR NOT NULL
+		)
+	});
+
+	$dbh->do(qq{
 		CREATE TABLE host_secrets (
 			name		VARCHAR REFERENCES hosts(name),
 			id		INTEGER REFERENCES host_secret_ids(id),
@@ -762,20 +779,13 @@ sub init_db {
 	});
 
 	$dbh->do(qq{
-		CREATE TABLE host_secret_ids (
-			id		INTEGER NOT NULL PRIMARY KEY,
-			secret		VARCHAR NOT NULL
-		)
-	});
-
-	$dbh->do(qq{
 		CREATE TABLE host_labels (
 			host		VARCHAR NOT NULL,
 			label		VARCHAR NOT NULL,
 
-			PRIMARY KEY (host, label)
+			PRIMARY KEY (host, label),
 			FOREIGN KEY (host)	REFERENCES hosts(name)
-				ON DELETE CASCADE
+				ON DELETE CASCADE,
 			FOREIGN KEY (label)	REFERENCES labels(label)
 		)
 	});
@@ -785,8 +795,8 @@ sub init_db {
 			logical		VARCHAR NOT NULL,
 			physical	VARCHAR NOT NULL,
 
-			PRIMARY KEY (logical, physical)
-			FOREIGN KEY (logical)  REFERENCES hosts(name)
+			PRIMARY KEY (logical, physical),
+			FOREIGN KEY (logical)  REFERENCES hosts(name),
 			FOREIGN KEY (physical) REFERENCES hosts(name)
 		)
 	});
@@ -795,9 +805,9 @@ sub init_db {
 		CREATE TABLE hosts_owner (
 			name		VARCHAR,
 			owner		VARCHAR,
-			PRIMARY KEY (name, owner)
+			PRIMARY KEY (name, owner),
 			FOREIGN KEY (name) REFERENCES hosts(name)
-				ON DELETE CASCADE
+				ON DELETE CASCADE,
 			FOREIGN KEY (owner) REFERENCES acls(name)
 		)
 	});
@@ -807,7 +817,7 @@ sub init_db {
 			principal	VARCHAR NOT NULL,
 			host		VARCHAR NOT NULL,
 
-			PRIMARY KEY (principal, host)
+			PRIMARY KEY (principal, host),
 			FOREIGN KEY (host) REFERENCES hosts(name)
 		)
 	});
@@ -819,10 +829,9 @@ sub init_db {
 			instance	VARCHAR,
 			realm		VARCHAR,
 
-			PRIMARY KEY (servicename, accountname, instance)
-			FOREIGN KEY (instance)
-			REFERENCES hosts(name)
-			ON DELETE CASCADE
+			PRIMARY KEY (servicename, accountname, instance),
+			FOREIGN KEY (instance) REFERENCES hosts(name)
+				ON DELETE CASCADE
 		)
 	});
 
@@ -871,9 +880,9 @@ sub upgrade_db_add_more_cascades {
 				appid		VARCHAR NOT NULL,
 				acl		VARCHAR NOT NULL,
 
-				PRIMARY KEY (appid, acl)
+				PRIMARY KEY (appid, acl),
 				FOREIGN KEY (appid) REFERENCES appids(appid)
-					ON DELETE CASCADE
+					ON DELETE CASCADE,
 				FOREIGN KEY (acl)   REFERENCES acls(name)
 					ON DELETE CASCADE
 			)
@@ -883,9 +892,9 @@ sub upgrade_db_add_more_cascades {
 				name		VARCHAR,
 				owner		VARCHAR,
 
-				PRIMARY KEY (name, owner)
+				PRIMARY KEY (name, owner),
 				FOREIGN KEY (name) REFERENCES acls(name)
-					ON DELETE CASCADE
+					ON DELETE CASCADE,
 				FOREIGN KEY (owner) REFERENCES acls(name)
 					ON DELETE CASCADE
 			)
@@ -895,9 +904,9 @@ sub upgrade_db_add_more_cascades {
 				name		VARCHAR,
 				owner		VARCHAR,
 
-				PRIMARY KEY (name, owner)
+				PRIMARY KEY (name, owner),
 				FOREIGN KEY (name) REFERENCES hosts(name)
-					ON DELETE CASCADE
+					ON DELETE CASCADE,
 				FOREIGN KEY (owner) REFERENCES acls(name)
 					ON DELETE CASCADE
 			)
@@ -907,7 +916,7 @@ sub upgrade_db_add_more_cascades {
 				principal	VARCHAR NOT NULL,
 				host		VARCHAR NOT NULL,
 
-				PRIMARY KEY (principal, host)
+				PRIMARY KEY (principal, host),
 				FOREIGN KEY (host) REFERENCES hosts(name)
 					ON DELETE CASCADE
 			)
@@ -952,22 +961,22 @@ sub drop_db {
 
 	$dbh->do('DROP TABLE IF EXISTS db_version');
 	$dbh->do('DROP TABLE IF EXISTS features');
+	$dbh->do('DROP TABLE IF EXISTS account_principal_map');
+	$dbh->do('DROP TABLE IF EXISTS external_account_principal_map');
 	$dbh->do('DROP TABLE IF EXISTS aclgroups');
 	$dbh->do('DROP TABLE IF EXISTS appid_cstraints');
 	$dbh->do('DROP TABLE IF EXISTS appid_acls');
 	$dbh->do('DROP TABLE IF EXISTS acls_owner');
 	$dbh->do('DROP TABLE IF EXISTS appids');
 	$dbh->do('DROP TABLE IF EXISTS prestashed');
-	$dbh->do('DROP TABLE IF EXISTS hosts_owner');
 	$dbh->do('DROP TABLE IF EXISTS host_secrets');
 	$dbh->do('DROP TABLE IF EXISTS host_secret_ids');
+	$dbh->do('DROP TABLE IF EXISTS hosts_owner');
 	$dbh->do('DROP TABLE IF EXISTS hostmap');
 	$dbh->do('DROP TABLE IF EXISTS host_labels');
 	$dbh->do('DROP TABLE IF EXISTS acls');
 	$dbh->do('DROP TABLE IF EXISTS hosts');
 	$dbh->do('DROP TABLE IF EXISTS labels');
-	$dbh->do('DROP TABLE IF EXISTS account_principal_map');
-	$dbh->do('DROP TABLE IF EXISTS external_account_principal_map');
 }
 
 sub KHARON_ACL_master { return 1; }
@@ -1040,9 +1049,9 @@ sub KHARON_ACL_curve25519_final {
 	$args{invoking_user} = $user;
 
 	if ($op eq "create") {
-		return $self->{acl}->check($op, $name, %args);
+		return $self->{acl}->check1($op, $name, %args);
 	} else {
-		return $self->{acl}->check($op, $name, $kvno, %args);
+		return $self->{acl}->check1($op, $name, $kvno, %args);
 	}
 }
 
@@ -1135,7 +1144,7 @@ sub KHARON_ACL_generate_ecdh_key1 {
 			    join(', ', @gek_operations)];
 		}
 
-		return $self->{acl}->check($operation, @args);
+		return $self->{acl}->check1($operation, @args);
 	}
 
 	return 1;
@@ -2265,7 +2274,7 @@ sub new_host_secret {
 sub KHARON_ACL_lock_hostprinc {
 	my ($self, $cmd, $name) = @_;
 
-	return $self->{acl}->check('create', $name);
+	return $self->{acl}->check1('create', $name);
 }
 
 sub lock_hostprinc {
@@ -2756,8 +2765,10 @@ sub query_ticket {
 	my @bindv;
 
 	if (exists($query{host})) {
-		my $tmp  = "target = ?";
-		   $tmp .= " OR configured = ?"	if $query{expand};
+		my $tmp = "host = ?";
+		if ($query{expand}) {
+			$tmp = "(hostmap.physical = ? OR prestashed.host = ?)";
+		}
 		push(@where, $tmp);
 		push(@bindv, $query{host});
 		push(@bindv, $query{host})	if $query{expand};
