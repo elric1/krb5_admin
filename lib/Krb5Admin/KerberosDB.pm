@@ -1979,37 +1979,7 @@ sub is_appid_owner {
 	my $dbh = $self->{dbh};
 	my $ctx = $self->{ctx};
 
-	#
-	# We implement here a single SQL statement that will deal
-	# with recursive groups up to N levels.	 After this, we give
-	# up...	 XXXrcd: should we deal with more recursion than this
-	# or simply define N as being a hard limit?
-
-	my @joins = ('LEFT JOIN acls ON appid_acls.acl = acls.name');
-	my @where = ('acls.name = ?');
-	my @bindv = ($princ);
-
-	for (my $i=0; $i < GROUP_RECURSION; $i++) {
-		my $join = "LEFT JOIN aclgroups AS aclgroups$i ";
-		if ($i) {
-			$join .= "ON aclgroups$i.aclgroup = aclgroups" .
-			    ($i - 1) . ".acl";
-		} else {
-			$join .= "ON aclgroups$i.aclgroup = acls.name";
-		}
-
-		push(@joins, $join);
-		push(@where, "aclgroups$i.acl = ?");
-		push(@bindv, $princ);
-	}
-
-	my $stmt = q{SELECT COUNT(appid_acls.appid) FROM appid_acls } .
-	    join(' ', @joins) . ' WHERE appid_acls.appid = ? AND (' .
-	    join(' OR ', @where) . ")";
-
-	my $sth = sql_exec($dbh, $stmt, $appid, @bindv);
-
-	return $sth->fetch()->[0] ? 1 : 0;
+	return is_owner($dbh, 'appid', $princ, $appid);
 }
 
 
@@ -3412,13 +3382,23 @@ sub add_host_owner {
 sub is_owner {
 	my ($dbh, $obj_type, $princ, $obj_id) = @_;
 
+	my $table = ${obj_type} . '_owner';
+	my $getit = 'owner';
+	my $itis  = 'name';
+
+	if ($obj_type eq 'appid') {
+		$table = 'appid_acls';
+		$getit = 'acl';
+		$itis  = 'appid';
+	}
+
 	#
 	# We implement here a single SQL statement that will deal
 	# with recursive groups up to N levels.	 After this, we give
 	# up...	 XXXrcd: should we deal with more recursion than this
 	# or simply define N as being a hard limit?
 
-	my @joins = ('LEFT JOIN acls ON '.$obj_type.'_owner.owner = acls.name');
+	my @joins = ("LEFT JOIN acls ON $table.$getit = acls.name");
 	my @where = ('acls.name = ?');
 	my @bindv = ($princ);
 
@@ -3437,8 +3417,8 @@ sub is_owner {
 	}
 
 	my $stmt;
-	$stmt = "SELECT COUNT(${obj_type}_owner.name) FROM ${obj_type}_owner ".
-	    join(' ', @joins) . " WHERE ${obj_type}_owner.name = ? AND (" .
+	$stmt = "SELECT COUNT($table.$itis) FROM ${table} ".
+	    join(' ', @joins) . " WHERE ${table}.$itis = ? AND (" .
 	    join(' OR ', @where) . ")";
 
 	my $sth = sql_exec($dbh, $stmt, $obj_id, @bindv);
