@@ -3392,11 +3392,26 @@ sub is_owner {
 		$itis  = 'appid';
 	}
 
+	my $f = \&is_owner_cte;
+	if ($dbh->{Driver}->{Name} eq 'SQLite' &&
+	    $DBD::SQLite::sqlite_version_number < 3010000) {
+		$f = \&is_owner_old;
+	}
+
+	return &$f($dbh, $table, $getit, $itis, $princ, $obj_id);
+}
+
+sub is_owner_old {
+	my ($dbh, $table, $getit, $itis, $princ, $obj_id) = @_;
+
 	#
 	# We implement here a single SQL statement that will deal
 	# with recursive groups up to N levels.	 After this, we give
 	# up...	 XXXrcd: should we deal with more recursion than this
 	# or simply define N as being a hard limit?
+	#
+	# This has been replaced by CTEs below.  We leave this in place
+	# for older databases which don't [yet] support CTEs.
 
 	my @joins = ("LEFT JOIN acls ON $table.$getit = acls.name");
 	my @where = ('acls.name = ?');
@@ -3427,6 +3442,27 @@ sub is_owner {
 
 	$sth->finish;
 	return $res;
+}
+
+sub is_owner_cte {
+	my ($dbh, $table, $getit, $itis, $princ, $obj_id) = @_;
+
+        my $stmt = qq{
+                WITH RECURSIVE owners(owner) AS (
+                        SELECT $getit AS owner FROM $table WHERE $itis = ?
+                        UNION
+                        SELECT acl AS owner
+				   FROM aclgroups, owners
+				   WHERE owners.owner=aclgroups.aclgroup
+		) SELECT owner FROM owners WHERE owner = ? LIMIT 1;
+        };
+
+        my $sth = sql_exec($dbh, $stmt, $obj_id, $princ);
+        my $res = $sth->fetch();
+        $sth->finish;
+
+        return scalar(@{$res})  if ref($res) eq 'ARRAY';
+        return 0;
 }
 
 sub query_owner_f {
