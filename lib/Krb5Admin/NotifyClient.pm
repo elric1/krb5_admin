@@ -21,6 +21,16 @@ sub notify_host {
 	my $host_email = "notify\@$host";
 	my @sendmail = ($SENDMAIL, "-i", "-f" ,'', "-C" , "$CF", $host_email);
 
+	#
+	# Short-circuit if the host principal doesn't exist.  This
+	# means that the host hasn't yet been bootstrapped.  We delay
+	# this test until this function as in previous opportunities,
+	# we might be dealing with a cluster name for which we would
+	# not expect to find a host princ.
+
+	eval { $krb5->query("host/$host"); };
+	return if $@;
+
 	my $pid = fork();
 	if ($pid == 0) {
 		close(STDIN);
