@@ -6,6 +6,7 @@ use Sys::Hostname;
 use Krb5Admin::Krb5Host::Local;
 use Krb5Admin::Krb5Host::Client;
 use Krb5Admin::Krb5Host::CLI;
+use Krb5Admin::Utils qw/load_krb5hostd_config mk_krb5host_with_config/;
 
 use strict;
 use warnings;
@@ -17,6 +18,8 @@ my $debug = 0;
 my $verbose = 0;
 my $terse = 0;
 
+our $KRB5_HOSTD_CONFIG	= '/etc/krb5/krb5_hostd.conf';
+
 sub HELP_MESSAGE {
 	exec("man krb5_host");
 	exit(1);
@@ -24,21 +27,28 @@ sub HELP_MESSAGE {
 
 sub usage {
 	print STDERR <<EOM;
-usage: krb5_host [-Jv] [-h host | -l] cmd [args ...]
+usage: krb5_host [-Jv] [-h host | -l] [-c conf] cmd [args ...]
 EOM
 	exit(1);
 }
 
 my %opts;
+my $conf;
 my $host = hostname();
 my $json = 0;
 
-getopts('Jh:lv?', \%opts) or usage();
+getopts('Jc:h:lv?', \%opts) or usage();
 
 usage()			if exists($opts{'?'});
 $json = 1		if exists($opts{'J'});
 $host = $opts{'h'}	if exists($opts{'h'});
 $verbose = 1		if exists($opts{'v'});
+
+my $config;
+$config->{config}		= $KRB5_HOSTD_CONFIG;
+$config->{config}		= $opts{c}		if exists($opts{'c'});
+$config->{config_provided}	= defined($opts{c});
+$config->{verbose}		= 1			if exists($opts{'v'});
 
 if (($opts{'h'}?1:0) + ($opts{'l'}?1:0) > 1) {
 	print STDERR "-h and -l are mutually exclusive.\n";
@@ -55,10 +65,8 @@ my $cli = Krb5Admin::Krb5Host::CLI->new(appname => 'krb5_host', json => $json);
 my $khost;
 eval {
 	if (exists($opts{'l'})) {
-		# XXXrcd: this is a bit broken...
-		$khost = Krb5Admin::Krb5Host::Local->new(
-		    invoking_user => 'elric',
-		);
+		load_krb5hostd_config($config);
+		$khost = mk_krb5host_with_config($config);
 	} else {
 		$khost = Krb5Admin::Krb5Host::Client->new($host);
 	}

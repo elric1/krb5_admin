@@ -19,8 +19,8 @@ use Time::HiRes qw(gettimeofday sleep);
 
 use Krb5Admin::Client;
 use Krb5Admin::FileLocks;
-use Krb5Admin::KerberosDB;
 use Krb5Admin::Krb5Host::Client;
+use Krb5Admin::Local;
 use Krb5Admin::Utils qw/host_list force_symlink/;
 use Krb5Admin::C;
 
@@ -70,6 +70,8 @@ our %kt_opts = (
 	kadmin			=> 0,
 	keytab_retries		=> 3,
 	kmdb			=> undef,	# XXXrcd: more logic
+	kmdb_config		=> '/etc/krb5/krb5_admind.conf',
+	kmdb_config_provided	=> 0,
 	krb5_lib		=> '',
 	krb5_lib_quirks		=> {},
 	krb5_libs		=> {},
@@ -1522,7 +1524,10 @@ sub get_kmdb {
 	# Are we configured to use the local Kerberos DB?
 
 	if ($self->{local}) {
-		$self->{kmdb} = Krb5Admin::KerberosDB->new(local => 1);
+		$self->{kmdb} = Krb5Admin::Local->new({
+			config => $self->{kmdb_config},
+			config_provided => $self->{kmdb_config_provided},
+		});
 		return $self->{kmdb};
 	}
 

@@ -7,7 +7,7 @@ package Krb5Admin::Utils;
 use Exporter;
 @ISA = qw(Exporter);
 @EXPORT_OK = qw/reverse_the host_list force_symlink
-		load_krb5hostd_config
+		load_krb5hostd_config mk_krb5host_with_config
 		load_config mk_kmdb_with_config
 		unparse_princ/;
 
@@ -84,6 +84,47 @@ sub mk_kmdb_with_config {
 	return $kmdb_class->new(%kmdb_args);
 }
 
+sub mk_krb5host_with_config {
+	my ($config, $args) = @_;
+
+	my %krb5host_args = (
+		verbose		 => $config->{verbose},
+		user2service	 => $config->{user2service},
+		allowed_enctypes => $config->{allowed_enctypes},
+		admin_users	 => $config->{admin_users},
+		keytab_retries	 => $config->{keytab_retries},
+		krb5_libs	 => $config->{krb5_libs},
+		krb5_lib_quirks	 => $config->{krb5_lib_quirks},
+		default_krb5_lib => $config->{default_krb5_lib},
+		user_libs	 => $config->{user_libs},
+		use_fetch	 => $config->{use_fetch},
+		ext_sync_func	 => $config->{ext_sync_func},
+
+		ktdir		 => $config->{ktdir},
+		lockdir		 => $config->{lockdir},
+		tixdir		 => $config->{tixdir},
+
+		kmdb_config	 => $config->{kmdb_config},
+		kmdb_config_provided => $config->{kmdb_config_provided},
+
+		testing		 => $config->{testing},
+		local		 => $config->{local},
+
+		#
+		# XXXrcd: these settings all need to be be diddled a
+		#         bit, some of them will require a small bit
+		#         of thought, eh?
+
+		invoking_user	 => 'root',	# XXXrcd!
+	);
+
+	my $krb5host_class = 'Krb5Admin::Krb5Host::Local';
+	if (defined($config->{krb5host_class})) {
+		$krb5host_class = $config->{krb5host_class};
+	}
+	return $krb5host_class->new(%krb5host_args);
+}
+
 sub _load_config {
 	my ($config) = @_;
 	my $file = $config->{config};
@@ -141,6 +182,12 @@ sub load_krb5hostd_config {
 	$config->{lockdir}		  =  $lockdir;
 	$config->{ext_sync_func}	  =  $ext_sync_func;
 	$config->{tixdir}		  =  $tixdir;
+	$config->{testing}		  =  $testing;
+	$config->{kmdb_config}		  =  $kmdb_config;
+
+	if (defined($kmdb_config)) {
+		$config->{kmdb_config_provided} = 1;
+	}
 }
 
 # XXXrcd: maybe we should perform a little validation later.

@@ -10,6 +10,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl Jlv
+.Op Fl c Ar config
 .Op Fl h Ar host
 .Ar command Oo Ar arg ... Oc
 .Sh DESCRIPTION
@@ -25,6 +26,11 @@ The options are as follows:
 .Bl -tag -width indentxxxxxx
 .It Fl J
 output is JSON formatted rather than human readable.
+.It Fl c Ar config
+specifies an alternate location for the configuration file:
+.Xr krb5_hostd.conf 5 .
+Defaults to
+.Pa /etc/krb5/krb5_hostd.conf .
 .It Fl h Ar hostspec
 connect to
 .Ar hostspec .

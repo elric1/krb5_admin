@@ -14,6 +14,7 @@ use Kharon::Entitlement::SimpleSQL;
 
 use Krb5Admin::Krb5Host::Local;
 use Krb5Admin::Krb5Host::Log;
+use Krb5Admin::Utils qw/mk_krb5host_with_config/;
 
 use strict;
 use warnings;
@@ -21,7 +22,6 @@ use warnings;
 sub mk_krb5host {
 	my ($pes, $config, %args) = @_;
 	my @acls = ();
-	my $krb5host_class = 'Krb5Admin::Krb5Host::Local';
 
 	my $acl     = Kharon::Entitlement::Stack->new();
 
@@ -32,43 +32,12 @@ sub mk_krb5host {
 	$acl->set_creds($args{CREDS});
 	$pes->set_acl($acl);
 
-	my %krb5host_args = (
-		verbose		 => $config->{verbose},
-		user2service	 => $config->{user2service},
-		allowed_enctypes => $config->{allowed_enctypes},
-		admin_users	 => $config->{admin_users},
-		keytab_retries	 => $config->{keytab_retries},
-		krb5_libs	 => $config->{krb5_libs},
-		krb5_lib_quirks	 => $config->{krb5_lib_quirks},
-		default_krb5_lib => $config->{default_krb5_lib},
-		user_libs	 => $config->{user_libs},
-		use_fetch	 => $config->{use_fetch},
-		ext_sync_func	 => $config->{ext_sync_func},
-
-		ktdir		 => $config->{ktdir},
-		lockdir		 => $config->{lockdir},
-
-		tixdir		 => $config->{tixdir},
-
-		#
-		# XXXrcd: these settings all need to be be diddled a
-		#         bit, some of them will require a small bit
-		#         of thought, eh?
-
-		invoking_user	 => 'root',	# XXXrcd!
-		testing		 => 0,
-		local		 => 0,
-	);
-
 	if (defined($args{CREDS}) && defined($args{REMOTE_IP})) {
 		$config->{logger}->log('info', $args{CREDS} .
 		    ' connected from ' .  $args{REMOTE_IP});
 	}
 
-	if (defined($config->{krb5host_class})) {
-		$krb5host_class = $config->{krb5host_class};
-	}
-	my $ret = $krb5host_class->new(%krb5host_args);
+	my $ret = mk_krb5host_with_config($config);
 
 	$objacl->set_subobject($ret);
 

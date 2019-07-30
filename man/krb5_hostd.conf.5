@@ -60,6 +60,10 @@ the key data
 .El
 .Pp
 An exception must be thrown if the synchronisation fails.
+.It $kmdb_config
+specifies the location of
+.Pa /etc/krb5/krb5_admind.conf .
+Use of this variable implies a local KDC database.
 .It %krb5_libs
 is a hash mapping Kerberos library versions to an array ref of supported
 encryption types.
@@ -67,6 +71,14 @@ encryption types.
 is a hash mapping Kerberos library versions to an array ref of keytab
 management bugs (quirks) that must be considered when constructing or
 testing a keytab.
+.It $ktdir
+is the directory in which keytabs are stored.
+It defaults to
+.Pa /var/spool/keytabs .
+.It $testing
+is a boolean value which should be set to true when testing commands.
+Its function is to disable certain checks like the ownership of directories
+which require running as root.
 .It $tixdir
 is an array reference containing a list of places to install prestashed
 tickets when they are fetched.
