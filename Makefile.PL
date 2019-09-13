@@ -68,6 +68,7 @@ my %args = (
     EXE_FILES=> [qw(
 		    scripts/krb5_admind
 		    scripts/krb5_admin
+		    scripts/krb5_gc_bootstrap
 		    scripts/krb5_host
 		    scripts/krb5_hostd
 		    scripts/krb5_prestash

@@ -1,0 +1,66 @@
+#!/usr/pkg/bin/perl
+
+use Data::Dumper;
+use Getopt::Std;
+
+use Krb5Admin::Local;
+
+use strict;
+use warnings;
+
+#
+# Global variables:
+
+my $debug = 0;
+my $verbose = 0;
+
+sub usage {
+	print STDERR <<EOM;
+usage: krb5_gc_bootstrap [-v] [-D dbname] [-c config]
+EOM
+	exit(1);
+}
+
+my %opts;
+my $config = "/etc/krb5/krb5_admind.conf";
+my $config_provided = 0;
+my $dbname;
+my $sqldbname;
+
+getopts('D:JMS:c:dh:lr:sv?', \%opts) or usage();
+
+usage()			if exists($opts{'?'});
+$config = $opts{'c'}	if exists($opts{'c'});
+$config_provided = 1	if exists($opts{'c'});
+$dbname = $opts{'D'}	if exists($opts{'D'});
+$sqldbname = $opts{'S'}	if exists($opts{'S'});
+$debug = 1		if exists($opts{'d'});
+$verbose = 1		if exists($opts{'v'});
+
+my $kmdb;
+eval {
+	$kmdb = Krb5Admin::Local->new({dbname=>$dbname,
+	    config=>$config, config_provided=>$config_provided,
+	    sqlite=>$sqldbname});
+
+	$kmdb->master();
+
+	my @bootprincs = $kmdb->list("bootstrap/*");
+
+	my $i = 0;
+	for my $pname (@bootprincs) {
+		my $p = $kmdb->query($pname);
+
+		next if time() - $p->{mod_date} < 24 * 3600;
+
+		$kmdb->remove($pname);
+
+		sleep(1) if $i++ %10 == 0;
+	}
+
+};
+if (my $err = $@) {
+	print STDERR Dumper($@);
+	# XXXrcd: better errors
+	exit(1);
+}
