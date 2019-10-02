@@ -1372,6 +1372,43 @@ done:
 	return key;
 }
 
+krb5_keyblock *
+krb5_derive_namespace_key(krb5_context ctx, char *princ, int etype,
+			  krb5_keyblock *key)
+{
+	krb5_error_code	 ret;
+	krb5_keyblock	*out = NULL;
+	krb5_crypto	 crypto = NULL;
+	krb5_data	 in;
+	krb5_data	 rnd;
+	char		 croakstr[2048] = "";
+	size_t		 len;
+
+	in.data   = princ;
+	in.length = strlen(in.data);
+	rnd.data  = NULL;
+
+	out = calloc(sizeof(*out), 1);
+	if (!out) {
+		snprintf(croakstr, sizeof(croakstr), "ENOMEM");
+		ret = ENOMEM;
+		goto done;
+	}
+
+	K5BAIL(krb5_crypto_init(ctx, key, 0, &crypto));
+	K5BAIL(krb5_enctype_keysize(ctx, etype, &len));
+	K5BAIL(krb5_crypto_prfplus(ctx, crypto, &in, len, &rnd));
+	K5BAIL(krb5_random_to_key(ctx, etype, rnd.data, rnd.length, out));
+
+done:
+	free(rnd.data);
+	if (crypto)
+		krb5_crypto_destroy(ctx, crypto);
+	if (ret)
+		croak("%s", croakstr);
+	return out;
+}
+
 void
 init_store_creds(krb5_context ctx, char *ccname, krb5_creds *creds)
 {

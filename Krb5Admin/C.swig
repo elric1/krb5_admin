@@ -155,6 +155,19 @@
 	argvi++;
 }
 
+%typemap(out) krb5_keyblock * {
+	HV	*hv = newHV();
+
+	HV_STORE_IV_F(hv, "enctype", KEYBLOCK_ENCTYPE(*$1));
+	HV_STORE_PVN_LEN_F(hv, "key", KEYBLOCK_CONTENTS(*$1),
+	    KEYBLOCK_CONTENT_LEN(*$1));
+
+	krb5_free_keyblock(NULL, $1);
+
+	$result = sv_2mortal(newRV_noinc((SV*)hv));
+	argvi++;
+}
+
 %typemap(in) (kadm5_principal_ent_rec, long) {
 	krb5_context		  ctx = NULL;
 	kadm5_principal_ent_rec	  p;
