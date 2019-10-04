@@ -32,6 +32,29 @@ EOM
 	return 0;
 }
 
+sub FORMAT_list_generators {
+	my ($self, $cmd, $args, $ret) = @_;
+
+	for my $g (keys %$ret) {
+		print "$g\n";
+		for my $p (@{$ret->{$g}}) {
+			print "\tkvno: $p->{kvno}, enctype: $p->{enctype}\n";
+		}
+	}
+}
+
+sub FORMAT_list_keytabs {
+	my ($self, $cmd, $args, $ret) = @_;
+
+	for my $k (keys %$ret) {
+		print "$k\n";
+		print "\tuid:   $ret->{$k}->{uid}\n";
+		for my $p (@{$ret->{$k}->{princ}}) {
+			print "\tprinc: $p\n";
+		}
+	}
+}
+
 sub FORMAT_list_keytab {
 	my ($self, $cmd, $args, $ret) = @_;
 

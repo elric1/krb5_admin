@@ -19,7 +19,9 @@ use Time::HiRes qw(gettimeofday sleep);
 
 use Krb5Admin::Client;
 use Krb5Admin::FileLocks;
+use Krb5Admin::IVFuncs;
 use Krb5Admin::Krb5Host::Client;
+use Krb5Admin::Krb5Host::Keytabs;
 use Krb5Admin::Local;
 use Krb5Admin::Utils qw/host_list force_symlink/;
 use Krb5Admin::C;
@@ -1257,6 +1259,8 @@ sub get_kt {
 	my ($self, $user) = @_;
 	my $prefix = "WRFILE:";
 
+	return "$prefix$user" if defined($user) && $user =~ m#^/#;
+
 	$prefix .= $self->{ktroot} . "/"	 if defined($self->{ktroot});
 	$user = 'root'				 if !defined($user) ||
 						    $user eq '';
@@ -1386,7 +1390,7 @@ sub write_keys_with_quirks {
 }
 
 sub write_keys_internal {
-	my ($self, $user, $lib, $princ, $kvno, @keys) = @_;
+	my ($self, $user, $uid, $lib, $princ, $kvno, @keys) = @_;
 	my $ctx = $self->{ctx};
 	my $oldkt;
 	my $kt = $self->get_kt($user);
@@ -1401,12 +1405,14 @@ sub write_keys_internal {
 	$self->write_keys_with_quirks($lib, $kt, @keys);
 
 	if (!$self->{testing}) {
-		my ($uid, $gid) = get_ugid($user);
+		if (!defined($uid)) {
+			($uid) = get_ugid($user);
+		}
 		(my $ktfile = $kt) =~ s/WRFILE://;
 		chmod(0400, $ktfile)
 		    or die "chmod(0400, $ktfile): $!\n";
-		chown($uid, $gid, $ktfile)
-		    or die "chown($uid, $gid, $ktfile): $!\n";
+		chown($uid, 0, $ktfile)
+		    or die "chown($uid, 0, $ktfile): $!\n";
 	}
 
 	my @ktkeys;
@@ -1476,20 +1482,28 @@ sub write_keys_internal {
 
 	$kt =~ s/^WRFILE://;
 	if (!$self->{testing}) {
-		my ($uid, $gid) = get_ugid($user);
+		if (!defined($uid)) {
+			($uid) = get_ugid($user);
+		}
 		chmod(0400, $kt)	or die "chmod(0400, $kt): $!\n";
-		chown($uid, $gid, $kt)	or die "chown($uid, $gid, $kt): $!\n";
+		chown($uid, 0, $kt)	or die "chown($uid, 0, $kt): $!\n";
 	}
 	rename($kt, $oldkt)		    or die "rename: $!\n";
 
 	$self->vprint("New keytab file renamed into position, quirk-free\n");
 }
 
-sub write_keys_kt {
+sub write_keys_kt_uid {
 	my ($self, @args) = @_;
 	my $u = $args[0];
 
 	$self->{locks}->run_with_exlock($u, \&write_keys_internal, @_);
+}
+
+sub write_keys_kt {
+	my ($self, $u, @args) = @_;
+
+	return $self->write_keys_kt_uid($u, undef, @args);
 }
 
 # XXXrcd: hmmm, we're saving kmdb in our hash.  Should we undef it if
@@ -2429,7 +2443,7 @@ sub install_all_keys {
 	$kt =~ s/^WRFILE://;
 	if (-f $kt && !$self->{testing}) {
 		chmod(0400, $kt)	or die "chmod(0400, $kt): $!\n";
-		chown($uid, $gid, $kt)	or die "chown($uid, $gid, $kt): $!\n";
+		chown($uid, 0, $kt)	or die "chown($uid, 0, $kt): $!\n";
 	}
 
 	$self->reset_hostbased_kmdb();
@@ -2476,6 +2490,166 @@ sub do_update {
 	$self->{kmdb}->master();
 	$self->fetch_tickets($realm);
 	return "OK";
+}
+
+sub mkkts {
+	my ($self) = @_;
+	# XXXrcd: this should be in only one place...
+	my $ktdir = $self->{ktdir} // '/var/spool/keytabs';
+
+	my %args;
+	$args{ctx} = $self->{ctx};
+	$args{sqldbname} = "$ktdir/.ktabs";
+
+	return Krb5Admin::Krb5Host::Keytabs->new(%args);
+}
+
+#
+# The new API for managing key locations:
+
+#
+# XXXrcd: below we directly call the KHARON_IV_* in each of the
+#         functions.  We play to fix this by changing to a "Local"
+#         object like we did with Krb5Admin::Local...
+
+sub KHARON_IV_fetch_generator {
+	my ($self, $cmd, $generator) = @_;
+	my $usage = "$cmd <generator>";
+
+	require_fqprinc($self->{ctx}, $usage, 1, $generator);
+}
+
+sub fetch_generator {
+	my ($self, $generator) = @_;
+	my $ctx = $self->{ctx};
+
+	$self->KHARON_IV_fetch_generator("fetch_generator", $generator);
+	my @princ = parse_princ($ctx, $generator);
+
+	$self->use_private_krb5ccname();
+	my $kmdb = $self->get_hostbased_kmdb($princ[0], hostname());
+
+	my @keys = $kmdb->fetch("WELLKNOWN/DERIVED-KEY/KRB5-CRYPTO-PRFPLUS/"
+	    . $generator);
+
+	$self->reset_hostbased_kmdb();
+	$self->reset_krb5ccname();
+
+	my @args = ($generator);
+	my $kts = $self->mkkts();
+
+	for my $key (@keys) {
+		$kts->mk_generator($generator, $key);
+	}
+
+	return;
+}
+
+sub KHARON_IV_mk_generator {
+	my ($self, $cmd, $generator, $kvno, $enctype, $key) = @_;
+	my $usage = "$cmd <generator> <kvno> <enctype> <key>";
+
+	require_fqprinc($self->{ctx}, $usage, 1, $generator);
+	require_scalar($usage, 2, $kvno);
+	require_scalar($usage, 3, $enctype);
+	require_scalar($usage, 4, $key);
+}
+
+sub mk_generator {
+	my ($self, $generator, $kvno, $enctype, $key) = @_;
+
+	$self->KHARON_IV_mk_generator("mk_generator", $generator,
+	    $kvno, $enctype, $key);
+
+	my $kts = $self->mkkts();
+	$kts->mk_generator($generator,
+	    {kvno=>$kvno, enctype=>$enctype, key=>$key});
+	return;
+}
+
+sub rm_generator {
+	my ($self, @args) = @_;
+	my $kts = $self->mkkts();
+
+	return $kts->rm_generator(@args);
+}
+
+sub list_generators {
+	my ($self, @args) = @_;
+	my $kts = $self->mkkts();
+
+	return $kts->list_generators(@args);
+}
+
+sub KHARON_IV_mk_keytab {
+	my ($self, $cmd, $path, $uid) = @_;
+	my $usage = "$cmd <path> <uid>";
+
+	require_scalar($usage, 1, $path);
+	require_number($usage, 2, $uid);
+}
+
+sub mk_keytab {
+	my ($self, $path, $uid) = @_;
+	my $kts = $self->mkkts();
+
+	KHARON_IV_mk_keytab($self, "mk_keytab", $path, $uid);
+	$kts->mk_keytab($path, $uid);
+}
+
+sub rm_keytab {
+	my ($self, @paths) = @_;
+	my $kts = $self->mkkts();
+
+	for my $path (@paths) {
+		$kts->rm_keytab($path);
+	}
+}
+
+sub list_keytabs {
+	my ($self, @path) = @_;
+	my $kts = $self->mkkts();
+
+	return $kts->list_keytabs(@path);
+}
+
+sub add_princ_to_keytab {
+	my ($self, $p, $keytab) = @_;
+	my $kts = $self->mkkts();
+
+	$kts->add_key($keytab, $p);
+	my $keys = $kts->get_full_keys_for_princ($p);
+
+	my %kvnos;
+
+	for my $key (@$keys) {
+		push(@{$kvnos{$key->{'kvno'}}}, $key);
+	}
+
+	my $uid = $kts->query_keytab($keytab)->{uid};
+
+	for my $kvno (keys %kvnos) {
+		$self->write_keys_kt_uid($keytab, $uid, undef,
+		    $p, $kvno, @{$kvnos{$kvno}});
+	}
+
+	return;
+}
+
+sub rm_princ_from_keytab {
+	my ($self, $p, $keytab) = @_;
+	my $kts = $self->mkkts();
+
+	$kts->rm_key($keytab, $p);
+
+	return;
+}
+
+sub list_keys {
+	my ($self) = @_;
+	my $kts = $self->mkkts();
+
+	$kts->list_keys();
 }
 
 1;
