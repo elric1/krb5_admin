@@ -55,6 +55,10 @@ if (($opts{'h'}?1:0) + ($opts{'l'}?1:0) > 1) {
 	usage();
 }
 
+if (!exists($opts{'h'}) && $< == 0 && $> == 0) {
+	$opts{'l'} = 1;
+}
+
 if ($#ARGV < 0) {
 	printf STDERR "command is required.\n";
 	usage();
