@@ -6,6 +6,7 @@ use Exporter;
 		require_princ canonicalise_fqprinc require_fqprinc
 		require_hostname require_hostnames require_hashref
 		require_username require_usernames
+		require_number
 	    };
 
 use Krb5Admin::C;
@@ -25,6 +26,7 @@ sub require_many {
 
 sub require_scalars	{ require_many(\&require_scalar, @_) }
 sub require_hostnames	{ require_many(\&require_hostname, @_) }
+sub require_usernames	{ require_many(\&require_username, @_) }
 
 sub require_scalar {
 	my ($usage, $argnum, $arg) = @_;
@@ -33,6 +35,15 @@ sub require_scalar {
 	    if !defined($arg);
 	die [503, "Syntax error: arg $argnum not a scalar\nusage: $usage"]
 	    if ref($arg) ne '';
+	return;
+}
+
+sub require_number {
+	my ($usage, $argnum, $arg) = @_;
+
+	require_scalar($usage, $argnum, $arg);
+	die [503, "Syntax error: arg $argnum not a number\nusage: $usage"]
+	    if $arg =~ /[^0-9]/o;
 	return;
 }
 
@@ -47,6 +58,7 @@ sub require_localrealm {
 	if ($@) {
 		die [502, "KDC does not support realm $realm"];
 	}
+	return;
 }
 
 sub require_princ {
@@ -60,6 +72,7 @@ sub require_princ {
 		die [503, "Syntax error: arg $argnum must be a principal: " .
 		    "$@\nusage: $usage"];
 	}
+	return;
 }
 
 sub canonicalise_fqprinc {
@@ -91,6 +104,7 @@ sub require_fqprinc {
 		die [503, "Syntax error: arg $argnum must be a fully " .
 		    "qualified principal: $tmp ne $princ\nusage: $usage"];
 	}
+	return;
 }
 
 sub require_hostname {
@@ -125,6 +139,7 @@ sub require_username {
 		    "username with only alphanumeric characters\n" .
 		    "usage: $usage"];
 	}
+	return;
 }
 
 1;
