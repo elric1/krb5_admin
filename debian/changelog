@@ -1,3 +1,24 @@
+libkrb5admin-perl (0.4.2) unstable; urgency=low
+
+  * Provide basic support of derived key namespaces.
+  * Add Krb5Admin::Krb5Host::Keytabs for derived key namespaces
+  * krb5_host: if we're root make no -h imply -l.
+  * Krb5Admin::C: add krb5_derive_namespace_key()
+  * interim buster fix
+  * krb5_host: add -c <config>, document, and refactor
+  * Changes to enable PostgreSQL
+  * Krb5Admin::NotifyClient: Short-circuit if the host principal doesn't exist
+  * Krb5Admin::KerberosDB: make is_owner use CTEs.
+  * Krb5Admin::KerberosDB: refactor is_appid_owner into is_owner.
+  * Krb5Admin::KerberosDB: create hosts that don't exist in bind_host
+  * Krb5Admin::Krb5Host::Local: fix $tixdir specifying a username
+  * Add krb5_gc_bootstrap
+  * Document -c for krb5_hostd
+  * Krb5Admin::KerberosDB: fix {KHARON_ACL,KHARON_IV,}_modify_group to not pass type
+  * krb5_prestash fetch: note that host comes from hostname(2)
+
+ -- Roland C. Dowdeswell <roland.dowdeswell@twosigma.com>  Thu, 10 Oct 2019 00:27:00 +0000
+
 libkrb5admin-perl (0.4.1) unstable; urgency=low
 
   * Krb5Admin::KerberosDB: fix prestash notify on cluster change
