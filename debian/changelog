@@ -1,3 +1,9 @@
+libkrb5admin-perl (0.4.3) unstable; urgency=low
+
+  * forgot a file in the debian packaging
+
+ -- Roland C. Dowdeswell <roland.dowdeswell@twosigma.com>  Thu, 10 Oct 2019 00:47:00 +0000
+
 libkrb5admin-perl (0.4.2) unstable; urgency=low
 
   * Provide basic support of derived key namespaces.
