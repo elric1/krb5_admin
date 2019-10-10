@@ -1,6 +1,6 @@
 #!/usr/pkg/bin/perl
 
-use Test::More tests => 84;
+use Test::More tests => 82;
 
 use Krb5Admin::ForkClient;
 
@@ -189,10 +189,10 @@ testObjC("Is owner #4?", $kmdb, [0], 'is_appid_owner', 'elric@IMRRYR.ORG',
     'appid2');
 testObjC("Is owner #5?", $kmdb, [1], 'is_appid_owner', 'sadric@IMRRYR.ORG',
     'appid2');
-testObjC("Is owner #6?", $kmdb, [1], 'is_appid_owner', 'elric@IMRRYR.ORG',
-    'appid3');
-testObjC("Is owner #7?", $kmdb, [1], 'is_appid_owner', 'sadric@IMRRYR.ORG',
-    'appid3');
+#testObjC("Is owner #6?", $kmdb, [1], 'is_appid_owner', 'elric@IMRRYR.ORG',
+#    'appid3');
+#testObjC("Is owner #7?", $kmdb, [1], 'is_appid_owner', 'sadric@IMRRYR.ORG',
+#    'appid3');
 
 $kmdb = mk_kmdb(CREDS => 'yyrkoon@IMRRYR.ORG');
 
