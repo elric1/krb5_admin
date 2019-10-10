@@ -15,6 +15,7 @@ ${PERLLIB}/Krb5Admin/Krb5Host/Daemon.pm
 ${PERLLIB}/Krb5Admin/Krb5Host/Local.pm
 ${PERLLIB}/Krb5Admin/Krb5Host/Client.pm
 ${PERLLIB}/Krb5Admin/Krb5Host/Log.pm
+${PERLLIB}/Krb5Admin/Krb5Host/Keytabs.pm
 ${PERLLIB}/Krb5Admin/NotifyClient.pm
 ${PERLLIB}/Krb5Admin/Krb5Host.pm
 ${PERLLIB}/Krb5Admin/dbutils.pm
