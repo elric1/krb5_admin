@@ -3500,11 +3500,6 @@ sub query_acl_owner {
 	return $r;
 }
 
-sub KHARON_ACL_list_commands { return 1; }
-sub list_commands {
-	return @Krb5Admin::KRB5_USER_COMMANDS;
-}
-
 sub KHARON_IV_principal_map_remove {
 	my ($self, $cmd, $account, $svc, $hostname) = @_;
 	my $usage = "$cmd <account> <service> <hostname>";

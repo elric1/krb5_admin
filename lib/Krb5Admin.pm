@@ -179,52 +179,6 @@ sub regenkeys {
 	};
 }
 
-# Consider loading from file
-our @KRB5_USER_COMMANDS = (
-"list                 - list all principals in the database",
-"list_labels          - list available host labels",
-"listpols             - list kdc policies",
-"mquery               - show details for principals matching a pattern",
-"list_commands        - show this help",
-"query                - show details for a specific principal ",
-"query_acl            - show information about a krb5_admin user",
-"query_aclgroup       - show membership information about krb5_admin groups",
-"query_host           - show information about a host",
-"query_hostmap        - show cluster memberships",
-"sacls_query          - list the assigned administrative privileges",
-"add_acl              - create a krb5_admin user or group",
-"add_label            - add a label",
-"bind_host            - associate a boostrap id with a host principal name",
-"change_passwd        - change a password",
-"create_appid         - create a new appid, the kerberos principal of a " .
-			"role account",
-"create_host          - create a new entry for a host",
-"create_user          - create a new kerberos user",
-"del_acl              - delete a krb5_admin user or group",
-"del_label            - remove a label",
-"disable              - disable a principal",
-"enable               - enable a principal",
-"insert_aclgroup      - add a member to a group",
-"insert_hostmap       - add a host to a cluster",
-"modify               - modify an appid (owners, etc)",
-"modify_host          - modify properties of a host(ip, binding, labels, " .
-			"etc) ",
-"remove               - remove a principal from the database ",
-"remove_aclgroup      - remove a member from a krb5_admin group",
-"remove_host          - remove a host",
-"remove_hostmap       - remove a host from a cluster ",
-"reset_passwd         - reset a kerberos password",
-"sacls_add            - add an administrative privilege",
-"sacls_del            - remove an administrative privilege",
-"add_acl_owner        - add an owner to an acl or aclgroup",
-"remove_acl_owner     - remove an owner from an aclgroup",
-"query_acl_owner      - list the owner of an aclgroup",
-"create_logical_host  - create a logical host ",
-"new_host_secret      - create new master secret",
-"bind_host_secret     - create/change host secret",
-"read_host_secret     - return the host's current secret",
-);
-
 1;
 
 __END__

@@ -90,6 +90,7 @@ sub KHARON_COMMAND_ALIASES {
 	return {
 		is_owner	=> 'is_appid_owner',
 		is_pwner	=> 'is_appid_owner',
+		list_commands	=> 'help',
 		reset_password	=> 'reset_passwd',
 	};
 }
@@ -141,18 +142,21 @@ Commands that operate on hosts:
 	create_host		create a host
 	create_logical_host	create a logical host, i.e. a cluster
 	bind_host		assign a ``bootbinding'' to a host
-	remove_host		remove a host
 	modify_host		modify the attributes of a host
+	query_host		show information about a host
+	remove_host		remove a host
+
+Commands that operate on Simple ACLS (sacls):
+
+	sacls_add		add a sacl
+	sacls_del		remove a sacl
+	sacls_query		show or list sacls
 
 Commands that operate on host secrets:
 
 	new_host_secret		create new master secret
 	bind_host_secret	create/change host secret
 	read_host_secret	return the host's current secret
-
-Show a list of available commands:
-
-	list_commands
 
 For a more complete description of commands with usage and examples,
 please refer to the manual page which can be accessed via:
