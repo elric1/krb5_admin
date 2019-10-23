@@ -40,6 +40,7 @@ has a format of
 .Oo Ar service@ Oc Ns Ar hostname Ns Oo : Ns Ar port Oc .
 .It Fl l
 operate on the local host.
+This is the default when run as root.
 .It Fl v
 make the output a bit more verbose.
 .El
@@ -49,10 +50,22 @@ The remaining arguments to
 are accepted from the shell and no further quoting is performed.
 The first argument is considered to be the command and the remaining
 arguments are passed to the command.
-.Pp
+Some commands accept a list of key value pairs starting after a
+particular position.
+Some keys are denoted as ``set-based'' meaning that they manage a
+set of values rather than an individual setting.
+Set-based keys take a comma-separated list of values
+.Pq interpreted as a set
+and can also
+take plus equals
+.Pq +=
+or minus equals
+.Pq -=
+to add or subtract elements from the set.
+.Ss Local and Remote Diagnostics
 The following commands are implemented:
-.Bl -tag
-.It list_keytab
+.Bl -ohang -offset ind
+.It list_keytab Ar user
 displays the contents of a
 .Ar user 's
 keytab in the same format as
@@ -61,6 +74,53 @@ keytab in the same format as
 shows all of the prestashed tickets that are on the host.
 .It show_krb5_conf
 returns information about the Kerberos configuration of the host.
+.El
+.Ss Managing Keytabs with Derived Keys
+...
+Commands that operate of keytabs with derived keys:
+.Bl -ohang -offset ind
+.It fetch_generator Ar generator
+will fetch a generator from the KDC and store it locally.
+This may have side effects such as updating all of the keys
+on the host which are derived from the generator.
+.It rm_generator Ar generator
+removes the generator keys from the host.
+This will not remove the derived keys.
+.It list_generators
+will output a list of the generators on the host.
+.It mk_keytab Ar path Ar uid
+creates a
+.Dq keytab
+which is essentially nothing more that the association
+of a
+.Ar path
+with a UNIX
+.Ar uid
+which can then later be used to install keys.
+.It rm_keytab Ar path
+removes the association of
+.Ar path
+and
+.Ar uid .
+This will not remove the physical file.
+.It list_keytabs
+will list all of the configured non-default keytabs.
+.It add_princ_to_keytab Ar princ Ar keytab
+will add a principal
+.Pq Ar princ
+to a
+.Ar keytab .
+This includes deriving the keys from the generator
+and installing the derived keys into the
+.Ar keytab .
+.It rm_princ_from_keytab Ar princ Ar keytab
+This will remove the principal
+.Pq Ar princ
+from the
+.Ar keytab .
+This does not include removing the generated keys
+from the keytab file.
+
 .El
 .Sh EXIT STATUS
 The
