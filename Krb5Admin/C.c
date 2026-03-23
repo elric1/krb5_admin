@@ -31,6 +31,7 @@
 
 /* Prototypes */
 
+int		curve25519_donna(uint8_t *, const uint8_t *, const uint8_t *);
 static int	keyblock_num_keys(krb5_keyblock *);
 
 kadm5_handle
