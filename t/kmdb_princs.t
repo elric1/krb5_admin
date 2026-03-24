@@ -122,8 +122,7 @@ compare_princ_to_attrs($result, [qw/+requires_preauth -allow_svr +needchange/],
     "user has correct attributes 1");
 compare_keys($result, [
 		{enctype=>18,kvno=>1},
-		{enctype=>16,kvno=>1},
-		{enctype=>23,kvno=>1}
+		{enctype=>20,kvno=>1},
 	], "user has correct key types 1");
 
 $result = $kmdb->query($sprinc);
@@ -202,8 +201,7 @@ testObjC("change_passwd", $kmdb, ["${p}1"], 'change_passwd', $uprinc, "${p}1");
 $result = $kmdb->query($uprinc);
 compare_keys($result, [
 		{enctype=>18,kvno=>2},
-		{enctype=>16,kvno=>2},
-		{enctype=>23,kvno=>2}
+		{enctype=>20,kvno=>2}
 	], "user has correct key types 2");
 compare_princ_to_attrs($result, [qw/+requires_preauth -allow_svr/],
     "user has correct attributes 2");
@@ -240,8 +238,7 @@ if (!$@) {
 
 	compare_keys($allprincs{$uprinc}, [
 			{enctype=>18,kvno=>2},
-			{enctype=>16,kvno=>2},
-			{enctype=>23,kvno=>2}
+			{enctype=>20,kvno=>2},
 		], "user has correct key types in mquery");
 	compare_princ_to_attrs($allprincs{$uprinc},
 	    [qw/+requires_preauth -allow_svr/],
