@@ -496,7 +496,7 @@ done:
 
 	ret = krb5_init_context(&ctx);
 	if (!ret)
-		ret = krb5_parse_name(ctx, tmp, (krb5_principal)&($1));
+		ret = krb5_parse_name(ctx, tmp, (krb5_principal *)&($1));
 
 	if (ret) {
 #ifdef HAVE_HEIMDAL
