@@ -485,6 +485,45 @@ done:
 		croak("%s", croakstr);
 }
 
+%typemap(in) krb5_const_principal {
+	krb5_error_code	 ret;
+	krb5_context	 ctx = NULL;
+	STRLEN		 len;
+	char		*tmp;
+	char		 croakstr[2048] = "";
+
+	tmp = SvPV($input, len);
+
+	ret = krb5_init_context(&ctx);
+	if (!ret)
+		ret = krb5_parse_name(ctx, tmp, (krb5_principal)&($1));
+
+	if (ret) {
+#ifdef HAVE_HEIMDAL
+		krb5_context	 nullctx = 0;
+		char		 croakstr[2048] = "";
+		const char	*tmp;
+
+		tmp = krb5_get_error_message(nullctx, ret);
+		if (tmp) {
+			snprintf(croakstr, sizeof(croakstr), "%s", tmp);
+			krb5_free_error_message(nullctx, tmp);
+		} else {
+			snprintf(croakstr, sizeof(croakstr),
+			"unknown error: %ld", (long)ret);
+		}
+#else
+		snprintf(croakstr, sizeof(croakstr), (error_message(ret)));
+#endif
+	}
+
+	if (ctx)
+		krb5_free_context(ctx);
+
+	if (croakstr[0])
+		croak("%s", croakstr);
+}
+
 %typemap(in,numinputs=0) krb5_principal * {
 	$1 = calloc(sizeof(krb5_principal), 1);
 }

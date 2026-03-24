@@ -216,10 +216,8 @@ krb5_error_code	krb5_init_context(krb5_context *OUTPUT);
 void		krb5_free_context(krb5_context);
 void		my_free_ctx(krb5_context *);
 krb5_error_code	krb5_parse_name(krb5_context, const char *, krb5_principal *);
-#if 0
 krb5_error_code krb5_string_to_key(krb5_context, krb5_enctype, const char *,
-				   krb5_principal, krb5_keyblock *OUTPUT);
-#endif
+				   krb5_const_principal, krb5_keyblock *OUTPUT);
 int		kt_kvno(krb5_context, char *, char *);
 
 char	**curve25519_pass1(krb5_context);
