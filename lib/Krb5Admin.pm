@@ -89,7 +89,6 @@ our @KHARON_RO_AC_EXPORT = qw/	fetch
 				list_subject
 				listpols
 				mquery
-				list_commands
 				list_table
 				search_group
 				search_host
