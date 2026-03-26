@@ -32,6 +32,7 @@ our @KHARON_RW_SC_EXPORT = qw/	add_acl
 				disable
 				enable
 				generate_ecdh_key1
+				init_db
 				insert_aclgroup
 				insert_hostmap
 				insert_ticket
