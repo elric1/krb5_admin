@@ -12,7 +12,7 @@ env:
   HEIMDAL_RELEASE: v7.99.1
   KNC_REPOSITORY: ChapelTech/knc
   KNC_RELEASE: v1.12
-  KHARON_REPOSITORY: ChapelTech/kharon
+  KHARON_REPOSITORY: elric1/kharon
   KHARON_RELEASE: v0.8.4
   PREFORK_REPOSITORY: ChapelTech/prefork
   PREFORK_RELEASE: v0.3
